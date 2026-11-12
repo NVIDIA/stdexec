@@ -33,6 +33,7 @@ import stdexec;
 #  include "__domain.hpp"
 #  include "__env.hpp"
 #  include "__into_variant.hpp"
+#  include "__just.hpp"
 #  include "__meta.hpp"
 #  include "__optional.hpp"
 #  include "__schedulers.hpp"
@@ -52,9 +53,12 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.when.all]
   //! @brief A variadic sender factory that runs multiple senders concurrently
   //!        and completes when all of them have completed, concatenating
@@ -106,10 +110,10 @@ namespace STDEXEC
   //! the resulting sender has completion signatures:
   //!
   //! @code{.cpp}
-  //! set_value_t(V1..., V2..., ..., Vn...)   // concatenation of every input
-  //! set_error_t(Eij)...                     // union across all inputs
-  //! set_error_t(std::exception_ptr)         // added if any decay-copy may throw
-  //! set_stopped_t()                         // added if any input has it
+  //! set_value_t(V1..., V2..., ..., Vn...) // concatenation of every input
+  //! set_error_t(Eij)...                   // union across all inputs
+  //! set_error_t(std::exception_ptr)       // added if any decay-copy may throw
+  //! set_stopped_t()                       // added if any input has it
   //! @endcode
   //!
   //! The value datums of each input are decay-copied into the resulting
@@ -161,9 +165,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::when_all_with_variant       — for inputs with multiple value-completion shapes
-  //! @see stdexec::transfer_when_all           — when_all + scheduler transfer (stdexec extension)
-  //! @see stdexec::spawn_future                — start a sender eagerly and observe via a sender
+  //! @see stdexec::when_all_with_variant — for inputs with multiple
+  //!                                       value-completion shapes
+  //! @see stdexec::transfer_when_all     — when_all + scheduler transfer
+  //!                                       (stdexec extension)
+  //! @see stdexec::spawn_future          — start a sender eagerly and observe
+  //!                                       via a sender
   struct when_all_t
   {
     //! @brief Compose @c __sndrs... into a sender that completes when every
@@ -194,10 +201,11 @@ namespace STDEXEC
       noexcept(__nothrow_decay_copyable<_Sender0, _Sender1, _Senders...>) -> __well_formed_sender
       auto
     {
-      return __make_sexpr<when_all_t>(__(),
-                                      static_cast<_Sender0&&>(__sndr0),
-                                      static_cast<_Sender1&&>(__sndr1),
-                                      static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_t(),
+                     __(),
+                     static_cast<_Sender0&&>(__sndr0),
+                     static_cast<_Sender1&&>(__sndr1),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
   };
 
@@ -228,8 +236,8 @@ namespace STDEXEC
   //!
   //! **Equivalence.**
   //!
-  //! <tt>when_all_with_variant(sndrs...)</tt> is specified as
-  //! expression-equivalent to <tt>when_all(into_variant(sndrs)...)</tt>
+  //! `when_all_with_variant(sndrs...)` is specified as
+  //! expression-equivalent to `when_all(into_variant(sndrs)...)`
   //! (after @c transform_sender), so all of @c when_all's concurrency,
   //! error, and cancellation semantics carry over unchanged.
   //!
@@ -256,11 +264,11 @@ namespace STDEXEC
     //!                  value-completion shapes.
     //!
     //! @returns A sender equivalent to
-    //!          <tt>when_all(into_variant(__sndrs)...)</tt>.
+    //!          `when_all(into_variant(__sndrs)...)`.
     template <sender... _Senders>
     constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_with_variant_t(), __(), static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -277,19 +285,19 @@ namespace STDEXEC
   //! @deprecated @c transfer_when_all is deprecated. It is not part of the
   //!             C++26 working draft and is retained only for backwards
   //!             compatibility. Write
-  //!             <tt>when_all(sndrs...) | continues_on(sch)</tt> instead;
+  //!             `when_all(sndrs...) | continues_on(sch)` instead;
   //!             the behavior is identical.
   //!
   //! Composition of @c when_all with @c continues_on:
-  //! <tt>transfer_when_all(sch, sndrs...)</tt> is expression-equivalent
-  //! to <tt>continues_on(when_all(sndrs...), sch)</tt>. The inputs run
+  //! `transfer_when_all(sch, sndrs...)` is expression-equivalent
+  //! to `continues_on(when_all(sndrs...), sch)`. The inputs run
   //! concurrently (wherever their respective schedulers run them), and
   //! once all have completed, the combined result is delivered on
   //! @c sch's execution resource.
   //!
   //! @see stdexec::when_all      — without the scheduler transfer
   //! @see stdexec::continues_on  — the underlying transfer primitive
-  struct transfer_when_all_t
+  struct __transfer_when_all_t
   {
     //! @brief Compose @c __sndrs... and deliver the combined completion on
     //!        @c __sched's execution resource.
@@ -300,14 +308,15 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_t>(static_cast<_Scheduler&&>(__sched),
-                                               static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{__transfer_when_all_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      // transform transfer_when_all(sch, sndrs...) into
+      // transform __transfer_when_all(sch, sndrs...) into
       // continues_on(when_all(sndrs...), sch).
       return __apply(
         [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child)
@@ -325,17 +334,17 @@ namespace STDEXEC
   //! @deprecated @c transfer_when_all_with_variant is deprecated. It is not
   //!             part of the C++26 working draft and is retained only for
   //!             backwards compatibility. Write
-  //!             <tt>when_all_with_variant(sndrs...) | continues_on(sch)</tt>
+  //!             `when_all_with_variant(sndrs...) | continues_on(sch)`
   //!             instead; the behavior is identical.
   //!
   //! Composition of @c when_all_with_variant and @c continues_on:
-  //! <tt>transfer_when_all_with_variant(sch, sndrs...)</tt> is
+  //! `transfer_when_all_with_variant(sch, sndrs...)` is
   //! expression-equivalent to
-  //! <tt>continues_on(when_all_with_variant(sndrs...), sch)</tt>.
+  //! `continues_on(when_all_with_variant(sndrs...), sch)`.
   //!
   //! @see stdexec::when_all_with_variant
   //! @see stdexec::transfer_when_all
-  struct transfer_when_all_with_variant_t
+  struct __transfer_when_all_with_variant_t
   {
     //! @brief Compose @c __sndrs... (each wrapped in @c into_variant) and
     //!        deliver the combined completion on @c __sched's execution
@@ -344,20 +353,21 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_with_variant_t>(static_cast<_Scheduler&&>(__sched),
-                                                            static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{__transfer_when_all_with_variant_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      // transform the transfer_when_all_with_variant(sch, sndrs...) into
-      // transfer_when_all(sch, into_variant(sndrs...))
+      // transform the __transfer_when_all_with_variant(sch, sndrs...) into
+      // __transfer_when_all(sch, into_variant(sndrs...))
       return __apply(
         [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child)
         {
-          return transfer_when_all_t()(static_cast<_Data&&>(__data),
-                                       into_variant(static_cast<_Child&&>(__child))...);
+          return __transfer_when_all_t()(static_cast<_Data&&>(__data),
+                                         into_variant(static_cast<_Child&&>(__child))...);
         },
         static_cast<_Sender&&>(__sndr));
     }
@@ -365,7 +375,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c when_all sender factory.
   //!
-  //! @c when_all is an instance of @ref when_all_t. See @ref when_all_t for
+  //! @c when_all is an instance of @c when_all_t. See @ref when_all_t for
   //! the full description, completion signatures, error/stop semantics, and
   //! a usage example.
   //!
@@ -375,30 +385,29 @@ namespace STDEXEC
   //! @brief The customization point object for the @c when_all_with_variant
   //!        sender factory.
   //!
-  //! @c when_all_with_variant is an instance of @ref when_all_with_variant_t.
+  //! @c when_all_with_variant is an instance of @c when_all_with_variant_t.
   //! See @ref when_all_with_variant_t for the full description.
   //!
   //! @hideinitializer
   inline constexpr when_all_with_variant_t when_all_with_variant{};
 
-  //! @brief The customization point object for the @c transfer_when_all
+  //! @brief The customization point object for the @c __transfer_when_all
   //!        sender factory.
   //!
-  //! @deprecated See @ref transfer_when_all_t. Use
-  //!             <tt>when_all(...) | continues_on(sch)</tt> instead.
+  //! @deprecated See @ref __transfer_when_all_t. Use
+  //!             `when_all(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  inline constexpr transfer_when_all_t transfer_when_all{};
+  inline constexpr __transfer_when_all_t __transfer_when_all{};
 
   //! @brief The customization point object for the
-  //!        @c transfer_when_all_with_variant sender factory.
+  //!        @c __transfer_when_all_with_variant sender factory.
   //!
-  //! @deprecated See @ref transfer_when_all_with_variant_t. Use
-  //!             <tt>when_all_with_variant(...) | continues_on(sch)</tt> instead.
+  //! @deprecated See @ref __transfer_when_all_with_variant_t. Use
+  //!             `when_all_with_variant(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
-  inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
+  inline constexpr __transfer_when_all_with_variant_t __transfer_when_all_with_variant{};
 
   namespace __when_all
   {
@@ -420,96 +429,20 @@ namespace STDEXEC
     using __stoppable_env_t = decltype(__when_all::__mk_env(__declval<_Env>(),
                                                             __declval<inplace_stop_source&>()));
 
-    template <class _Sender, class _Env>
-    concept __max1_sender =
-      sender_in<_Sender, _Env>
-      && __minvocable_q<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
+    struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_;
+    struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_;
 
-    struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_
-    {};
-    struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_
-    {};
+    template <class _CmplSigs>
+    concept __can_fail = _CmplSigs::__count(set_error) != 0    //
+                      || _CmplSigs::__count(set_stopped) != 0  //
+                      || !__nothrow_decay_copyable_results_t<_CmplSigs>();
 
-    template <class _Sender, class... _Env>
-    using __too_many_value_completions_error_t =
-      __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                   _WHERE_(_IN_ALGORITHM_, when_all_t),
-                   _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
-                   _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_),
-                   _WITH_PRETTY_SENDER_<_Sender>,
-                   __fn_t<_WITH_ENVIRONMENT_, _Env>...>;
+    template <class _Env, class... _CvSenders>
+    using __uses_stop_source_t =
+      __mbool<(__can_fail<completion_signatures_of_t<_CvSenders, _Env>> || ...)>;
 
-    template <class _Error>
-    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
-
-    template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results_t =
-      STDEXEC::__nothrow_decay_copyable_results_t<__completion_signatures_of_t<_Sender, _Env...>>;
-
-    template <class _Sender, class _Env>
-    inline constexpr bool __can_fail = !__never_sends<set_error_t, _Sender, _Env>
-                                    || sends_stopped<_Sender, _Env>
-                                    || !__nothrow_decay_copyable_results_t<_Sender, _Env>::value;
-
-    template <class _Env, class... _Senders>
-    inline constexpr bool __uses_stop_source = (__can_fail<_Senders, _Env> || ...);
-
-    template <class _Env, class... _Senders>
-    using __env_t = __if_c<__uses_stop_source<_Env, _Senders...>, __stoppable_env_t<_Env>, _Env>;
-
-    template <class... _Env>
-    struct __completions
-    {
-      // TODO(ericniebler): check that all senders have a common completion domain
-      template <class... _Senders>
-      using __all_nothrow_decay_copyable_results_t =
-        __mand<__nothrow_decay_copyable_results_t<_Senders, _Env...>...>;
-
-      template <class _Sender, class _ValueTuple, class... _Rest>
-      using __value_tuple_t = __minvoke<__if_c<(0 == sizeof...(_Rest)),
-                                               __mconst<_ValueTuple>,
-                                               __q<__too_many_value_completions_error_t>>,
-                                        _Sender,
-                                        _Env...>;
-
-      template <class _Sender>
-      using __single_values_of_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                                   __mtransform<__q<__decay_t>, __q<__mlist>>,
-                                                   __mbind_front_q<__value_tuple_t, _Sender>>;
-
-      template <class... _Senders>
-      using __set_values_sig_t =
-        __minvoke_q<completion_signatures,
-                    __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>>;
-
-      template <class... _Senders>
-      using __f = __minvoke_q<
-        __concat_completion_signatures_t,
-        __minvoke_q<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
-        __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-        __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
-                                                   __mconst<completion_signatures<>>::__f,
-                                                   __set_error_t,
-                                                   completion_signatures<set_stopped_t()>,
-                                                   __concat_completion_signatures_t>...>;
-    };
-
-    template <class... _Env>
-    struct __completions_for;
-
-    template <>
-    struct __completions_for<>
-    {
-      template <class... _Senders>
-      using __f = __completions<>::template __f<_Senders...>;
-    };
-
-    template <class _Env>
-    struct __completions_for<_Env>
-    {
-      template <class... _Senders>
-      using __f = __completions<__env_t<_Env, _Senders...>>::template __f<_Senders...>;
-    };
+    template <class _Env, class... _CvSenders>
+    using __env_t = __if<__uses_stop_source_t<_Env, _CvSenders...>, __stoppable_env_t<_Env>, _Env>;
 
     template <class _Receiver, class _ValuesTuple>
     constexpr void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept
@@ -523,65 +456,11 @@ namespace STDEXEC
         static_cast<_ValuesTuple&&>(__values));
     }
 
-    template <class _ChildEnv, class _Sender>
-    using __values_opt_tuple_t = value_types_of_t<_Sender, _ChildEnv, __decayed_tuple, __optional>;
-
-    template <class _Env, class... _Senders>
-      requires(__max1_sender<_Senders, __env_t<_Env, _Senders...>> && ...)
-    struct __traits
-    {
-      using __child_env = __env_t<_Env, _Senders...>;
-
-      // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-      using __values_tuple =
-        __minvoke<__mwith_default<
-                    __mtransform<__mbind_front_q<__values_opt_tuple_t, __child_env>, __q<__tuple>>,
-                    __ignore>,
-                  _Senders...>;
-
-      using __collect_errors = __mbind_front_q<__mset_insert, __mset<>>;
-
-      using __errors_list =
-        __minvoke<__mconcat<>,
-                  __if<__mand<__nothrow_decay_copyable_results_t<_Senders, __child_env>...>,
-                       __mlist<>,
-                       __mlist<std::exception_ptr>>,
-                  __error_types_of_t<_Senders, __child_env, __q<__mlist>>...>;
-
-      using __errors_variant                   = __mapply<__q<__uniqued_variant>, __errors_list>;
-      static constexpr bool __uses_stop_source = __when_all::__uses_stop_source<_Env, _Senders...>;
-    };
-
-    struct _INVALID_ARGUMENTS_TO_WHEN_ALL_
-    {};
-
-    template <class _State>
-    struct __forward_stop_request
-    {
-      constexpr void operator()() const noexcept
-      {
-        // Temporarily increment the count to avoid concurrent/recursive arrivals to
-        // pull the rug under our feet. Relaxed memory order is fine here.
-        __state_->__count_.fetch_add(1, __std::memory_order_relaxed);
-
-        __state_t __expected = __started;
-        // Transition to the "stopped" state if and only if we're in the
-        // "started" state. (If this fails, it's because we're in an
-        // error state, which trumps cancellation.)
-        if (__state_->__state_.compare_exchange_strong(__expected, __stopped))
-        {
-          if constexpr (_State::__uses_stop_source)
-          {
-            __state_->__stop_source_.request_stop();
-          }
-        }
-
-        // Arrive in order to decrement the count again and complete if needed.
-        __state_->__arrive();
-      }
-
-      _State* __state_;
-    };
+    template <class _Receiver, class _State, bool _UsesStopSource>
+    using __when_all_stop_base_t =
+      __if_c<_UsesStopSource,
+             __stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, _State>,
+             __empty>;
 
     template <class _ErrorsVariant,
               class _ValuesTuple,
@@ -589,13 +468,32 @@ namespace STDEXEC
               bool _SendsStopped,
               bool _UsesStopSource>
     struct __state
+      : __when_all_stop_base_t<
+          _Receiver,
+          __state<_ErrorsVariant, _ValuesTuple, _Receiver, _SendsStopped, _UsesStopSource>,
+          _UsesStopSource>
     {
       using __receiver_t                       = _Receiver;
       static constexpr bool __uses_stop_source = _UsesStopSource;
-      using __stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<__state>>;
       using __stop_source_t = __if_c<_UsesStopSource, inplace_stop_source, __empty>;
-      using __on_stop_t     = __if_c<_UsesStopSource, __optional<__stop_callback_t>, __empty>;
+
+      constexpr explicit __state(_Receiver&& __rcvr, std::size_t __count) noexcept
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __count_(__count)
+      {}
+
+      constexpr void __register_stop_callback() noexcept
+      {
+        // Only forward the request to the children. The callback can still be
+        // running on another thread after the last child has arrived, so it
+        // must not arrive or change __state_ itself.
+        this->register_stoppable(get_stop_token(STDEXEC::get_env(__rcvr_)));
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
+      }
 
       constexpr void __arrive() noexcept
       {
@@ -607,24 +505,14 @@ namespace STDEXEC
 
       constexpr void __complete() noexcept
       {
-        // Stop callback is no longer needed. Destroy it.
+        // Stop callback is no longer needed. Deregister it.
         if constexpr (_UsesStopSource)
         {
-          __on_stop_.reset();
+          this->deregister_stoppable();
         }
         // All child operations have completed and arrived at the barrier.
         switch (__state_.load(__std::memory_order_relaxed))
         {
-        case __stopped:
-          if constexpr (_SendsStopped)
-          {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-            break;
-          }
-          // This is reachable because the stop callback sets __stopped whether
-          // or not any child can send set_stopped, therefore we handle this the
-          // same as __started
-          [[fallthrough]];
         case __started:
           if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
           {
@@ -640,6 +528,17 @@ namespace STDEXEC
                              static_cast<_ErrorsVariant&&>(__errors_));
           }
           break;
+        case __stopped:
+          // Only a child completing with set_stopped puts us in this state.
+          if constexpr (_SendsStopped)
+          {
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          }
+          else
+          {
+            STDEXEC_UNREACHABLE();
+          }
+          break;
         default:;
         }
       }
@@ -649,13 +548,12 @@ namespace STDEXEC
       __std::atomic<std::size_t> __count_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __stop_source_t            __stop_source_{};
-      // Could be non-atomic here and atomic_ref everywhere except __completion_fn
+      // Could be non-atomic here and atomic_ref everywhere except
+      // __completion_fn
       __std::atomic<__state_t> __state_{__started};
       _ErrorsVariant           __errors_{__no_init};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _ValuesTuple             __values_{};
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      __on_stop_t              __on_stop_{};
     };
 
     template <class... _Senders>
@@ -703,32 +601,64 @@ namespace STDEXEC
       }
     };
 
-    template <class _Receiver>
-    static constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept
-    {
-      return [&]<class... _Child>(__ignore, __ignore, _Child&&...) noexcept
-        requires(__max1_sender<_Child, __env_t<env_of_t<_Receiver>, _Child...>> && ...)
-      {
-        using _Traits        = __traits<env_of_t<_Receiver>, _Child...>;
-        using _ErrorsVariant = _Traits::__errors_variant;
-        using _ValuesTuple   = _Traits::__values_tuple;
-        using _ChildEnv      = _Traits::__child_env;
-        using _State         = __state<_ErrorsVariant,
-                                       _ValuesTuple,
-                                       _Receiver,
-                                       (sends_stopped<_Child, _ChildEnv> || ...),
-                                       _Traits::__uses_stop_source>;
-        return _State{static_cast<_Receiver&&>(__rcvr), sizeof...(_Child)};
-      };
-    }
-
-    template <class _Receiver>
-    using __mk_state_fn_t = decltype(__when_all::__mk_state_fn(__declval<_Receiver>()));
-
     struct __when_all_impl : __sexpr_defaults
     {
-      template <class _Self, class... _Env>
-      using __completions_t = __children_of<_Self, __when_all::__completions_for<_Env...>>;
+      static constexpr auto __mk_accumulate_sigs_fn() noexcept
+      {
+        return []<class _State, class _Item>(_State __state, _Item __item)
+        {
+          STDEXEC_IF_OK(__item)
+          STDEXEC_IF_OK(__state)
+          {
+            static_assert(_State::__count(set_value) <= 1);
+            auto __ignore = __ignore_completion();
+            auto __vdecay = __decay_arguments<set_value_t, when_all_t>();
+            auto __edecay = __decay_arguments<set_error_t, when_all_t>();
+
+            auto __item2  = STDEXEC::__transform_completion_signatures(__item, __vdecay, __edecay);
+            auto __item3  = STDEXEC::__transform_completion_signatures(__item2, __ignore);
+            auto __state2 = STDEXEC::__transform_completion_signatures(__state, __ignore);
+
+            if constexpr (_Item::__count(set_value) > 1)
+            {
+              return STDEXEC::__throw_compile_time_error<
+                _WHAT_(_INVALID_ARGUMENT_),
+                _WHERE_(_IN_ALGORITHM_, when_all_t),
+                _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>();
+            }
+            else if constexpr (_Item::__count(set_value) == 0 || _State::__count(set_value) == 0)
+            {
+              return STDEXEC::__concat_completion_signatures(__state2, __item3);
+            }
+            else
+            {
+              using __vdecay_fn  = __mtransform<__q1<__decay_t>, __qq<__mlist>>;
+              using __mk_vsig_fn = __mconcat<__qf<set_value_t>>;
+              using __ivalues_t  = __value_types_t<_Item, __vdecay_fn, __q<__msingle>>;
+              using __svalues_t  = __value_types_t<_State, __qq<__mlist>, __q<__msingle>>;
+              using __vsig_t     = __mcall<__mk_vsig_fn, __svalues_t, __ivalues_t>;
+
+              auto __values = completion_signatures<__vsig_t>();
+              return STDEXEC::__concat_completion_signatures(__values, __state2, __item3);
+            }
+          }
+        };
+      }
+
+      template <class... _CmplSigs>
+      static constexpr auto __fold_cmplsigs(_CmplSigs... __cmplsigs)
+      {
+        auto __init = completion_signatures<set_value_t()>();
+        return __tup::__fold_right_t()(__mk_accumulate_sigs_fn(), __init, __cmplsigs...);
+      }
+
+      template <class... _Env>
+      static constexpr auto __fold_cmplsigs_fn = []<class... _Child>(__mlist_ptr<_Child...>)
+      {
+        static_assert(sizeof...(_Env) == 0);  // __fold_cmplsigs_fn<_Env> is specialized below
+        return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child>()...);
+      };
 
       static constexpr auto __get_attrs =
         []<class... _Child>(__ignore, __ignore, _Child const &...) noexcept
@@ -740,25 +670,13 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, when_all_t>);
-        if constexpr (__minvocable_q<__completions_t, _Self, _Env...>)
-        {
-          // TODO: update this to use constant evaluation:
-          return __completions_t<_Self, _Env...>{};
-        }
-        else if constexpr (sizeof...(_Env) == 0)
-        {
-          return STDEXEC::__throw_dependent_sender_error<_Self>();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error<
-            _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-            __children_of<_Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
-        }
+        return __fold_cmplsigs_fn<_Env...>(__children_of<_Self, __qq<__mlist_ptr>>());
       }
 
       static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+        -> __if_c<_State::__uses_stop_source,
+                  __stoppable_env_t<env_of_t<typename _State::__receiver_t const &>>,
+                  env_of_t<typename _State::__receiver_t const &>>
       {
         if constexpr (_State::__uses_stop_source)
         {
@@ -770,12 +688,38 @@ namespace STDEXEC
         }
       };
 
+      template <class _ChildEnv, class _CvSender>
+      using __values_opt_tuple_t =
+        value_types_of_t<_CvSender, _ChildEnv, __decayed_tuple, __optional>;
+
       static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver&& __rcvr) noexcept
-        -> __apply_result_t<__mk_state_fn_t<_Receiver>, _Self>
+        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
       {
-        return __apply(__when_all::__mk_state_fn(static_cast<_Receiver&&>(__rcvr)),
-                       static_cast<_Self&&>(__self));
+        using __env_t       = env_of_t<_Receiver>;
+        using __env_fn      = __mbind_front_q<__when_all::__env_t, __env_t>;
+        using __cmplsigs_t  = completion_signatures_of_t<_Self, __env_t>;
+        using __child_env_t = __children_of<_Self, __env_fn>;
+
+        using __values_tuple_t =  //
+          __children_of<
+            _Self,
+            __mwith_default<
+              __mtransform<__mbind_front_q<__values_opt_tuple_t, __child_env_t>, __q<__tuple>>,
+              __ignore>>;
+
+        using __errors_variant_t = __error_types_t<__cmplsigs_t, __q<__uniqued_variant>>;
+
+        using __uses_stop_source_fn       = __mbind_front_q<__uses_stop_source_t, __env_t>;
+        constexpr bool __uses_stop_source = __children_of<_Self, __uses_stop_source_fn>();
+        constexpr bool __sends_stopped    = __cmplsigs_t::__count(set_stopped) != 0;
+
+        using __shared_state_t = __state<__errors_variant_t,
+                                         __values_tuple_t,
+                                         _Receiver,
+                                         __sends_stopped,
+                                         __uses_stop_source>;
+
+        return __shared_state_t{static_cast<_Receiver&&>(__rcvr), __nbr_children_of<_Self>};
       };
 
       static constexpr auto __start =
@@ -784,9 +728,10 @@ namespace STDEXEC
       {
         if constexpr (_State::__uses_stop_source)
         {
-          __state.__on_stop_.emplace(get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
-                                     __forward_stop_request<_State>{&__state});
+          __state.__register_stop_callback();
         }
+
+        // Start all the child operations:
         (STDEXEC::start(__child_ops), ...);
       };
 
@@ -799,13 +744,13 @@ namespace STDEXEC
         switch (__state.__state_.exchange(__error))
         {
         case __started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We must request stop. When the previous state is __error or
+          // __stopped, then stop has already been requested.
           __state.__stop_source_.request_stop();
           [[fallthrough]];
         case __stopped:
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           if constexpr (__nothrow_decay_copyable<_Error>)
           {
             __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
@@ -842,8 +787,8 @@ namespace STDEXEC
           static_assert(_State::__uses_stop_source);
           __state_t __expected = __started;
           // Transition to the "stopped" state if and only if we're in the
-          // "started" state. (If this fails, it's because we're in an
-          // error state, which trumps cancellation.)
+          // "started" state. (If this fails, it's because we're in an error
+          // state, which trumps cancellation.)
           if (__state.__state_.compare_exchange_strong(__expected, __stopped))
           {
             __state.__stop_source_.request_stop();
@@ -851,30 +796,43 @@ namespace STDEXEC
         }
         else if constexpr (!__same_as<_ValuesTuple, __ignore>)
         {
-          auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
-          using _Tuple       = __decayed_tuple<_Args...>;
-          static_assert(__same_as<decltype(*__opt_values), _Tuple&>,
-                        "One of the senders in this when_all() is fibbing about what types it "
-                        "sends");
-          if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+          // We only need to bother recording the completion values if we're not
+          // already in the "error" or "stopped" state.
+          if (__state.__state_.load() == __started)
           {
-            __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-          }
-          else
-          {
+            auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
+            using _Tuple       = __decayed_tuple<_Args...>;
+            static_assert(__same_as<decltype(*__opt_values), _Tuple&>,
+                          "One of the senders in this when_all() is fibbing about what types it "
+                          "sends");
             STDEXEC_TRY
             {
               __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
             }
             STDEXEC_CATCH_ALL
             {
-              __set_error(__state, std::current_exception());
+              if constexpr (!__nothrow_decay_copyable<_Args...>)
+              {
+                __set_error(__state, std::current_exception());
+              }
+              else
+              {
+                __std::unreachable();
+              }
             }
           }
         }
 
         __state.__arrive();
       };
+    };
+
+    template <class _Env>
+    constexpr auto __when_all_impl::__fold_cmplsigs_fn<_Env> =
+      []<class... _Child>(__mlist_ptr<_Child...>)
+    {
+      using __env_t = __when_all::__env_t<_Env, _Child...>;
+      return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child, __env_t>()...);
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults
@@ -893,7 +851,7 @@ namespace STDEXEC
                                                                _Sender,
                                                                env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults
@@ -911,9 +869,9 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         using __sndr_t =
-          __detail::__transform_sender_result_t<transfer_when_all_t, set_value_t, _Sender, env<>>;
+          __detail::__transform_sender_result_t<__transfer_when_all_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults
@@ -929,12 +887,12 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        using __sndr_t = __detail::__transform_sender_result_t<transfer_when_all_with_variant_t,
+        using __sndr_t = __detail::__transform_sender_result_t<__transfer_when_all_with_variant_t,
                                                                set_value_t,
                                                                _Sender,
                                                                env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
   }  // namespace __when_all
 
@@ -947,11 +905,11 @@ namespace STDEXEC
   {};
 
   template <>
-  struct __sexpr_impl<transfer_when_all_t> : __when_all::__transfer_when_all_impl
+  struct __sexpr_impl<__transfer_when_all_t> : __when_all::__transfer_when_all_impl
   {};
 
   template <>
-  struct __sexpr_impl<transfer_when_all_with_variant_t>
+  struct __sexpr_impl<__transfer_when_all_with_variant_t>
     : __when_all::__transfer_when_all_with_variant_impl
   {};
 }  // namespace STDEXEC

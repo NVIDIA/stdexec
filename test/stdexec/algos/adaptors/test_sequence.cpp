@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 
 #include <exec/sequence.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
@@ -169,6 +170,33 @@ TEST_CASE("sequence with two arguments works", "[sequence]")
   }
 }
 
+namespace
+{
+  //! A value whose copy constructor may throw, but whose move constructor
+  //! can't
+  struct throwing_copy
+  {
+    throwing_copy() = default;
+
+    // NOLINTNEXTLINE(modernize-use-equals-default)
+    throwing_copy(throwing_copy const &) noexcept(false) {}
+
+    throwing_copy(throwing_copy &&) noexcept = default;
+  };
+}  // namespace
+
+TEST_CASE("lowering a sequence is noexcept unless moving or copying its children can throw",
+          "[sequence]")
+{
+  auto nothrow = exec::sequence(ex::just(), ex::just(42));
+  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(nothrow), ex::env<>{})));
+  STATIC_REQUIRE(ex::__nothrow_connectable<decltype(nothrow), ex::__receiver_archetype<ex::env<>>>);
+
+  auto throwing = exec::sequence(ex::just(), ex::just(throwing_copy{}));
+  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(throwing), ex::env<>{})));
+  STATIC_REQUIRE(!noexcept(ex::transform_sender(throwing, ex::env<>{})));
+}
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 TEST_CASE("sequence with sender with throwing connect", "[sequence]")
 {
@@ -187,3 +215,44 @@ TEST_CASE("sequence with sender with only first sender with throwing connect", "
   CHECK_THROWS(ex::connect(std::move(sndr), empty_recv::recv0{}));
 }
 #endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+
+TEST_CASE("completion domain of a sequence of one sender", "[sequence]")
+{
+  exec::static_thread_pool pool{1};
+
+  unsigned short int value = 0;
+
+  auto sndr = exec::sequence(STDEXEC::schedule(pool.get_scheduler())
+                             | STDEXEC::then([&]() noexcept { value = 42; }));
+
+  static_assert(
+    std::same_as<
+      STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, decltype(sndr), STDEXEC::env<>>,
+      experimental::execution::static_thread_pool::domain>);
+
+  STDEXEC::sync_wait(std::move(sndr));
+
+  CHECK(value == 42);
+}
+
+TEST_CASE("completion domain of a sequence of two senders", "[sequence]")
+{
+  exec::static_thread_pool pool{1};
+
+  unsigned short int value_A = 0, value_B = 0;
+
+  auto sndr = exec::sequence(STDEXEC::schedule(pool.get_scheduler())
+                               | STDEXEC::then([&]() noexcept { value_A = 42; }),
+                             STDEXEC::schedule(pool.get_scheduler())
+                               | STDEXEC::then([&]() noexcept { value_B = 42; }));
+
+  static_assert(
+    std::same_as<
+      STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, decltype(sndr), STDEXEC::env<>>,
+      experimental::execution::static_thread_pool::domain>);
+
+  STDEXEC::sync_wait(std::move(sndr));
+
+  CHECK(value_A == 42);
+  CHECK(value_B == 42);
+}

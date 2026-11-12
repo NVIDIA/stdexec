@@ -26,6 +26,11 @@
 
 #include "__prologue.hpp"
 
+// The left operand of the comma in __indirect_receiver::set_next has no effect,
+// which -Wunused-value reports. It is only there to make the call depend on _Item.
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
+
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __detail
@@ -37,7 +42,7 @@ namespace STDEXEC
   }  // namespace __detail
 
   template <class _RcvrPtr, class _Env = env_of_t<decltype(*_RcvrPtr())>>
-  struct __pointer_receiver
+  struct __indirect_receiver
   {
    private:
     using __receiver_t = std::remove_reference_t<decltype(*_RcvrPtr())>;
@@ -47,7 +52,7 @@ namespace STDEXEC
     using receiver_concept = receiver_tag;
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr explicit __pointer_receiver(_RcvrPtr __rcvr_ptr) noexcept
+    constexpr explicit __indirect_receiver(_RcvrPtr __rcvr_ptr) noexcept
       : __rcvr_ptr_{__rcvr_ptr}
     {}
 
@@ -88,19 +93,19 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto set_next(_Item&& __item) STDEXEC_AUTO_RETURN
     (
-      // Make the type of __rcvr_ptr_ dependent on _Item to avoid forming an invalid
-      // expression when _Rcvr doesn't have set_next:
+      // Make the type of __rcvr_ptr_ dependent on _Item to avoid forming an
+      // invalid expression when _Rcvr doesn't have set_next:
       (__item, __rcvr_ptr_)->set_next(static_cast<_Item&&>(__item))
     )
     // clang-format on
   };
 
   template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
-  struct __receiver_ref : __pointer_receiver<_Rcvr*, _Env>
+  struct __receiver_ref : __indirect_receiver<_Rcvr*, _Env>
   {
     STDEXEC_ATTRIBUTE(host, device)
     constexpr __receiver_ref(_Rcvr& __rcvr) noexcept
-      : __pointer_receiver<_Rcvr*, _Env>(std::addressof(__rcvr))
+      : __indirect_receiver<_Rcvr*, _Env>(std::addressof(__rcvr))
     {}
   };
 }  // namespace STDEXEC

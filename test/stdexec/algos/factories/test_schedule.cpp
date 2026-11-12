@@ -30,12 +30,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-  template <ex::scheduler Sched = inline_scheduler>
-  inline auto _with_scheduler(Sched sched = {})
-  {
-    return ex::write_env(ex::prop{ex::get_start_scheduler, std::move(sched)});
-  }
-
   TEST_CASE("schedule returns a sender", "[factories][schedule]")
   {
     using sndr = ex::schedule_result_t<inline_scheduler>;

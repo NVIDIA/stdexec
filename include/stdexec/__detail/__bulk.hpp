@@ -39,15 +39,17 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.bulk]
   namespace __bulk
   {
     //! Wrapper for a policy object.
     //!
-    //! If we wrap a standard execution policy, we don't store anything, as we know the type.
+    //! If we wrap a standard execution policy, we don't store anything, as we
+    //! know the type.
     //! Stores the execution policy object if it's a non-standard one.
     //! Provides a way to query the execution policy object.
     template <class _Pol>
@@ -140,8 +142,11 @@ namespace STDEXEC
       constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto
       {
-        return __make_sexpr<_AlgoTag>(__data{__pol, __shape, static_cast<_Fun&&>(__fun)},
-                                      static_cast<_Sender&&>(__sndr));
+        return __sexpr{
+          _AlgoTag(),
+          __data{__pol, __shape, static_cast<_Fun&&>(__fun)},
+          static_cast<_Sender&&>(__sndr)
+        };
       }
 
       template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>
@@ -217,7 +222,8 @@ namespace STDEXEC
     template <class _AlgoTag>
     struct __impl_base : __sexpr_defaults
     {
-      // Forward the child sender's environment (which contains completion scheduler)
+      // Forward the child sender's environment (which contains completion
+      // scheduler)
       static constexpr auto __get_attrs =  //
         []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
       {
@@ -258,7 +264,7 @@ namespace STDEXEC
                 __mapply<__qf<_WITH_ARGUMENTS_>, __arg_pack_t>>();
             }
           });
-      };
+      }
     };
 
     struct __chunked_impl : __impl_base<bulk_chunked_t>
@@ -281,7 +287,10 @@ namespace STDEXEC
 
           STDEXEC_TRY
           {
-            __state.__data_.__fun_(__shape_t(), __shape_t(__state.__data_.__shape_), __args...);
+            if (__shape_t{} < __state.__data_.__shape_)
+            {
+              __state.__data_.__fun_(__shape_t(), __shape_t(__state.__data_.__shape_), __args...);
+            }
             STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
                                static_cast<_Args&&>(__args)...);
           }
@@ -353,7 +362,7 @@ namespace STDEXEC
   //! @c bulk is the parallel-loop primitive of the sender model. You give
   //! it a sender, an execution policy (e.g. @c stdexec::par), an integral
   //! shape, and a callable; you get back a sender that, when started,
-  //! invokes <tt>f(i, vs...)</tt> for every @c i in @c [0, shape) — where
+  //! invokes `f(i, vs...)` for every @c i in @c [0, shape) — where
   //! @c vs... are the predecessor's value-completion datums. The
   //! execution policy controls whether the invocations may run in
   //! parallel.
@@ -410,20 +419,23 @@ namespace STDEXEC
   //!
   //! Internally, @c bulk is implemented in terms of
   //! @ref bulk_chunked_t — its @c transform_sender member rewrites
-  //! <tt>bulk(sndr, pol, n, f)</tt> into a @c bulk_chunked over the same
+  //! `bulk(sndr, pol, n, f)` into a @c bulk_chunked over the same
   //! shape with @c f wrapped in a per-chunk loop. If a domain customizes
   //! @c bulk_chunked, @c bulk picks up that customization automatically.
   //!
   //! @see stdexec::bulk_chunked    — explicit-chunk variant
-  //! @see stdexec::bulk_unchunked  — strict per-index variant (no chunking allowed)
-  //! @see stdexec::when_all        — concurrent composition without an index space
+  //! @see stdexec::bulk_unchunked  — strict per-index variant (no chunking
+  //!                                 allowed)
+  //! @see stdexec::when_all        — concurrent composition without an index
+  //!                                 space
   struct bulk_t : __bulk::__generic_bulk_t<bulk_t>
   {
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
       auto& [__tag, __data, __child] = __sndr;
-      // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
+      // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we
+      // will see the customization.
       return bulk_chunked(STDEXEC::__forward_like<_Sender>(__child),
                           __data.__pol_.__get(),
                           __data.__shape_,
@@ -458,7 +470,7 @@ namespace STDEXEC
   //!   auto operator()(Policy&& pol, Shape shape, Fun fun) const;    // closure
   //! @endcode
   //!
-  //! The callable is invoked as <tt>fun(begin, end, vs...)</tt>, where
+  //! The callable is invoked as `fun(begin, end, vs...)`, where
   //! @c vs... are the predecessor's value-completion datums (shared across
   //! all chunks).
   //!
@@ -480,7 +492,7 @@ namespace STDEXEC
   //!        in @c [0, shape), *without* permission to chunk.
   //!
   //! @c bulk_unchunked has the same per-index invocation pattern as
-  //! @ref bulk_t — <tt>fun(i, vs...)</tt> for every @c i — but explicitly
+  //! @ref bulk_t — `fun(i, vs...)` for every @c i — but explicitly
   //! forbids the implementation from combining multiple indices into a
   //! single call. Spec-recommended (but not required) practice is for
   //! each iteration to run on a *distinct* execution agent.
@@ -514,23 +526,25 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c bulk sender adaptor.
   //!
-  //! @c bulk is an instance of @ref bulk_t. See @ref bulk_t for the full
+  //! @c bulk is an instance of @c bulk_t. See @ref bulk_t for the full
   //! description, the lowering to @c bulk_chunked, and a usage example.
   //!
   //! @hideinitializer
   inline constexpr bulk_t bulk{};
 
-  //! @brief The customization point object for the @c bulk_chunked sender adaptor.
+  //! @brief The customization point object for the @c bulk_chunked sender
+  //! adaptor.
   //!
-  //! @c bulk_chunked is an instance of @ref bulk_chunked_t. See
+  //! @c bulk_chunked is an instance of @c bulk_chunked_t. See
   //! @ref bulk_chunked_t for the full description.
   //!
   //! @hideinitializer
   inline constexpr bulk_chunked_t bulk_chunked{};
 
-  //! @brief The customization point object for the @c bulk_unchunked sender adaptor.
+  //! @brief The customization point object for the @c bulk_unchunked sender
+  //! adaptor.
   //!
-  //! @c bulk_unchunked is an instance of @ref bulk_unchunked_t. See
+  //! @c bulk_unchunked is an instance of @c bulk_unchunked_t. See
   //! @ref bulk_unchunked_t for the full description and when to reach for
   //! it.
   //!

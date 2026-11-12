@@ -72,8 +72,7 @@ namespace nv::execution::_strm
     inline constexpr auto _mk_sch_env =
       []<class CvSender, class Receiver, class SetTag>(CvSender&& sndr, Receiver&& rcvr, SetTag)
     {
-      using cv_fn = __copy_cvref_fn<CvSender>;
-      return __mk_secondary_env_t<SetTag>()(cv_fn{}, sndr, STDEXEC::get_env(rcvr));
+      return __mk_secondary_env_t<SetTag>()(sndr, STDEXEC::get_env(rcvr));
     };
 
     template <class CvSender, class Receiver, class SetTag>
@@ -340,12 +339,5 @@ namespace nv::execution::_strm
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Fun, class SetTag>
-  extern __mtype<nvexec::_strm::let_sender<__demangle_t<Sender>, Fun, SetTag>>
-    __demangle_v<nvexec::_strm::let_sender<Sender, Fun, SetTag>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

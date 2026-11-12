@@ -20,6 +20,80 @@
 
 #include <chrono>
 
+namespace experimental::execution::__timed_scheduler_fallback
+{
+  using namespace STDEXEC;
+
+  struct __tag
+  {};
+
+  template <class _NativeSender, class _Scheduler>
+  concept __completion_scheduler_matches =
+    __callable<get_completion_scheduler_t<set_value_t>, env_of_t<_NativeSender>>
+    && __decays_to<
+      __call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_NativeSender>>,
+      __decay_t<_Scheduler>>;
+
+  template <class _Scheduler, class _NativeSender>
+  struct __data
+  {
+    _Scheduler __sched_;
+  };
+
+  template <class _Scheduler, class _NativeSender, class _Sender>
+  struct __attrs : STDEXEC::__sync_attrs<_Sender>
+  {
+    using __base_t = STDEXEC::__sync_attrs<_Sender>;
+    using __base_t::query;
+
+    constexpr __attrs(_Scheduler __sched, _Sender const &__sndr) noexcept
+      : __base_t{__sndr}
+      , __sched_{static_cast<_Scheduler &&>(__sched)}
+    {}
+
+    [[nodiscard]]
+    constexpr auto
+    query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept -> _Scheduler
+      requires __completion_scheduler_matches<_NativeSender, _Scheduler>
+    {
+      return __sched_;
+    }
+
+    _Scheduler __sched_;
+  };
+}  // namespace experimental::execution::__timed_scheduler_fallback
+
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
+namespace STDEXEC
+{
+  template <>
+  struct __sexpr_impl<::experimental::execution::__timed_scheduler_fallback::__tag>
+    : __sexpr_defaults
+  {
+    static constexpr auto __get_attrs =
+      []<class _Scheduler, class _NativeSender, class _Sender>(
+        __ignore,
+        ::experimental::execution::__timed_scheduler_fallback::__data<_Scheduler,
+                                                                      _NativeSender> const &__data,
+        _Sender const &__sndr) noexcept
+    {
+      return ::experimental::execution::__timed_scheduler_fallback::__attrs<_Scheduler,
+                                                                            _NativeSender,
+                                                                            _Sender>{
+        __data.__sched_,
+        __sndr};
+    };
+
+    template <class _Sender, class... _Env>
+    static consteval auto __get_completion_signatures()
+    {
+      static_assert(
+        __sender_for<_Sender, ::experimental::execution::__timed_scheduler_fallback::__tag>);
+      return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
+    }
+  };
+}  // namespace STDEXEC
+
 namespace experimental::execution
 {
   namespace __now
@@ -50,18 +124,6 @@ namespace experimental::execution
       {
         static_assert(time_point<__decay_t<decltype(__sched.now())>>);
         return __sched.now();
-      }
-
-      template <class _Scheduler>
-        requires __has_now<_Scheduler> || __tag_invocable<now_t, _Scheduler const &>
-      [[deprecated("the use of tag_invoke for exec::now() is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler const &__sched) const
-        noexcept(__nothrow_tag_invocable<now_t, _Scheduler const &>)
-          -> __decay_t<__tag_invoke_result_t<now_t, _Scheduler const &>>
-      {
-        static_assert(time_point<__decay_t<__tag_invoke_result_t<now_t, _Scheduler const &>>>);
-        return __tag_invoke(now_t{}, __sched);
       }
     };
   }  // namespace __now
@@ -123,22 +185,6 @@ namespace experimental::execution
         static_assert(sender<decltype(__sched.schedule_after(__duration))>);
         return __sched.schedule_after(__duration);
       }
-
-      template <class _Scheduler>
-        requires __has_schedule_after_member<_Scheduler>
-              || __tag_invocable<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>
-      [[deprecated("the use of tag_invoke for exec::schedule_after is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler &&__sched, duration_of_t<_Scheduler> const &__duration) const
-        noexcept(
-          __nothrow_tag_invocable<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>)
-          -> __tag_invoke_result_t<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>
-      {
-        static_assert(
-          sender<
-            __tag_invoke_result_t<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>>);
-        return __tag_invoke(schedule_after, static_cast<_Scheduler &&>(__sched), __duration);
-      }
     };
 
     struct schedule_after_t : __schedule_after_base_t
@@ -167,13 +213,23 @@ namespace experimental::execution
       auto
       operator()(_Scheduler &&__sched, const duration_of_t<_Scheduler> &__duration) const noexcept
       {
-        // TODO get_completion_scheduler<set_value_t>
-        return let_value(
-          just(),
-          [__sched, __duration]() noexcept(
-            __nothrow_callable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler>>
-              &&__nothrow_callable<now_t, _Scheduler const &>)
-          { return schedule_at(__sched, now(__sched) + __duration); });
+        using __sched_t = __decay_t<_Scheduler>;
+        // The let_value sender below invokes the native CPO with the captured
+        // scheduler as a `const __sched_t&`. Probe the native sender type the
+        // same way, so instead-of-inventory such as the completion-scheduler
+        // claim is computed from the overload the deferred call resolves to.
+        using __native_sender_t =
+          __call_result_t<__schedule_at_base_t, __sched_t const &, time_point_of_t<_Scheduler>>;
+
+        return __sexpr{
+          __timed_scheduler_fallback::__tag(),
+          __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
+          let_value(
+            just(),
+            [__sched, __duration]() noexcept(
+              __nothrow_callable<schedule_at_t, __sched_t const &, time_point_of_t<_Scheduler>>
+                &&__nothrow_callable<now_t, __sched_t const &>)
+            { return schedule_at(__sched, now(__sched) + __duration); })};
       }
     };
   }  // namespace __schedule_after
@@ -202,22 +258,6 @@ namespace experimental::execution
         static_assert(sender<decltype(__sched.schedule_at(__time_point))>);
         return __sched.schedule_at(__time_point);
       }
-
-      template <class _Scheduler>
-        requires __has_schedule_at_member<_Scheduler>
-              || __tag_invocable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>
-      [[deprecated("the use of tag_invoke for exec::schedule_at is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler &&__sched, time_point_of_t<_Scheduler> const &__time_point) const
-        noexcept(
-          __nothrow_tag_invocable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>)
-          -> __tag_invoke_result_t<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>
-      {
-        static_assert(
-          sender<
-            __tag_invoke_result_t<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>>);
-        return __tag_invoke(schedule_at, static_cast<_Scheduler &&>(__sched), __time_point);
-      }
     };
 
     struct schedule_at_t : __schedule_at_base_t
@@ -244,11 +284,18 @@ namespace experimental::execution
       auto operator()(_Scheduler &&__sched, const time_point_of_t<_Scheduler> &__time_point) const
         noexcept(noexcept(schedule_after(__sched, __time_point - now(__sched))))
       {
-        // TODO get_completion_scheduler<set_value_t>
-        return let_value(just(),
-                         [__sched, __time_point]() noexcept(
-                           noexcept(schedule_after(__sched, __time_point - now(__sched))))
-                         { return schedule_after(__sched, __time_point - now(__sched)); });
+        using __sched_t = __decay_t<_Scheduler>;
+        // Same as above: probe through the const-qualified lvalue the
+        // deferred lambda captures, not the call site's value category.
+        using __native_sender_t =
+          __call_result_t<__schedule_after_base_t, __sched_t const &, duration_of_t<_Scheduler>>;
+
+        return __sexpr{__timed_scheduler_fallback::__tag(),
+                       __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
+                       let_value(just(),
+                                 [__sched, __time_point]() noexcept(
+                                   noexcept(schedule_after(__sched, __time_point - now(__sched))))
+                                 { return schedule_after(__sched, __time_point - now(__sched)); })};
       }
     };
   }  // namespace __schedule_at

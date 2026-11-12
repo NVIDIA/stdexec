@@ -18,8 +18,10 @@
 
 #pragma once
 
-#include "../../exec/repeat_n.hpp"
 #include "../../stdexec/execution.hpp"
+
+#include "../../exec/completion_signatures.hpp"
+#include "../../exec/repeat_n.hpp"
 
 #include "algorithm_base.cuh"  // IWYU pragma: keep
 
@@ -154,15 +156,6 @@ namespace nv::execution::_strm
     {
       using sender_concept = STDEXEC::sender_tag;
 
-      template <class>
-      static consteval auto get_completion_signatures()
-      {
-        return STDEXEC::completion_signatures<STDEXEC::set_value_t(),
-                                              STDEXEC::set_stopped_t(),
-                                              STDEXEC::set_error_t(std::exception_ptr),
-                                              STDEXEC::set_error_t(cudaError_t)>();
-      }
-
       explicit sender(CvSender&& sndr, std::size_t count)
         : sndr_(static_cast<CvSender&&>(sndr))
         , count_(count)
@@ -179,6 +172,19 @@ namespace nv::execution::_strm
                                                      static_cast<Receiver&&>(rcvr),
                                                      count_,
                                                      std::move(sched));
+      }
+
+      template <class Env>
+      static consteval auto get_completion_signatures()
+      {
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<CvSender, Env>(),
+          exec::ignore_completion(),
+          exec::decay_arguments<STDEXEC::set_error_t, exec::repeat_n_t>(),
+          exec::keep_completion<STDEXEC::set_stopped_t>(),
+          STDEXEC::completion_signatures<STDEXEC::set_value_t(),
+                                         STDEXEC::set_error_t(std::exception_ptr),
+                                         STDEXEC::set_error_t(cudaError_t)>());
       }
 
       [[nodiscard]]

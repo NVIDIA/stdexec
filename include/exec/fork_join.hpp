@@ -39,8 +39,24 @@ namespace experimental::execution
       }
     };
 
+    template <class Completions,
+              bool = STDEXEC::__nothrow_decay_copyable_results_t<Completions>::value>
+    struct _cache_completions
+    {
+      using type = Completions;
+    };
+
     template <class Completions>
-    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage, Completions>;
+    struct _cache_completions<Completions, false>
+    {
+      using type =
+        STDEXEC::__concat_completion_signatures_t<Completions, STDEXEC::__eptr_completion_t>;
+    };
+
+    // Account that decay-copying into the cache may throw.
+    template <class Completions>
+    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage,
+                                           typename _cache_completions<Completions>::type>;
 
     template <class Domain>
     struct _env_t
@@ -59,9 +75,9 @@ namespace experimental::execution
     template <class Tag, class... Args>
     using _cref_sig_t = Tag(Args const &...);
 
-    // Given a set of async results, each of the form `tuple<Tag, Args...>`, compute
-    // the corresponding completion signatures, where each signature is of the form
-    // `Tag(const Args&...)`.
+    // Given a set of async results, each of the form `tuple<Tag, Args...>`,
+    // compute the corresponding completion signatures, where each signature is
+    // of the form `Tag(const Args&...)`.
     template <class... AsyncResults>
     using _cache_sndr_completions_t =
       STDEXEC::completion_signatures<STDEXEC::__mapply<STDEXEC::__q<_cref_sig_t>, AsyncResults>...>;
@@ -147,7 +163,8 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       constexpr ~_opstate_t()
       {
-        // If this opstate was never started, we must explicitly destroy the _child_opstate_.
+        // If this opstate was never started, we must explicitly destroy the
+        // _child_opstate_.
         if (_cache_.__is_valueless())
         {
           _child_opstate_.__destroy();
@@ -174,8 +191,7 @@ namespace experimental::execution
           if constexpr (!STDEXEC::__nothrow_decay_copyable<Args...>)
           {
             using _tuple_t = STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>;
-            _cache_._results_.template emplace<_tuple_t>(STDEXEC::set_error,
-                                                         ::std::current_exception());
+            _cache_.template emplace<_tuple_t>(STDEXEC::set_error, ::std::current_exception());
           }
         }
         _child_opstate_.__destroy();
@@ -259,10 +275,9 @@ namespace experimental::execution
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            INVALID_ARGUMENTS_TO_FORK_JOIN,
-            __children_of<Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, Env>...>();
+          return STDEXEC::__throw_compile_time_error<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                                                     __children_of<Self, __qq<_WITH_SENDERS_>>,
+                                                     __fn_t<_WITH_ENVIRONMENT_, Env>...>();
         }
       }
 
@@ -282,16 +297,38 @@ namespace experimental::execution
 
   struct fork_join_t
   {
-    template <STDEXEC::sender Sndr, class... Closures>
+    /// No closure given.
+    template <STDEXEC::sender Sndr>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const  //
-      -> STDEXEC::__well_formed_sender auto
+    constexpr auto operator()(Sndr&& sndr) const noexcept(STDEXEC::__nothrow_decay_copyable<Sndr>)
     {
-      return STDEXEC::__make_sexpr<fork_join_t>(STDEXEC::__tuple{static_cast<Closures&&>(
-                                                  closures)...},
-                                                static_cast<Sndr&&>(sndr));
+      return static_cast<Sndr&&>(sndr);
     }
 
+    /// Unary closure.
+    template <STDEXEC::sender Sndr, class Closure>
+      requires(!STDEXEC::sender<Closure>)
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(Sndr&& sndr, Closure&& clsr) const
+      noexcept(STDEXEC::__nothrow_callable<Closure, Sndr>)
+    {
+      return static_cast<Closure&&>(clsr)(static_cast<Sndr&&>(sndr));
+    }
+
+    /// One sender and multiple closures.
+    template <STDEXEC::sender Sndr, class... Closures>
+      requires(sizeof...(Closures) > 1)
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const
+      noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>)
+        -> STDEXEC::__well_formed_sender auto
+    {
+      return STDEXEC::__sexpr{fork_join_t(),
+                              STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
+                              static_cast<Sndr&&>(sndr)};
+    }
+
+    /// One or more closures.
     template <class... Closures>
       requires((!STDEXEC::sender<Closures>) && ...)
     STDEXEC_ATTRIBUTE(host, device)
@@ -307,6 +344,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

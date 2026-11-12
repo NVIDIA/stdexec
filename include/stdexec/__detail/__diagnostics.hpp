@@ -16,7 +16,7 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__diagnostic_macros.hpp"
+#include "__diagnostic_macros.hpp"  // IWYU pragma: export
 
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
@@ -27,7 +27,9 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#  include "__completion_signatures.hpp"  // IWYU pragma: keep for completion_signatures<>
 #  include "__meta.hpp"
+#  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>  // IWYU pragma: keep for std::exception
@@ -35,43 +37,35 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct sender_tag;
   struct scheduler_tag;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHAT_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHERE_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHY_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _IN_ALGORITHM_
   {};
 
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   struct _WITH_SENDER_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Senders>
   struct _WITH_SENDERS_
   {};
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender>
-  using _WITH_PRETTY_SENDER_ = _WITH_SENDER_<__demangle_t<_Sender>>;
-
-  template <class... _Senders>
-  using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_<__demangle_t<_Senders>...>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_ENVIRONMENT_
@@ -95,19 +89,19 @@ namespace STDEXEC
   struct _WITH_COMPLETION_SIGNATURES_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_FUNCTION_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_ARGUMENTS_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_QUERY_
   {};
 
   struct _WITH_SCHEDULER_
+  {};
+
+  struct _WITH_ALLOCATOR_
   {};
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -132,7 +126,6 @@ namespace STDEXEC
   struct _INVALID_ARGUMENT_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_
   {};
 
@@ -148,13 +141,16 @@ namespace STDEXEC
   struct _CONCEPT_CHECK_FAILURE_
   {};
 
-  struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_
+  struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_
+  {};
+
+  struct _THE_PREDECESSOR_SENDER_DOES_NOT_KNOW_THE_SCHEDULER_ON_WHICH_IT_WILL_COMPLETE_
   {};
 
   template <class _Sender>
   using __bad_pipe_sink_t = __mexception<_WHAT_(_INVALID_EXPRESSION_),
                                          _WHY_(_CANNOT_PIPE_ONE_SENDER_INTO_ANOTHER_),
-                                         _WITH_PRETTY_SENDER_<_Sender>>;
+                                         _WITH_SENDER_<_Sender>>;
 
   template <class _Tag, class _Fun, class... _Args>
   using __callable_error_t =
@@ -171,7 +167,7 @@ namespace STDEXEC
   using __unrecognized_sender_error_t =
     __mexception<_WHAT_(_UNRECOGNIZED_SENDER_TYPE_),
                  _WHY_(_UNABLE_TO_COMPUTE_THE_SENDER_COMPLETION_SIGNATURES_),
-                 _WITH_PRETTY_SENDER_<_Sender>,
+                 _WITH_SENDER_<_Sender>,
                  _WITH_ENVIRONMENT_(_Env)...>;
 
 #  if __cpp_lib_constexpr_exceptions >= 202502L
@@ -247,8 +243,8 @@ namespace STDEXEC
     }
   };
 
-  // A specialization of _ERROR_ to be used to report dependent sender. It inherits
-  // from dependent_sender_error.
+  // A specialization of _ERROR_ to be used to report dependent sender. It
+  // inherits from dependent_sender_error.
   template <class... _What>
   struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error
   {
@@ -293,10 +289,10 @@ namespace STDEXEC
 
   static_assert(__structural<_ERROR_<dependent_sender_error>>);
 
-  // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that
-  // it will get propagated correctly through various metafunctions.
+  // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure
+  // that it will get propagated correctly through various metafunctions.
   template <class _Sender>
-  using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_PRETTY_SENDER_<_Sender>>;
+  using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What>
@@ -318,11 +314,122 @@ namespace STDEXEC
 
     constexpr auto schedule() noexcept
     {
-      return __not_a_sender<_What...>{};
+      return __not_a_sender<_What...>();
     }
 
     constexpr bool operator==(__not_a_scheduler const &) const noexcept = default;
   };
+
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class, class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+  template <class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+  // C++26, https://wg21.link/p3068
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Return, class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
+  {
+    if constexpr (__same_as<_What, dependent_sender_error>)
+    {
+      throw __mexception<dependent_sender_error, _More...>();
+    }
+    else if constexpr (sizeof...(_Values) == 1)
+    {
+      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
+    }
+    else
+    {
+      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
+    }
+  }
+
+  template <class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error(_Values... __values) -> completion_signatures<>
+  {
+    (void) STDEXEC::__throw_compile_time_error_r<completion_signatures<>, _What, _More...>(
+      static_cast<_Values>(__values)...);
+    STDEXEC_UNREACHABLE();
+  }
+
+#  endif  // ^^^ constexpr exceptions ^^^
+
+  template <class _Return, class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
+  }
+
+  template <class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error<_What...>();
+  }
+
+  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used
+  // to check that an expression's type is not an __mexception type.
+
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+#    define STDEXEC_IF_OK(_ID)                      \
+    if constexpr (STDEXEC::__merror<decltype(_ID)>) \
+    {                                               \
+      return _ID;                                   \
+    } else
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class, class _Sndr>
+  [[nodiscard]]
+  consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
+    return {};
+  }
+
+  template <class _Sndr>
+  [[nodiscard]]
+  consteval auto __throw_dependent_sender_error() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
+    return {};
+  }
+
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+#    define STDEXEC_IF_OK(_ID)
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Result, class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_dependent_sender_error_r() -> _Result
+  {
+    throw __dependent_sender_error_t<_Sndr>();
+  }
+
+  template <class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_dependent_sender_error() -> completion_signatures<>
+  {
+    throw __dependent_sender_error_t<_Sndr>();
+  }
+
+#  endif  // ^^^ constexpr exceptions ^^^
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

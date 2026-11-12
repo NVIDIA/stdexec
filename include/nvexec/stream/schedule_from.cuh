@@ -19,9 +19,11 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <utility>
 
-#include "../detail/cuda_atomic.cuh"  // IWYU pragma: keep
+#include "../../exec/completion_signatures.hpp"
+
+#include <memory>
+#include <utility>
 
 #include "common.cuh"
 
@@ -71,21 +73,36 @@ namespace nv::execution
           opstate& opstate_;
         };
 
+        struct task_deleter
+        {
+          void operator()(task_t* task) const noexcept
+          {
+            if (task != nullptr)
+            {
+              task->free_(task);
+            }
+          }
+        };
+
+        using task_ptr_t = std::unique_ptr<task_t, task_deleter>;
+
         opstate(Sender&& sndr, Receiver&& rcvr, context ctx)
           : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), ctx)
           , ctx_(ctx)
           , storage_(host_allocate<variant_t>(this->status_, ctx.pinned_resource_))
-          , task_(host_allocate<task_t>(this->status_,
-                                        ctx.pinned_resource_,
-                                        receiver{*this},
-                                        storage_.get(),
-                                        this->get_stream(),
-                                        ctx.pinned_resource_)
-                    .release())
+          , task_(task_ptr_t{host_allocate<task_t>(this->status_,
+                                                   this->get_stream_context().pinned_resource_,
+                                                   receiver{*this},
+                                                   storage_.get(),
+                                                   this->get_stream(),
+                                                   this->get_stream_context().pinned_resource_)
+                               .release()})
           , env_(host_allocate(this->status_, ctx_.pinned_resource_, this->make_env()))
-          , inner_op_{
-              connect(static_cast<Sender&&>(sndr),
-                      enqueue_receiver_t{env_.get(), storage_.get(), task_, ctx_.hub_->producer()})}
+          , inner_op_{connect(static_cast<Sender&&>(sndr),
+                              enqueue_receiver_t{env_.get(),
+                                                 storage_.get(),
+                                                 task_.get(),
+                                                 this->get_stream_context().hub_->producer()})}
         {
           if (this->status_ == cudaSuccess)
           {
@@ -97,8 +114,6 @@ namespace nv::execution
 
         void start() & noexcept
         {
-          started_.test_and_set(::cuda::std::memory_order::relaxed);
-
           if (status_ != cudaSuccess)
           {
             // Couldn't allocate memory for operation state, complete with error
@@ -106,14 +121,14 @@ namespace nv::execution
             return;
           }
 
+          task_.release();
           STDEXEC::start(inner_op_);
         }
 
         cudaError_t                  status_{cudaSuccess};
         context                      ctx_;
         host_ptr_t<variant_t>        storage_;
-        task_t*                      task_;
-        ::cuda::std::atomic_flag     started_{};
+        task_ptr_t                   task_;
         host_ptr_t<__decay_t<env_t>> env_{};
         inner_opstate_t              inner_op_;
       };
@@ -125,26 +140,12 @@ namespace nv::execution
       template <class Self, class Receiver>
       using opstate_t = _schfr::opstate<__copy_cvref_t<Self, Sender>, Receiver>;
 
-      template <class... Ts>
-      using _set_value_t = completion_signatures<set_value_t(__decay_t<Ts>...)>;
-
-      template <class Ty>
-      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
-
-      template <class Self, class... Env>
-      using _completions_t = __transform_completion_signatures_t<
-        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-        completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
-        _set_value_t,
-        _set_error_t>;
-
-      schedule_from_sender(context ctx, Sender sndr)
+      explicit schedule_from_sender(context ctx, Sender sndr)
         : ctx_(ctx)
         , sndr_{static_cast<Sender&&>(sndr)}
       {}
 
       template <__decays_to<schedule_from_sender> Self, STDEXEC::receiver Receiver>
-        requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> opstate_t<Self, Receiver>
       {
@@ -155,10 +156,15 @@ namespace nv::execution
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<schedule_from_sender> Self, class... Env>
-      static consteval auto get_completion_signatures()  //
-        -> _completions_t<Self, Env...>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          exec::decay_arguments<STDEXEC::set_value_t, STDEXEC::schedule_from_t>(),
+          exec::decay_arguments<STDEXEC::set_error_t, STDEXEC::schedule_from_t>(),
+          exec::keep_completion<STDEXEC::set_stopped_t>(),
+          STDEXEC::completion_signatures<STDEXEC::set_stopped_t(),
+                                         STDEXEC::set_error_t(cudaError_t)>());
       }
 
       auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>>
@@ -174,7 +180,7 @@ namespace nv::execution
     struct transform_sender_for<STDEXEC::schedule_from_t>
     {
       template <class Env, class Sender>
-      auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
+      constexpr auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
       {
         if constexpr (stream_completing_sender<Sender, Env>)
         {
@@ -192,10 +198,3 @@ namespace nv::execution
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender>
-  extern __mtype<nvexec::_strm::schedule_from_sender<__demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::schedule_from_sender<Sender>>;
-}  // namespace STDEXEC::__detail

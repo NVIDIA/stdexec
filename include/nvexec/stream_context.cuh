@@ -69,13 +69,15 @@ namespace nv::execution
 
     struct stream_scheduler : private stream_scheduler_env<stream_scheduler>
     {
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       explicit stream_scheduler(context ctx) noexcept
         : ctx_(ctx)
       {}
 
       auto operator==(stream_scheduler const & other) const noexcept -> bool
       {
-        return ctx_.hub_ == other.ctx_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_ && ctx_.priority_ == other.ctx_.priority_;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device) auto schedule() const noexcept

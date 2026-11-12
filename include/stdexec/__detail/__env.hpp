@@ -28,7 +28,6 @@ import stdexec;
 #  include "__concepts.hpp"
 #  include "__meta.hpp"
 #  include "__query.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -43,13 +42,14 @@ STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
   namespace __env
   {
-    //////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // cprop
     template <class _Query, auto _Value>
     struct cprop
@@ -66,14 +66,14 @@ namespace STDEXEC
     {
       static_assert(__nothrow_move_constructible<_Env>);
 
-      template <__forwarding_query _Query, class... _Args>
-        requires __queryable_with<_Env, _Query, _Args...>
+      template <class _Env2 = _Env, __forwarding_query _Query, class... _Args>
+        requires __queryable_with<_Env2, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<_Env, _Query, _Args...>)
-          -> __query_result_t<_Env, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
+          -> __query_result_t<_Env2, _Query, _Args...>
       {
-        return __query<_Query>()(__env_, static_cast<_Args &&>(__args)...);
+        return __env_.query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
@@ -142,10 +142,14 @@ namespace STDEXEC
 
     struct __root_t : __query<__root_t>
     {
+      // This is a forwarding query so that the "rootness" of an environment
+      // survives being wrapped by environment-adapting senders like
+      // `write_env`. Rootness is a property of the root of a connect tree; it
+      // holds for every operation within it.
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       static consteval auto query(forwarding_query_t) noexcept -> bool
       {
-        return false;
+        return true;
       }
     };
 
@@ -192,7 +196,7 @@ namespace STDEXEC
     { __root_t{}(__env) } -> __std::same_as<bool>;
   };
 
-  //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // A singleton environment from a query/value pair
   template <class _Query, class _Value>
   struct prop
@@ -235,8 +239,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(env<_Envs...> const &__env) const noexcept -> decltype(auto)
       {
-        // count of elements that includes the first env that supports the query and all
-        // subsequent envs
+        // compute the index of the first env that supports the query:
         STDEXEC_CONSTEXPR_LOCAL auto __index =
           sizeof...(_Envs) - __mcall<__mfind_if<__q1<__has_query_t>, __msize>, _Envs...>::value;
         if constexpr (__index < sizeof...(_Envs))
@@ -247,7 +250,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // env
   template <class... _Envs>
   struct env : __tuple<_Envs...>
@@ -262,15 +265,15 @@ namespace STDEXEC
       noexcept(__nothrow_queryable_with<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
         -> __query_result_t<__1st_env_t<_Query, _Args...>, _Query, _Args...>
     {
-      auto const &__env = __detail::__get_1st_env<_Query, _Args...>()(*this);
-      return __query<_Query>()(__env, static_cast<_Args &&>(__args)...);
+      constexpr auto __get_env = __detail::__get_1st_env<_Query, _Args...>();
+      return __get_env(*this).query(_Query(), static_cast<_Args &&>(__args)...);
     }
   };
 
   template <class... _Envs>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE env(_Envs...) -> env<std::unwrap_reference_t<_Envs>...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   namespace __detail
   {
     template <class _EnvProvider>
@@ -309,7 +312,7 @@ namespace STDEXEC
   //!   using receiver_concept = stdexec::receiver_tag;
   //!
   //!   auto get_env() const noexcept {
-  //!     return stdexec::env{stdexec::prop{stdexec::get_stop_token, my_stop_token_}};
+  //!     return stdexec::prop{stdexec::get_stop_token, my_stop_token_};
   //!   }
   //! };
   //! @endcode
@@ -319,21 +322,19 @@ namespace STDEXEC
   //! the @c get_env CPO will return one automatically via its @c __ignore
   //! overload).
   //!
-  //! @c tag_invoke-based customization is supported via a deprecated
-  //! overload, retained for backwards compatibility.
-  //!
   //! **Environment queries.**
   //!
   //! Once you have an environment, you query it by calling the appropriate
-  //! query CPO on it: <tt>get_stop_token(env)</tt>,
-  //! <tt>get_allocator(env)</tt>, <tt>get_scheduler(env)</tt>, etc. Each
+  //! query CPO on it: `get_stop_token(env)`,
+  //! `get_allocator(env)`, `get_scheduler(env)`, etc. Each
   //! query is a separate CPO; the environment dispatches based on the
   //! query's type. Inside a sender pipeline you almost always reach for
   //! @c stdexec::read_env (or its helpers like @c get_stop_token() with
   //! no argument) rather than calling @c get_env directly.
   //!
   //! @see stdexec::env             — the environment container type
-  //! @see stdexec::read_env        — the sender factory that exposes env values to pipelines
+  //! @see stdexec::read_env        — the sender factory that exposes env values
+  //!                                 to pipelines
   //! @see stdexec::get_stop_token  — example of an environment query CPO
   //! @see stdexec::get_allocator
   //! @see stdexec::get_scheduler
@@ -341,7 +342,7 @@ namespace STDEXEC
   {
     //! @brief Obtain the environment of @c __env_provider.
     //!
-    //! Dispatches to <tt>__env_provider.get_env()</tt>, statically
+    //! Dispatches to `__env_provider.get_env()`, statically
     //! asserting that the member is @c noexcept.
     //!
     //! @tparam _EnvProvider A type whose const-lvalue has a
@@ -359,19 +360,6 @@ namespace STDEXEC
       return __env_provider.get_env();
     }
 
-    template <class _EnvProvider>
-      requires __detail::__has_get_env_member<_EnvProvider const &>
-            || __tag_invocable<get_env_t, _EnvProvider const &>
-    [[deprecated("the use of tag_invoke for get_env is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_EnvProvider const &__env_provider) const noexcept
-      -> __tag_invoke_result_t<get_env_t, _EnvProvider const &>
-    {
-      static_assert(__nothrow_tag_invocable<get_env_t, _EnvProvider const &>,
-                    "get_env __tag_invoke overloads must be noexcept");
-      return __tag_invoke(*this, __env_provider);
-    }
-
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(__ignore) const noexcept -> env<>
     {
@@ -382,7 +370,7 @@ namespace STDEXEC
   //! @brief The customization point object for obtaining a sender's or
   //!        receiver's environment.
   //!
-  //! @c get_env is an instance of @ref get_env_t. See @ref get_env_t for
+  //! @c get_env is an instance of @c get_env_t. See @ref get_env_t for
   //! the full description and customization examples.
   //!
   //! @hideinitializer

@@ -33,9 +33,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  namespace __submit
+  namespace __submit_
   {
     template <class _Sender, class _Receiver>
     concept __has_memfn = requires(_Sender && (*__sndr)(), _Receiver && (*__rcvr)()) {
@@ -47,23 +48,22 @@ namespace STDEXEC
       __decay_t<_Sender>::submit(__sndr(), __rcvr());
     };
 
-    // submit is a combination of connect and start. it is customizable for times when it
-    // can be done more efficiently than by calling connect and start directly.
+    // submit is a combination of connect and start. it is customizable for
+    // times when it can be done more efficiently than by calling connect and
+    // start directly.
     struct __submit_t
     {
-      struct __void
-      {};
-
-      // This implementation is used if the sender has a non-static submit member function.
+      // This implementation is used if the sender has a non-static submit
+      // member function.
       template <class _Sender, class _Receiver, class _Default = __void>
-        requires sender_to<_Sender, _Receiver> && __submit::__has_memfn<_Sender, _Receiver>
+        requires sender_to<_Sender, _Receiver> && __has_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto
+      constexpr auto
       operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
-        noexcept(noexcept(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr))))
+        noexcept(noexcept(__declval<_Sender>().submit(__declval<_Receiver>())))
       {
-        using __result_t = decltype(static_cast<_Sender&&>(__sndr).submit(
-          static_cast<_Receiver&&>(__rcvr)));
+        using __result_t = decltype(__declval<_Sender>().submit(__declval<_Receiver>()));
+
         if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>)
         {
           static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
@@ -75,17 +75,17 @@ namespace STDEXEC
         }
       }
 
-      // This implementation is used if the sender has a static submit member function.
+      // This implementation is used if the sender has a static submit member
+      // function.
       template <class _Sender, class _Receiver, class _Default = __void>
-        requires sender_to<_Sender, _Receiver> && __submit::__has_static_memfn<_Sender, _Receiver>
+        requires sender_to<_Sender, _Receiver> && __has_static_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto
+      constexpr auto
       operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
-        noexcept(noexcept(__sndr.submit(static_cast<_Sender&&>(__sndr),
-                                        static_cast<_Receiver&&>(__rcvr))))
+        noexcept(noexcept(__sndr.submit(__declval<_Sender>(), __declval<_Receiver>())))
       {
-        using __result_t = decltype(__sndr.submit(static_cast<_Sender&&>(__sndr),
-                                                  static_cast<_Receiver&&>(__rcvr)));
+        using __result_t = decltype(__sndr.submit(__declval<_Sender>(), __declval<_Receiver>()));
+
         if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>)
         {
           __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
@@ -97,27 +97,27 @@ namespace STDEXEC
         }
       }
     };
-
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    inline constexpr __submit_t __submit{};
-  }  // namespace __submit
+  }  // namespace __submit_
 
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class _Receiver, class _Default = __submit::__submit_t::__void>
-  using __submit_result_t = __call_result_t<__submit::__submit_t, _Sender, _Receiver, _Default>;
+  inline constexpr __submit_::__submit_t __submit{};
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Sender, class _Receiver, class _Default = __void>
+  using __submit_result_t = __call_result_t<__submit_::__submit_t, _Sender, _Receiver, _Default>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Receiver>
   concept __submittable = requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-    __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+    __submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
   };
 
   template <class _Sender, class _Receiver>
   concept __nothrow_submittable = __submittable<_Sender, _Receiver>
                                && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
                                     {
-                                      __submit::__submit(static_cast<_Sender&&>(__sndr),
-                                                         static_cast<_Receiver&&>(__rcvr))
+                                      __submit(static_cast<_Sender&&>(__sndr),
+                                               static_cast<_Receiver&&>(__rcvr))
                                     } noexcept;
                                   };
 
@@ -134,24 +134,27 @@ namespace STDEXEC
   {
     if constexpr (__submittable<_Sender, _Receiver>)
     {
-      using __result_t                     = __submit_result_t<_Sender, _Receiver>;
-      constexpr std::size_t __opstate_size = sizeof(connect_result_t<_Sender, _Receiver>);
+      using __result_t              = __submit_result_t<_Sender, _Receiver>;
+      constexpr auto __opstate_size = sizeof(connect_result_t<_Sender, _Receiver>);
 
-      if constexpr (std::is_void_v<__result_t>)
+      if constexpr (__same_as<__result_t, void>)
       {
         return __submit_result_kind::__submit_void;
       }
+      else if constexpr (__opstate_size <= sizeof(__result_t))
+      {
+        return __submit_result_kind::__connect;
+      }
       else if constexpr (__nothrow_submittable<_Sender, _Receiver>)
       {
-        return __opstate_size > sizeof(__result_t) ? __submit_result_kind::__submit_nothrow
-                                                   : __submit_result_kind::__connect;
+        return __submit_result_kind::__submit_nothrow;
       }
       else
       {
-        return __opstate_size > sizeof(__optional<__result_t>) ? __submit_result_kind::__submit
-                                                               : __submit_result_kind::__connect;
+        return __submit_result_kind::__submit;
       }
     }
+
     return __submit_result_kind::__connect;
   }
 
@@ -160,16 +163,19 @@ namespace STDEXEC
             class _Receiver,
             __submit_result_kind _Kind = __get_submit_result_kind<_Sender, _Receiver>()>
     requires sender_to<_Sender, _Receiver>
-  struct submit_result
+  struct __submit_result;
+
+  template <class _Sender, class _Receiver>
+  struct __submit_result<_Sender, _Receiver, __submit_result_kind::__connect>
   {
     using __result_t = connect_result_t<_Sender, _Receiver>;
 
-    explicit submit_result(_Sender&& __sndr, _Receiver&& __rcvr)
+    constexpr explicit __submit_result(_Sender&& __sndr, _Receiver&& __rcvr)
       noexcept(__nothrow_connectable<_Sender, _Receiver>)
       : __result_(connect(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)))
     {}
 
-    void submit(_Sender&&, _Receiver&&) noexcept
+    constexpr void submit(_Sender&&, _Receiver&&) noexcept
     {
       STDEXEC::start(__result_);
     }
@@ -178,15 +184,15 @@ namespace STDEXEC
   };
 
   template <class _Sender, class _Receiver>
-  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit>
+  struct __submit_result<_Sender, _Receiver, __submit_result_kind::__submit>
   {
     using __result_t = __submit_result_t<_Sender, _Receiver>;
 
-    constexpr submit_result(_Sender&&, _Receiver&&) noexcept {}
+    constexpr explicit __submit_result(_Sender&&, _Receiver&&) noexcept {}
 
     constexpr void submit(_Sender&& __sndr, _Receiver&& __rcvr)
     {
-      __result_.__emplace_from(__submit::__submit,
+      __result_.__emplace_from(__submit,
                                static_cast<_Sender&&>(__sndr),
                                static_cast<_Receiver&&>(__rcvr));
     }
@@ -195,34 +201,34 @@ namespace STDEXEC
   };
 
   template <class _Sender, class _Receiver>
-  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit_void>
+  struct __submit_result<_Sender, _Receiver, __submit_result_kind::__submit_void>
   {
     using __result_t = __submit_result_t<_Sender, _Receiver>;
 
-    explicit submit_result(_Sender&&, _Receiver&&) noexcept {}
+    constexpr explicit __submit_result(_Sender&&, _Receiver&&) noexcept {}
 
-    void
+    constexpr void
     submit(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(__nothrow_submittable<_Sender, _Receiver>)
     {
-      __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+      __submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
     }
   };
 
   template <class _Sender, class _Receiver>
-  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit_nothrow>
+  struct __submit_result<_Sender, _Receiver, __submit_result_kind::__submit_nothrow>
   {
     using __result_t = __submit_result_t<_Sender, _Receiver>;
 
-    submit_result(_Sender&&, _Receiver&&) noexcept {}
+    constexpr explicit __submit_result(_Sender&&, _Receiver&&) noexcept {}
 
-    void submit(_Sender&& __sndr, _Receiver&& __rcvr) noexcept
+    constexpr void submit(_Sender&& __sndr, _Receiver&& __rcvr) noexcept
     {
-      __result_.__construct_from(__submit::__submit,
+      __result_.__construct_from(__submit,
                                  static_cast<_Sender&&>(__sndr),
                                  static_cast<_Receiver&&>(__rcvr));
     }
 
-    ~submit_result()
+    constexpr ~__submit_result()
     {
       __result_.__destroy();
     }
@@ -232,7 +238,7 @@ namespace STDEXEC
 
   template <class _Sender, class _Receiver>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-  submit_result(_Sender&&, _Receiver) -> submit_result<_Sender, _Receiver>;
+  __submit_result(_Sender&&, _Receiver) -> __submit_result<_Sender, _Receiver>;
 
 }  // namespace STDEXEC
 

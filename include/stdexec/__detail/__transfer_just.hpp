@@ -35,22 +35,26 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
-// Hide transfer_just from Doxygen since it's deprecated and we don't want to document it:
+// Hide transfer_just from Doxygen since it's deprecated and we don't want to
+// document it:
 #  if !defined(STDEXEC_DOXYGEN_INVOKED)
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   struct __transfer_just_t
   {
     template <scheduler _Scheduler, __movable_value... _Values>
     constexpr auto
     operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto
     {
-      return __make_sexpr<__transfer_just_t>(
-        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
+      return __sexpr{
+        __transfer_just_t(),
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...}
+      };
     }
 
     template <class _Sender>
@@ -63,7 +67,7 @@ namespace STDEXEC
       }
       else
       {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_SENDER_<_Sender>>();
       }
     }
 
@@ -105,7 +109,7 @@ namespace STDEXEC
       using __sndr_t =
         __detail::__transform_sender_result_t<__transfer_just_t, set_value_t, _Sender, env<>>;
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    };
+    }
   };
 }  // namespace STDEXEC
 

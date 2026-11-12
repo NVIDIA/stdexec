@@ -15,22 +15,23 @@
  * limitations under the License.
  */
 
-#include <exec/__memory_resource_adaptor.hpp>
-
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
 
+#include <exec/__memory_resource_adaptor.hpp>
+
 #include <bit>
 #include <concepts>
+#include <limits>
 #include <memory>
 
 namespace ex = STDEXEC;
 
 namespace
 {
-  // this is a trivial class template that satisfies __simple_allocator but isn't
-  // exactly std::allocator
+  // this is a trivial class template that satisfies __simple_allocator but
+  // isn't exactly std::allocator
   template <class T>
   struct custom_allocator : std::allocator<T>
   {};
@@ -85,6 +86,28 @@ namespace
   template <std::size_t Alignment>
   using alignment = std::integral_constant<std::size_t, Alignment>;
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEMPLATE_TEST_CASE("exec::__memory_resource_adaptor rejects allocation size overflow",
+                     "[types][memory_resource_adaptor]",
+                     custom_allocator<std::byte>,
+                     custom_allocator<int>)
+  {
+    using adaptor_t = exec::__memory_resource_adaptor_t<TestType>;
+
+    auto                              underlying = make_underlying_resource<TestType>();
+    adaptor_t                         rsc(adaptor_arg_from_resource(&underlying));
+    std::pmr::polymorphic_allocator<> alloc(&rsc);
+
+    auto const align    = GENERATE(std::size_t{1}, std::size_t{16}, std::size_t{64});
+    auto const max_size = (std::numeric_limits<std::size_t>::max)();
+    auto const bytes    = GENERATE_COPY(max_size,
+                                     max_size - (align - 1),
+                                     max_size - (align - 1) - sizeof(void*) + 1);
+
+    CHECK_THROWS_AS(alloc.allocate_bytes(bytes, align), std::bad_alloc);
+  }
+#endif
+
   TEMPLATE_TEST_CASE("exec::__memory_resource_adaptor supports over-alignment",
                      "[types][memory_resource_adaptor]",
                      std::allocator<std::byte>,
@@ -105,9 +128,9 @@ namespace
     {
       auto* p = alloc.allocate_bytes(10, Alignment);
 
-      // this inlines std::is_sufficiently_aligned<Alignment>(p) so that failures read
-      // more clearly in the output (the actual and expected alignment show up in the
-      // output this way, instead of "false").
+      // this inlines std::is_sufficiently_aligned<Alignment>(p) so that
+      // failures read more clearly in the output (the actual and expected
+      // alignment show up in the output this way, instead of "false").
       REQUIRE(std::countr_zero(std::bit_cast<std::uintptr_t>(p)) >= std::countr_zero(Alignment));
 
       alloc.deallocate_bytes(p, 10, Alignment);

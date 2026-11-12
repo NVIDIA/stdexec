@@ -23,7 +23,8 @@ namespace ex = STDEXEC;
 namespace
 {
 
-  // a "null" association that is always truthy and for which try_associate() always succeeds
+  // a "null" association that is always truthy and for which try_associate()
+  // always succeeds
   struct null_association
   {
     // this need not be explicit, although it should be
@@ -33,20 +34,27 @@ namespace
     }
 
     // this may throw, although it need not
+    [[nodiscard]]
     constexpr null_association try_associate() const noexcept
     {
       return {};
     }
   };
 
-  // a CRTP base that lets us produce variations on null_associaton with the right return type on try_associate
+  // a CRTP base that lets us produce variations on null_associaton with the
+  // right return type on try_associate
   template <class Derived>
   struct crtp_association : null_association
   {
+   private:
+    crtp_association() = default;
+   public:
+    [[nodiscard]]
     constexpr Derived try_associate() const noexcept
     {
       return {};
     }
+    friend Derived;
   };
 
   struct throwing_specials : crtp_association<throwing_specials>
@@ -83,6 +91,8 @@ namespace
 
   struct explicit_bool : crtp_association<explicit_bool>
   {
+    explicit_bool() = default;
+
     // the bool conversion may be explicit
     constexpr explicit operator bool() const noexcept
     {
@@ -92,7 +102,10 @@ namespace
 
   struct throwing_reassociate : crtp_association<throwing_reassociate>
   {
+    throwing_reassociate() = default;
+
     // try_associate may throw
+    [[nodiscard]]
     constexpr throwing_reassociate try_associate() const noexcept(false)
     {
       return {};

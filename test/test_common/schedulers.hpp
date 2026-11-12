@@ -37,6 +37,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 // Put all the test utilities in an anonymous namespace to avoid ODR violations
 namespace
 {
@@ -57,11 +59,12 @@ namespace
     Scheduler scheduler_;
   };
 
-  //! Scheduler that will send impulses on user's request.
-  //! One can obtain senders from this, connect them to receivers and start the operation states.
-  //! Until the scheduler is told to start the next operation, the actions in the operation states are
-  //! not executed. This is similar to a task scheduler, but it's single threaded. It has basic
-  //! thread-safety to allow it to be run with `sync_wait` (which makes us not control when the
+  //! Scheduler that will send impulses on user's request. One can obtain
+  //! senders from this, connect them to receivers and start the operation
+  //! states. Until the scheduler is told to start the next operation, the
+  //! actions in the operation states are not executed. This is similar to a
+  //! task scheduler, but it's single threaded. It has basic thread-safety to
+  //! allow it to be run with `sync_wait` (which makes us not control when the
   //! operation_state object is created and started).
   struct impulse_scheduler
   {
@@ -77,8 +80,8 @@ namespace
 
     ~impulse_scheduler() = default;
 
-    //! Actually start the command from the last started operation_state
-    //! Returns immediately if no command registered (i.e., no operation state started)
+    //! Actually start the command from the last started operation_state Returns
+    //! immediately if no command registered (i.e., no operation state started)
     auto try_start_next() -> bool
     {
       // Wait for a command that we can execute
@@ -187,6 +190,7 @@ namespace
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {data_, static_cast<Receiver &&>(rcvr)};
@@ -206,7 +210,8 @@ namespace
     {}
 
     //! That data shared between the operation state and the actual scheduler
-    //! Shared pointer to allow the scheduler to be copied (not the best semantics, but it will do)
+    //! Shared pointer to allow the scheduler to be copied (not the best
+    //! semantics, but it will do)
     std::shared_ptr<data> shared_data_{};
   };
 
@@ -216,6 +221,7 @@ namespace
   {
     using scheduler_concept = ex::scheduler_tag;
 
+    [[nodiscard]]
     auto schedule() const noexcept
     {
       return sender{};
@@ -223,6 +229,7 @@ namespace
 
     auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
 
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
       requires(!std::same_as<Domain, void>)
     {
@@ -247,11 +254,13 @@ namespace
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {{}, static_cast<Receiver &&>(rcvr)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept
       {
         return sched_attrs(basic_inline_scheduler(), ex::set_value);
@@ -366,6 +375,7 @@ namespace
         return {{}, static_cast<Receiver &&>(rcvr), std::move(err_)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept
       {
         return sched_attrs{error_scheduler(err_), ex::set_value, ex::set_error, ex::set_stopped};
@@ -424,6 +434,7 @@ namespace
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {{}, static_cast<Receiver &&>(rcvr)};
@@ -444,6 +455,7 @@ namespace
     {
       constexpr auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept;
 
+      [[nodiscard]]
       constexpr auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept
       {
         return Domain{};
@@ -479,6 +491,7 @@ namespace
       }
 
       template <class Rcvr>
+      [[nodiscard]]
       constexpr auto connect(Rcvr rcvr) const noexcept -> _opstate_t<Rcvr>
       {
         return _opstate_t<Rcvr>(static_cast<Rcvr &&>(rcvr));
@@ -492,7 +505,8 @@ namespace
     };
   }  // namespace _dummy
 
-  //! Scheduler that returns a sender that always completes inline (successfully).
+  //! Scheduler that returns a sender that always completes inline
+  //! (successfully).
   template <class Domain = ex::default_domain>
   struct dummy_scheduler : _dummy::_attrs_t<Domain>
   {
@@ -524,3 +538,5 @@ namespace
     }
   }  // namespace _dummy
 }  // anonymous namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

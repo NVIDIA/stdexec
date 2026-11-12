@@ -41,7 +41,7 @@ using STDEXEC::set_value_t;
 
 namespace
 {
-  TEST_CASE("", "[utilities][completion_signatures]")
+  TEST_CASE("completion_signatures equality", "[utilities][completion_signatures]")
   {
     STATIC_REQUIRE(completion_signatures{} == completion_signatures{});
     STATIC_REQUIRE_FALSE(completion_signatures{} != completion_signatures{});

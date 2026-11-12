@@ -27,7 +27,7 @@
 
 namespace experimental::execution
 {
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   struct split_t
   {
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
@@ -35,9 +35,9 @@ namespace experimental::execution
     auto
     operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::transform_sender(STDEXEC::__make_sexpr<split_t>(static_cast<_Env&&>(__env),
-                                                                      static_cast<_CvSender&&>(
-                                                                        __sndr)),
+      return STDEXEC::transform_sender(STDEXEC::__sexpr{split_t(),
+                                                        static_cast<_Env&&>(__env),
+                                                        static_cast<_CvSender&&>(__sndr)},
                                        __env);
     }
 
@@ -63,6 +63,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

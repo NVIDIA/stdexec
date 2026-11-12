@@ -33,6 +33,7 @@ import stdexec;
 #  include "__prologue.hpp"
 
 #  if !STDEXEC_USE_MODULES()
+// NOLINTBEGIN(bugprone-std-namespace-modification)
 STDEXEC_NAMESPACE_STD_BEGIN
   struct monostate;
 
@@ -43,10 +44,14 @@ STDEXEC_NAMESPACE_STD_BEGIN
   class tuple;
 STDEXEC_NAMESPACE_STD_END
 #  endif
+// NOLINTEND(bugprone-std-namespace-modification)
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct __none_such;
+  struct __void
+  {};
 
   namespace __detail
   {
@@ -58,20 +63,22 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
-  using __std_variant = __minvoke_if_c<sizeof...(_Ts) == 0,
-                                       __mconst<__detail::__not_a_variant>,
-                                       __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-                                       _Ts...>;
+  using __std_variant =
+    __minvoke_if_c<sizeof...(_Ts) == 0,
+                   __mconst<__detail::__not_a_variant>,
+                   __mtransform<__q1<__decay_t>, __munique<__msort<__qq<std::variant>>>>,
+                   _Ts...>;
 
   template <class... _Ts>
   using __nullable_std_variant =
-    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
+    __mcall<__munique<__msort<__mbind_front<__qq<std::variant>, std::monostate>>>,
+            __decay_t<_Ts>...>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   using __decayed_std_tuple = std::tuple<__decay_t<_Ts>...>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct default_domain;
 
@@ -79,7 +86,7 @@ namespace STDEXEC
   template <class...>
   struct indeterminate_domain;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct set_value_t;
   STDEXEC_MODULE_EXPORT
@@ -125,7 +132,7 @@ namespace STDEXEC
   template <class... _Envs>
   struct env;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct get_env_t;
   STDEXEC_MODULE_EXPORT
@@ -135,7 +142,7 @@ namespace STDEXEC
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   enum class forward_progress_guarantee
   {
@@ -205,7 +212,7 @@ namespace STDEXEC
     {};
   }  // namespace __debug
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // concept tag types:
   STDEXEC_MODULE_EXPORT
   struct sender_tag;
@@ -217,10 +224,10 @@ namespace STDEXEC
   struct receiver_tag;
 
   // concept tag aliases for backwards compatibility:
-  using sender_t          = sender_tag;
-  using operation_state_t = operation_state_tag;
-  using scheduler_t       = scheduler_tag;
-  using receiver_t        = receiver_tag;
+  STDEXEC_MODULE_EXPORT using sender_t          = sender_tag;
+  STDEXEC_MODULE_EXPORT using operation_state_t = operation_state_tag;
+  STDEXEC_MODULE_EXPORT using scheduler_t       = scheduler_tag;
+  STDEXEC_MODULE_EXPORT using receiver_t        = receiver_tag;
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -229,7 +236,7 @@ namespace STDEXEC
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   template <class... _Sigs>
   struct completion_signatures;
@@ -250,6 +257,30 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   using __cmplsigs::get_completion_signatures_t;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHAT_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHERE_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHY_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _IN_ALGORITHM_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_FUNCTION_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_ARGUMENTS_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_QUERY_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_;
+
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -260,6 +291,7 @@ namespace STDEXEC
 #  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
@@ -270,7 +302,7 @@ namespace STDEXEC
   [[nodiscard]]
   consteval auto __throw_compile_time_error(__mexception<_What...>);
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct connect_t;
   STDEXEC_MODULE_EXPORT
@@ -284,25 +316,25 @@ namespace STDEXEC
   template <class _Sender>
   extern bool const enable_sender;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct start_t;
   STDEXEC_MODULE_EXPORT
   extern start_t const start;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct schedule_t;
   STDEXEC_MODULE_EXPORT
   extern schedule_t const schedule;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct as_awaitable_t;
   STDEXEC_MODULE_EXPORT
   extern as_awaitable_t const as_awaitable;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct transform_sender_t;
   STDEXEC_MODULE_EXPORT
@@ -312,13 +344,13 @@ namespace STDEXEC
   template <class _Sender, class... _Env>
   using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct starts_on_t;
   STDEXEC_MODULE_EXPORT
   extern starts_on_t const starts_on;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct schedule_from_t;
   STDEXEC_MODULE_EXPORT
@@ -329,7 +361,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern continues_on_t const continues_on;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct bulk_t;
   STDEXEC_MODULE_EXPORT
@@ -344,7 +376,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern bulk_unchunked_t const bulk_unchunked;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct just_t;
   STDEXEC_MODULE_EXPORT
@@ -360,7 +392,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern just_stopped_t const just_stopped;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct then_t;
   STDEXEC_MODULE_EXPORT
@@ -376,7 +408,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern upon_stopped_t const upon_stopped;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct let_value_t;
   STDEXEC_MODULE_EXPORT
@@ -392,7 +424,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern let_stopped_t const let_stopped;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct when_all_t;
   STDEXEC_MODULE_EXPORT
@@ -403,7 +435,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern when_all_with_variant_t const when_all_with_variant;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   struct __read_env_t;
   STDEXEC_MODULE_EXPORT
   extern __read_env_t const read_env;
@@ -413,25 +445,25 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern __write_env_t const write_env;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct into_variant_t;
   STDEXEC_MODULE_EXPORT
   extern into_variant_t const into_variant;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct on_t;
   STDEXEC_MODULE_EXPORT
   extern on_t const on;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct affine_t;
   STDEXEC_MODULE_EXPORT
   extern affine_t const affine;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct stopped_as_error_t;
   STDEXEC_MODULE_EXPORT
@@ -442,19 +474,31 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   extern stopped_as_optional_t const stopped_as_optional;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   template <__class _Derived>
   struct sender_adaptor_closure;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // deprecated interfaces (see __deprecations.hpp):
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_just_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   extern __transfer_just_t const __transfer_just;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct __transfer_when_all_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  extern __transfer_when_all_t const __transfer_when_all;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct __transfer_when_all_with_variant_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  extern __transfer_when_all_with_variant_t const __transfer_when_all_with_variant;
 }  // namespace STDEXEC
 
-// Moved to namespace experimental::execution from namespace STDEXEC because they are no longer getting standardized:
+// Moved to namespace experimental::execution from namespace STDEXEC because
+// they are no longer getting standardized:
 namespace experimental::execution
 {
   struct split_t;
@@ -470,6 +514,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTBEGIN(bugprone-std-namespace-modification)
 STDEXEC_P2300_NAMESPACE_BEGIN()
   STDEXEC_MODULE_EXPORT
   struct forwarding_query_t;
@@ -500,7 +545,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   class inplace_stop_callback;
 STDEXEC_P2300_NAMESPACE_END()
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   struct sync_wait_t;
@@ -511,9 +556,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
+// NOLINTEND(bugprone-std-namespace-modification)
 
 // NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly
 // std::execution) as well:
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::forwarding_query_t)

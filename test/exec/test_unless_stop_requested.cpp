@@ -34,7 +34,7 @@ namespace
   {
     ::STDEXEC::inplace_stop_source source;
     auto env = ::STDEXEC::prop(::STDEXEC::get_stop_token, source.get_token());
-    static_assert(!::exec::__unless_stop_requested::__unstoppable_env<decltype(env)>);
+    static_assert(!::exec::_unless_stop_requested::_unstoppable_env<decltype(env)>);
     {
       auto sender = ::STDEXEC::just() | ::exec::unless_stop_requested;
       static_assert(
@@ -61,7 +61,7 @@ namespace
     ::STDEXEC::inplace_stop_source source;
     source.request_stop();
     auto env = ::STDEXEC::prop(::STDEXEC::get_stop_token, source.get_token());
-    static_assert(!::exec::__unless_stop_requested::__unstoppable_env<decltype(env)>);
+    static_assert(!::exec::_unless_stop_requested::_unstoppable_env<decltype(env)>);
     auto sender = ::STDEXEC::just()
                 | ::STDEXEC::then([&]() { FAIL_CHECK("Operation should not have been started"); })
                 | ::exec::unless_stop_requested();
@@ -74,9 +74,18 @@ namespace
     ::STDEXEC::start(op);
   }
 
+  TEST_CASE("request_stop reports whether it made a stop request", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source source;
+
+    CHECK(source.request_stop());
+    CHECK(source.stop_requested());
+    CHECK_FALSE(source.request_stop());
+  }
+
   TEST_CASE("No op when the associated stop token is unstoppable", "[unless_stop_requested]")
   {
-    static_assert(::exec::__unless_stop_requested::__unstoppable_env<::STDEXEC::env<>>);
+    static_assert(::exec::_unless_stop_requested::_unstoppable_env<::STDEXEC::env<>>);
     auto sender = ::STDEXEC::just() | ::exec::unless_stop_requested;
     static_assert(
       set_equivalent<::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,

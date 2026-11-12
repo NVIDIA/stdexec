@@ -18,17 +18,18 @@
 
 #pragma once
 
+#include "../../exec/stoppable_base.hpp"
 #include "../../stdexec/execution.hpp"
+
+#include "../../exec/completion_signatures.hpp"
+#include "../detail/event.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
 
 #include <array>
 #include <atomic>
 #include <cstddef>
-#include <optional>
 #include <utility>
-
-#include "../detail/event.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
-#include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -38,6 +39,9 @@ namespace nv::execution::_strm
 {
   namespace _when_all
   {
+    using STDEXEC::__when_all::_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_;
+    using STDEXEC::__when_all::_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_;
+
     enum disposition : std::uint32_t
     {
       started,
@@ -74,14 +78,11 @@ namespace nv::execution::_strm
       requires(too_many_completions_sender<Senders, Env...> || ...)
     struct completions<__mlist<Env...>, Senders...>
     {
-      static constexpr auto position_of() noexcept -> std::size_t
-      {
-        constexpr bool which[] = {too_many_completions_sender<Senders, Env...>...};
-        return __pos_of(which, which + sizeof...(Senders));
-      }
-
-      using invalid_arg_t = __m_at_c<position_of(), Senders...>;
-      using __t = STDEXEC::__when_all::__too_many_value_completions_error_t<invalid_arg_t, Env...>;
+      using __t =
+        __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                     _WHERE_(_IN_ALGORITHM_, when_all_t),
+                     _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                     _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>;
     };
 
     template <class... Env, class... Senders>
@@ -169,7 +170,7 @@ namespace nv::execution::_strm
                                                 Env...>;
 
       auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
-        requires STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>
+        requires STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>
       {
         return Scheduler(ctx_);
       }
@@ -177,7 +178,7 @@ namespace nv::execution::_strm
       template <class... Env>
       constexpr auto query(get_completion_domain_t<set_value_t>, Env const &...) const noexcept
       {
-        if constexpr (STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>)
+        if constexpr (STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>)
         {
           return sched_domain_t<Env...>{};
         }
@@ -202,7 +203,7 @@ namespace nv::execution::_strm
       using when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
       using receiver_t        = __decay_t<CvReceiver>;
       using sender_t          = __m_at_c<Index, Senders...>;
-      using completions_t     = when_all_sender::_completions_t<env_of_t<receiver_t>, CvReceiver>;
+      using completions_t     = when_all_sender::_completions_t<CvReceiver, env_of_t<receiver_t>>;
       using local_env_t =
         STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<receiver_t>>;
       using env_t = make_terminal_stream_env_t<local_env_t>;
@@ -241,11 +242,22 @@ namespace nv::execution::_strm
     };
 
     template <class CvReceiver>
-    struct opstate : stream_opstate_base
+    struct opstate
+      : stream_opstate_base
+      , private ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<__decay_t<CvReceiver>>>,
+                                             opstate<CvReceiver>>
     {
      private:
       using _when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
       using _receiver_t        = __decay_t<CvReceiver>;
+      using _stop_base_t =
+        ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<_receiver_t>>, opstate>;
+      friend _stop_base_t;
+
+      void on_stop_requested() noexcept
+      {
+        stop_source_.request_stop();
+      }
 
      public:
       opstate(_when_all_sender_t&& sndr, _receiver_t rcvr)
@@ -267,8 +279,7 @@ namespace nv::execution::_strm
       void start() & noexcept
       {
         // register stop callback:
-        auto tok = STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_));
-        on_stop_.emplace(std::move(tok), __forward_stop_request{stop_source_});
+        this->register_stoppable(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
         if (stop_source_.stop_requested())
         {
           // Stop has already been requested. Don't bother starting
@@ -290,25 +301,22 @@ namespace nv::execution::_strm
       friend struct receiver;
 
       using _env_t              = env_of_t<_receiver_t>;
-      using _completions_t      = when_all_sender::_completions_t<_env_t, CvReceiver>;
+      using _completions_t      = when_all_sender::_completions_t<CvReceiver, _env_t>;
       using _indices_t          = __indices_for<Senders...>;
       using _stream_providers_t = std::array<stream_provider, sizeof...(Senders)>;
-      using _stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_receiver_t>>, __forward_stop_request<>>;
 
       template <class Sender, std::size_t Index>
       using _child_opstate_t =
         exit_opstate_t<__copy_cvref_t<_when_all_sender_t, Sender>, receiver<CvReceiver, Index>>;
 
       // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
-      using _child_values_t =
-        __if_c<STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0,
-               __minvoke<__qq<__tuple>,
-                         __value_types_of_t<Senders,
-                                            _when_all::env_t<_env_t>,
-                                            __qq<__decayed_tuple>,
-                                            __msingle_or<void>>...>,
-               __>;
+      using _child_values_t = __if_c<_completions_t::__count(set_value_t()) != 0,
+                                     __minvoke<__qq<__tuple>,
+                                               __value_types_of_t<Senders,
+                                                                  _when_all::env_t<_env_t>,
+                                                                  __qq<__decayed_tuple>,
+                                                                  __msingle_or<void>>...>,
+                                     __>;
 
       using _errors_t =
         error_types_of_t<when_all_sender, _when_all::env_t<_env_t>, __uniqued_variant>;
@@ -345,8 +353,8 @@ namespace nv::execution::_strm
 
       void _complete() noexcept
       {
-        // Stop callback is no longer needed. Destroy it.
-        on_stop_.reset();
+        // Stop callback is no longer needed. Deregister it.
+        this->deregister_stoppable();
 
         // See if any child operations completed with an error status:
         for (auto status: statuses_)
@@ -388,7 +396,7 @@ namespace nv::execution::_strm
           switch (state_.load(std::memory_order_relaxed))
           {
           case _when_all::started:
-            if constexpr (STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0)
+            if constexpr (_completions_t::__count(set_value_t()) != 0)
             {
               // All child operations completed successfully:
               STDEXEC::__apply(
@@ -456,7 +464,7 @@ namespace nv::execution::_strm
       template <std::size_t Index, class... Args>
       void _set_value(Args&&... args) noexcept
       {
-        if constexpr (STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0)
+        if constexpr (_completions_t::__count(set_value_t()) != 0)
         {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
@@ -516,8 +524,6 @@ namespace nv::execution::_strm
       _errors_t           errors_{__no_init};
       _child_values_t*    values_{};
       inplace_stop_source stop_source_{};
-
-      std::optional<_stop_callback_t> on_stop_{};
     };
 
     attrs                        attrs_;
@@ -551,7 +557,7 @@ namespace nv::execution::_strm
   };
 
   template <>
-  struct transform_sender_for<STDEXEC::transfer_when_all_t>
+  struct transform_sender_for<STDEXEC::__transfer_when_all_t>
   {
     template <class Env,
               gpu_stream_scheduler<Env> Scheduler,
@@ -559,19 +565,12 @@ namespace nv::execution::_strm
     auto operator()(Env const &, __ignore, Scheduler sched, CvSenders&&... sndrs) const
     {
       using sender_t =
-        when_all_sender<STDEXEC::transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
+        when_all_sender<STDEXEC::__transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{sched.ctx_, static_cast<CvSenders&&>(sndrs)...};
     }
   };
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class WhenAllTag, class Scheduler, class... Senders>
-  extern __mtype<nvexec::_strm::when_all_sender<WhenAllTag, Scheduler, __demangle_t<Senders>...>>
-    __demangle_v<nvexec::_strm::when_all_sender<WhenAllTag, Scheduler, Senders...>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

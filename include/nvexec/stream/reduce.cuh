@@ -128,10 +128,15 @@ namespace nv::execution
         template <class Receiver>
         using receiver_t = reduce_::receiver<Sender, Receiver, InitT, Fun>;
 
-        template <class Range>
-        using _set_value_t = completion_signatures<set_value_t(
-          ::std::add_lvalue_reference_t<
-            __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
+        static consteval auto _value_cmplsigs_transform() noexcept
+        {
+          return []<class Range>()
+          {
+            return completion_signatures<set_value_t(
+              ::std::add_lvalue_reference_t<
+                __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>();
+          };
+        }
       };
     }  // namespace reduce_
 
@@ -161,12 +166,5 @@ namespace nv::execution
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Init, class Fun>
-  extern __mtype<nvexec::_strm::reduce_::sender<__demangle_t<Sender>, Init, Fun>>
-    __demangle_v<nvexec::_strm::reduce_::sender<Sender, Init, Fun>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

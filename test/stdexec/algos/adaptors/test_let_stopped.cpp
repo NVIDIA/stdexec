@@ -219,7 +219,8 @@ namespace
                               | ex::let_stopped([] { return ex::just_stopped(); }));
   }
 
-  // Return a different sender when we invoke this custom defined let_stopped implementation
+  // Return a different sender when we invoke this custom defined let_stopped
+  // implementation
   struct let_stopped_test_domain
   {
     template <exec::sender_for<ex::let_stopped_t> Sender>

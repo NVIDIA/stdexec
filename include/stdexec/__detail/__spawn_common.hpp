@@ -35,12 +35,13 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // [exec.spawn] paragraph 9
 // [exec.spawn.future] paragraph 15
 //
-// spawn and spawn_future both have to choose an allocator and an injected environment, and they
-// do it in the same way; this namespace provides a couple of functions for making those choices
+// spawn and spawn_future both have to choose an allocator and an injected
+// environment, and they do it in the same way; this namespace provides a couple
+// of functions for making those choices
 namespace STDEXEC::__spawn_common
 {
   struct __choose_alloc_fn
@@ -52,14 +53,16 @@ namespace STDEXEC::__spawn_common
       // [exec.spawn.future] paragraph 15
       if constexpr (__callable<get_allocator_t, _Env>)
       {
-        //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then alloc is
-        //               the result of get_allocator(env)
+        //   (9/15.1) -- if the expression get_allocator(env) is well-formed,
+        //               then alloc is the result of get_allocator(env)
         return get_allocator(__env);
       }
       else if constexpr (__callable<get_allocator_t, _Attrs>)
       {
-        //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
-        //               well-formed, then alloc is the result of get_allocator(get_env(new_sender))
+        //   (9/15.2) -- otherwise, if the expression
+        //               get_allocator(get_env(new_sender)) is well-formed, then
+        //               alloc is the result of
+        //               get_allocator(get_env(new_sender))
         return get_allocator(__attrs);
       }
       else
@@ -81,13 +84,14 @@ namespace STDEXEC::__spawn_common
       // [exec.spawn.future] paragraph 15
       if constexpr (__callable<get_allocator_t, _Env&>)
       {  // NOLINT(bugprone-branch-clone)
-        //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then ...
-        //               senv is the expression env;
+        //   (9/15.1) -- if the expression get_allocator(env) is well-formed,
+        //               then ... senv is the expression env;
         return static_cast<_Env&&>(__env);
       }
       else if constexpr (__callable<get_allocator_t, _Attrs&>)
       {
-        //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
+        //   (9/15.2) -- otherwise, if the expression
+        //               get_allocator(get_env(new_sender)) is
         //               well-formed, then ... senv is the expression
         //               JOIN-ENV(prop(get_allocator, alloc), env);
         return __env::__join(prop(get_allocator, get_allocator(__attrs)),

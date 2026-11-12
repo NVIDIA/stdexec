@@ -24,7 +24,7 @@
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The given type is not a sender because " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<Sender>"\
-  "is false. Either:\n"                                                                            \
+  " is false. Either:\n"                                                                           \
   "\n"                                                                                             \
   "1. Give the type a nested '::sender_concept' type that is an alias for '"                       \
   STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag',\n"                                                 \
@@ -49,6 +49,21 @@
   "\n"                                                                                             \
   "     template <>\n"                                                                             \
   "     inline constexpr bool " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<MySender> = true;\n"
+
+////////////////////////////////////////////////////////////////////////////////
+#define STDEXEC_ERROR_SENDER_ADAPTOR_CLOSURE_IS_NOT_A_SENDER                                     \
+  "\n"                                                                                             \
+  "\n"                                                                                             \
+  "The given type is a sender adaptor closure, not a sender. A closure such as\n"                  \
+  "'" STDEXEC_PP_STRINGIZE(STDEXEC) "::then(fn)' needs a sender to adapt.\n"                       \
+  "\n"                                                                                             \
+  "Either pipe a sender into it:\n"                                                                \
+  "\n"                                                                                             \
+  "     auto sndr2 = sndr | " STDEXEC_PP_STRINGIZE(STDEXEC) "::then(fn);\n"                        \
+  "\n"                                                                                             \
+  "or pass the sender as the first argument:\n"                                                    \
+  "\n"                                                                                             \
+  "     auto sndr2 = " STDEXEC_PP_STRINGIZE(STDEXEC) "::then(sndr, fn);\n"
 
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                                       \

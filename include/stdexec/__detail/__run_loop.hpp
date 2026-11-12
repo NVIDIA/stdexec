@@ -41,9 +41,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // run_loop
   namespace __run_loop
   {
@@ -67,10 +68,24 @@ namespace STDEXEC
           __queue_.wait_for_item();
           __execute_all();
         }
-        // drain the queue, taking care to execute any tasks that get added while
-        // executing the remaining tasks (also wait for other tasks that might still be in flight):
-        while (__execute_all() || __task_count_.load(__std::memory_order_acquire) > 0)
-          ;
+        // drain the queue, taking care to execute any tasks that get added
+        // while executing the remaining tasks (also wait for other tasks that
+        // might still be in flight):
+        while (true)
+        {
+          if (__execute_all())
+          {
+            continue;
+          }
+
+          if (__task_count_.load(__std::memory_order_acquire) == 0)
+          {
+            break;
+          }
+
+          // Another thread still has work in flight. Let it make progress.
+          std::this_thread::yield();
+        }
       }
 
       STDEXEC_ATTRIBUTE(host, device)
@@ -83,16 +98,17 @@ namespace STDEXEC
         __task_count_.fetch_add(2, __std::memory_order_release);
         if (!__finishing_.exchange(true, __std::memory_order_acq_rel))
         {
-          // push an empty work item to the queue to wake up the consuming thread
-          // and let it finish.
-          // The count will be decremented once the tasks executes.
+          // push an empty work item to the queue to wake up the consuming
+          // thread and let it finish. The count will be decremented once the
+          // tasks executes.
           __queue_.push(&__noop_task);
-          // If the task got pushed, simply subtract one again, the other decrement
-          // happens when the noop task got executed.
+          // If the task got pushed, simply subtract one again, the other
+          // decrement happens when the noop task got executed.
           __task_count_.fetch_sub(1, __std::memory_order_release);
           return;
         }
-        // We are done finishing. Decrement the count by two, which signals final completion.
+        // We are done finishing. Decrement the count by two, which signals
+        // final completion.
         __task_count_.fetch_sub(2, __std::memory_order_release);
       }
 
@@ -350,8 +366,8 @@ namespace STDEXEC
     };
   }  // namespace __run_loop
 
-  // A run_loop with an empty environment. This is a struct instead of a type alias to give
-  // it a simpler type name that is easier to read in diagnostics.
+  // A run_loop with an empty environment. This is a struct instead of a type
+  // alias to give it a simpler type name that is easier to read in diagnostics.
   STDEXEC_MODULE_EXPORT
   struct run_loop : __run_loop::__basic_run_loop<run_loop, env<>>
   {

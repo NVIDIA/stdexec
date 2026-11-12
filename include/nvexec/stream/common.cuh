@@ -104,7 +104,7 @@ namespace nv::execution
 
     template <class Sender, class Env>
     concept stream_completing_sender =
-      sender<Sender>
+      sender_in<Sender, Env>
       && gpu_stream_scheduler<
         __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
         Env>;
@@ -130,7 +130,7 @@ namespace nv::execution
       return __not_a_sender<_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
                             _WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
                             _WHERE_(_IN_ALGORITHM_, Tag),
-                            _WITH_PRETTY_SENDER_<Sender>,
+                            _WITH_SENDER_<Sender>,
                             _WITH_ENVIRONMENT_(Env)>{};
     }
   }  // namespace _strm
@@ -358,7 +358,13 @@ namespace nv::execution
       {
         if (!borrows_stream)
         {
-          std::tie(own_stream_, status_) = context_.borrow_stream();
+          cudaStream_t stream{};
+          std::tie(stream, status_) = context_.borrow_stream();
+
+          if (status_ == cudaSuccess)
+          {
+            own_stream_ = stream;
+          }
         }
       }
 
@@ -454,13 +460,13 @@ namespace nv::execution
     template <class Sender>
     struct stream_sender_attrs
     {
-      template <__forwarding_query Query>
-        requires __queryable_with<env_of_t<Sender>, Query>
+      template <class _Env2 = env_of_t<Sender>, __forwarding_query Query>
+        requires __queryable_with<_Env2, Query>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<env_of_t<Sender>, Query>)
-        -> __query_result_t<env_of_t<Sender>, Query>
+      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<_Env2, Query>)
+        -> __query_result_t<_Env2, Query>
       {
-        return STDEXEC::__query<Query>()(STDEXEC::get_env(*child_));
+        return STDEXEC::get_env(*child_).query(Query());
       }
 
       Sender const * child_{};
@@ -663,7 +669,7 @@ namespace nv::execution
 
       opstate_base(OuterReceiver rcvr, context ctx)
         : ctx_(ctx)
-        , rcvr_(rcvr)
+        , rcvr_(static_cast<OuterReceiver&&>(rcvr))
         , stream_provider_(borrows_stream, ctx)
       {}
 
@@ -689,6 +695,13 @@ namespace nv::execution
       auto get_stream() const -> cudaStream_t
       {
         return get_stream_provider()->own_stream_.value();
+      }
+
+      // Owner of get_stream(); tasks using that stream must be queued on its hub.
+      [[nodiscard]]
+      auto get_stream_context() const -> context
+      {
+        return get_stream_provider()->context_;
       }
 
       template <class Type>
@@ -844,18 +857,20 @@ namespace nv::execution
         : base_t(static_cast<OuterReceiver&&>(out_receiver), ctx)
         , storage_(host_allocate<variant_t>(this->stream_provider_.status_, ctx.pinned_resource_))
         , task_(host_allocate<task_t>(this->stream_provider_.status_,
-                                      ctx.pinned_resource_,
+                                      this->get_stream_context().pinned_resource_,
                                       receiver_provider(*this),
                                       storage_.get(),
                                       this->get_stream(),
-                                      ctx.pinned_resource_)
+                                      this->get_stream_context().pinned_resource_)
                   .release())
         , env_(host_allocate<env_t>(this->stream_provider_.status_,
                                     ctx.pinned_resource_,
                                     this->make_env()))
-        , inner_op_{connect(
-            static_cast<CvSender&&>(sender),
-            stream_enqueue_receiver_t{env_.get(), storage_.get(), task_, ctx.hub_->producer()})}
+        , inner_op_{connect(static_cast<CvSender&&>(sender),
+                            stream_enqueue_receiver_t{env_.get(),
+                                                      storage_.get(),
+                                                      task_,
+                                                      this->get_stream_context().hub_->producer()})}
       {
         if (this->stream_provider_.status_ == cudaSuccess)
         {
@@ -1008,11 +1023,70 @@ namespace nv::execution
     using __f = STDEXEC::__msize_t<STDEXEC::__umax({std::size_t(0), Sizes::value...})>;
   };
 
+  // How a callable's result is kept in temporary storage: a reference result is
+  // kept as a pointer to the referenced object, anything else as a decayed value.
+  template <class Ty>
+  using _stored_result_t =
+    STDEXEC::__if_c<std::is_reference_v<Ty>, std::add_pointer_t<Ty>, STDEXEC::__decay_t<Ty>>;
+
+  template <class ResultT, class Fun, class... Args>
+  STDEXEC_ATTRIBUTE(host, device)
+  void _store_result(_stored_result_t<ResultT>* storage, Fun&& fun, Args&&... args)
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      new (storage) _stored_result_t<ResultT>(
+        __builtin_addressof(static_cast<Fun&&>(fun)(static_cast<Args&&>(args)...)));
+    }
+    else
+    {
+      new (storage)
+        _stored_result_t<ResultT>(static_cast<Fun&&>(fun)(static_cast<Args&&>(args)...));
+    }
+  }
+
+  // A referenced object's address is only known once the kernel has run, so a
+  // reference result needs the stream to finish before it can be passed on.
+  template <class ResultT>
+  auto _wait_for_result(cudaStream_t stream) noexcept -> cudaError_t
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      return STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
+    }
+    else
+    {
+      return cudaSuccess;
+    }
+  }
+
+  // The stored result as it is passed to the next receiver.
+  template <class ResultT>
+  auto _load_result(_stored_result_t<ResultT>* storage) noexcept -> decltype(auto)
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      return static_cast<ResultT>(**storage);
+    }
+    else
+    {
+      return std::move(*storage);
+    }
+  }
+
   struct result_size_for
   {
     template <class Fun, class... Args>
-    using __f = STDEXEC::__msize_t<_sizeof_v<STDEXEC::__call_result_t<Fun, Args...>>>;
+    using __f =
+      STDEXEC::__msize_t<_sizeof_v<_stored_result_t<STDEXEC::__call_result_t<Fun, Args...>>>>;
   };
+
+  using _cuda_error_completion_t =
+    STDEXEC::completion_signatures<STDEXEC::set_error_t(cudaError_t)>;
+
+  template <class _NoExcept>
+  using _cuda_error_completion_unless_t =
+    STDEXEC::__if<_NoExcept, STDEXEC::completion_signatures<>, _cuda_error_completion_t>;
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;

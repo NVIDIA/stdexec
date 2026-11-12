@@ -44,63 +44,101 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.on]
   struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_;
+  struct _ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_;
 
   namespace __on
   {
-    // If __is_root_env<_Env> is true, then this sender has no parent, so there is no need
-    // to restore the execution context. We can use the inline scheduler as the scheduler
-    // if __env does not have one.
-    template <class _Child, class _Env>
-    using __end_sched_t =
-      __if_c<__is_root_env<_Env>,
-             inline_scheduler,
-             __not_a_scheduler<_WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
-                               _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
-                               _WHERE_(_IN_ALGORITHM_, on_t),
-                               _WITH_PRETTY_SENDER_<_Child>,
-                               _WITH_ENVIRONMENT_(_Env)>>;
+    // The error for `sndr | on(sch)`: `on` has no form that takes only a
+    // scheduler.
+    template <class _Scheduler>
+    using __scheduler_only_error_t =
+      __mexception<_WHAT_(_INVALID_EXPRESSION_),
+                   _WHERE_(_IN_ALGORITHM_, on_t),
+                   _WHY_(_ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_),
+                   _WITH_SCHEDULER_(_Scheduler)>;
 
-    // This transform_sender overload handles the case where `on` was called like `on(sch,
-    // sndr)`. In this case, we find the old scheduler by looking in the receiver's
-    // environment.
-    template <class _Scheduler, class _Child, class _Env>
-      requires scheduler<_Scheduler>
-    STDEXEC_ATTRIBUTE(always_inline)
+    // If __is_root_env<_Env> is true, then this sender has no parent, so there
+    // is no need to restore the execution context. We can use the inline
+    // scheduler as the scheduler if __env does not have one.
+    template <class _Child, class _Env>
+    using __end_sched_t = __if_c<__is_root_env<_Env>, inline_scheduler, __not_a_scheduler<>>;
+
+    // This transform_sender overload handles the case where `on` was called
+    // like `on(sch, sndr)`. In this case, we find the old scheduler by looking
+    // in the receiver's environment.
+    template <scheduler _Scheduler, class _Child, class _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
     constexpr auto __transform_sender(_Scheduler&& __new_sched,
                                       _Child&&     __child,
                                       _Env const & __env)
     {
       auto __default_sched = __end_sched_t<_Child, _Env>();
-      auto __old_sched     = __with_default(get_start_scheduler, __default_sched)(__env);
+      auto __get_sched     = __with_default(get_start_scheduler, __default_sched);
+      auto __old_sched     = __get_sched(__env);
 
-      return continues_on(starts_on(static_cast<_Scheduler&&>(__new_sched),
-                                    static_cast<_Child&&>(__child)),
-                          std::move(__old_sched));
+      if constexpr (__same_as<decltype(__old_sched), __not_a_scheduler<>>)
+      {
+        return __not_a_sender<
+          _WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
+          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
+          _WHERE_(_IN_ALGORITHM_, on_t),
+          _WITH_SENDER_<_Child>,
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else
+      {
+        return continues_on(starts_on(static_cast<_Scheduler&&>(__new_sched),
+                                      static_cast<_Child&&>(__child)),
+                            std::move(__old_sched));
+      }
     }
 
-    // This transform_sender overload handles the case where `on` was called like `sndr |
-    // on(sch, clsur)` or `on(sndr, sch, clsur)`. In this case, __child is a predecessor
-    // sender, so the scheduler we want to restore is the completion scheduler of __child.
+    // This transform_sender overload handles the case where `on` was called
+    // like `sndr | on(sch, clsur)` or `on(sndr, sch, clsur)`. In this case,
+    // __child is a predecessor sender, so the scheduler we want to restore is
+    // the completion scheduler of __child.
     template <class _Data, class _Child, class _Env>
-      requires(!scheduler<_Data>)
-    STDEXEC_ATTRIBUTE(always_inline)
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
     constexpr auto __transform_sender(_Data&& __data, _Child&& __child, _Env const & __env)
     {
       auto& [__new_sched, __clsur] = __data;
       auto __default_sched         = __end_sched_t<_Child, _Env>();
       auto __get_sched = __with_default(get_completion_scheduler<set_value_t>, __default_sched);
-      auto __old_sched = __get_sched(get_env(__child), __env);
+      auto __old_sched = __get_sched(STDEXEC::get_env(__child), __env);
 
-      return continues_on(STDEXEC::__forward_like<_Data>(__clsur)(
-                            continues_on(static_cast<_Child&&>(__child),
-                                         STDEXEC::__forward_like<_Data>(__new_sched))),
-                          std::move(__old_sched));
+      if constexpr (__same_as<decltype(__old_sched), __not_a_scheduler<>>)
+      {
+        return __not_a_sender<
+          _WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
+          _WHY_(_THE_PREDECESSOR_SENDER_DOES_NOT_KNOW_THE_SCHEDULER_ON_WHICH_IT_WILL_COMPLETE_),
+          _WHERE_(_IN_ALGORITHM_, on_t),
+          _WITH_SENDER_<_Child>,
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else
+      {
+        return continues_on(STDEXEC::__forward_like<_Data>(__clsur)(
+                              continues_on(static_cast<_Child&&>(__child),
+                                           STDEXEC::__forward_like<_Data>(__new_sched))),
+                            std::move(__old_sched));
+      }
     }
+
+    template <class _Data, class _Child, class _Env>
+    using __transform_sender_t = decltype(__on::__transform_sender(__declval<_Data const &>(),
+                                                                   __declval<_Child const &>(),
+                                                                   __declval<_Env>()));
+
+    template <class _Data, class _Child, class _Env>
+    concept __has_known_scheduler =
+      (scheduler<_Data> && __callable<get_start_scheduler_t, _Env const &>)
+      || (!scheduler<_Data> && __has_completion_scheduler_for<set_value_t, _Child, _Env const &>);
 
     template <class _Child>
     struct __attrs_base
@@ -109,88 +147,49 @@ namespace STDEXEC
         requires(!__completion_query<_Query>)
              && __queryable_with<env_of_t<_Child>, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Child>, _Query, _Args...>)
-          -> __query_result_t<env_of_t<_Child>, _Query, _Args...>
+      constexpr auto query(_Query, _Args&&... __args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Child>, _Query, _Args...>) -> decltype(auto)
       {
-        return __query(STDEXEC::get_env(__child_), static_cast<_Args&&>(__args)...);
+        return STDEXEC::get_env(__child_).query(_Query(), static_cast<_Args&&>(__args)...);
       }
 
       _Child const & __child_;
     };
 
-    template <class _Child, class _Scheduler, class... _Closure>
-    struct __attrs;
-
-    template <class _Child, class _Scheduler, class _Closure>
-    struct __attrs<_Child, _Scheduler, _Closure> : __attrs_base<_Child>
+    template <class _Child, class _Data>
+    struct __attrs : __attrs_base<_Child>
     {
-      using __trnsfr_sndr_t  = __result_of<continues_on, __sender_proxy<_Child const>, _Scheduler>;
-      using __clsur_result_t = __call_result_t<_Closure const &, __trnsfr_sndr_t>;
       template <class _Env>
-      using __old_sched_t =
-        __query_result_t<env_of_t<_Child>, get_completion_scheduler_t<set_value_t>, _Env>;
-      template <class _Env>
-      using __attrs_t = __trnsfr::__attrs<__old_sched_t<_Env>, __clsur_result_t>;
+      using __attrs_t = env_of_t<__transform_sender_t<_Data, __sender_proxy<_Child const>, _Env>>;
       using __attrs_base<_Child>::query;
 
-      explicit constexpr __attrs(_Child const &   __child,
-                                 _Scheduler       __sched,
-                                 _Closure const & __clsur)
-        : __attrs_base<_Child>{__child}
-        , __clsur_result_(__clsur(continues_on(__sender_proxy{__child}, std::move(__sched))))
-      {}
-
-      template <class _Query, class _Env>
-        requires __completion_query<_Query>  //
-              && __queryable_with<env_of_t<_Child>, get_completion_scheduler_t<set_value_t>, _Env>
+      template <__completion_query _Query, class _Env>
+        requires __has_known_scheduler<_Data, _Child const, _Env>
               && __queryable_with<__attrs_t<_Env>, _Query, _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Env&& __env) const noexcept
+      constexpr auto query(_Query, _Env const & __env) const noexcept
         -> __query_result_t<__attrs_t<_Env>, _Query, _Env>
       {
-        auto&& __child_attrs = STDEXEC::get_env(this->__child_);
-        auto   __old_sch     = get_completion_scheduler<set_value_t>(__child_attrs, __env);
-        auto   __attrs       = __attrs_t<_Env>(__old_sch, STDEXEC::get_env(__clsur_result_));
-        return __query(__attrs, static_cast<_Env&&>(__env));
+        auto __tfx_sndr = __on::__transform_sender(__data_, __sender_proxy(this->__child_), __env);
+        return STDEXEC::get_env(__tfx_sndr).query(_Query(), __env);
       }
 
-      __clsur_result_t __clsur_result_;
+      _Data const & __data_;
     };
 
-    template <class _Child, class _Scheduler>
-    struct __attrs<_Child, _Scheduler> : __attrs_base<_Child>
-    {
-      using __child_t       = __result_of<starts_on, _Scheduler, _Child>;
-      using __child_attrs_t = __starts_on::__attrs<_Scheduler, _Child>;
-      template <class _Env>
-      using __attrs_t = __trnsfr::__attrs<__result_of<get_start_scheduler, _Env>, __child_t>;
-      using __attrs_base<_Child>::query;
-
-      template <__completion_query _Query, __queryable_with<get_start_scheduler_t> _Env>
-        requires __queryable_with<__attrs_t<_Env>, _Query, _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Env&& __env) const noexcept
-        -> __query_result_t<__attrs_t<_Env>, _Query, _Env>
-      {
-        auto&& __child_attrs = STDEXEC::get_env(this->__child_);
-        auto   __old_sch     = get_start_scheduler(__env);
-        auto   __attrs       = __attrs_t<_Env>(__old_sch, __child_attrs_t(__sched_, __child_attrs));
-        return __query(__attrs, static_cast<_Env&&>(__env));
-      }
-
-      _Scheduler __sched_;
-    };
+    template <class _Child, class _Data>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    __attrs(_Child const &, _Data const &) -> __attrs<_Child, _Data>;
   }  // namespace __on
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! @brief A sender adaptor that runs work on a different scheduler and then
   //!        transfers execution *back* to the original scheduler.
   //!
   //! @c on is the "go there, do work, come back" scheduling adaptor. It has
   //! two distinct shapes:
   //!
-  //! 1. **Whole-sender form:** <tt>on(sched, sndr)</tt> — runs the entirety
+  //! 1. **Whole-sender form:** `on(sched, sndr)` — runs the entirety
   //!    of @c sndr on @c sched's execution resource. When @c sndr completes,
   //!    execution transfers back to the scheduler that started the operation
   //!    (the "start scheduler"), and the completion is delivered there.
@@ -198,7 +197,7 @@ namespace STDEXEC
   //!    This is the principal difference between @c on and
   //!    @ref starts_on_t — @c starts_on stays on @c sched; @c on returns home.
   //!
-  //! 2. **Closure-insertion form:** <tt>on(sndr, sched, closure)</tt> — runs
+  //! 2. **Closure-insertion form:** `on(sndr, sched, closure)` — runs
   //!    @c sndr on its *current* scheduler, then transfers to @c sched,
   //!    applies @c closure (a sender-adaptor closure) to the result, runs
   //!    *that* on @c sched, and finally transfers back to the original
@@ -207,7 +206,7 @@ namespace STDEXEC
   //!    permanently changing context.
   //!
   //!    This form also has a pipe shorthand:
-  //!    <tt>sndr | on(sched, closure)</tt>.
+  //!    `sndr | on(sched, closure)`.
   //!
   //! @code{.cpp}
   //! // Form 1: run sndr on sched, return to start scheduler.
@@ -238,12 +237,12 @@ namespace STDEXEC
   //!
   //! **Completion signatures.**
   //!
-  //! Form 1 (<tt>on(sched, sndr)</tt>): essentially @c sndr's completion
+  //! Form 1 (`on(sched, sndr)`): essentially @c sndr's completion
   //! signatures, with possible additional @c set_error_t completions from
   //! the two scheduling hops.
   //!
-  //! Form 2 (<tt>on(sndr, sched, closure)</tt>): the completion signatures
-  //! of <tt>closure(continues_on(sndr, sched))</tt> after the final transfer
+  //! Form 2 (`on(sndr, sched, closure)`): the completion signatures
+  //! of `closure(continues_on(sndr, sched))` after the final transfer
   //! back, again with possible additional @c set_error_t completions from
   //! the scheduling hops.
   //!
@@ -275,9 +274,11 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::schedule       — the primitive that produces a schedule-sender
+  //! @see stdexec::schedule       — the primitive that produces a
+  //!                                schedule-sender
   //! @see stdexec::starts_on      — begin on a scheduler and *stay* there
-  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender completes
+  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender
+  //!                                completes
   struct on_t
   {
     //! @brief Form 1: run @c __sndr on @c __sched, then return to the start
@@ -299,7 +300,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+      return __sexpr{on_t(), static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Form 2: run @c __sndr in place, hop to @c __sched, apply
@@ -313,24 +314,26 @@ namespace STDEXEC
     //! @param __sndr      The predecessor sender (runs on its own scheduler).
     //! @param __sched     The scheduler to transition to before applying
     //!                    @c __clsur.
-    //! @param __clsur     The adaptor closure (e.g. <tt>then(...)</tt>,
-    //!                    <tt>bulk(...)</tt>) to apply on @c __sched.
+    //! @param __clsur     The adaptor closure (e.g. `then(...)`,
+    //!                    `bulk(...)`) to apply on @c __sched.
     //!
     //! @returns A sender that completes on the *original* completion
     //!          scheduler of @c __sndr, with the result of
-    //!          <tt>__clsur(continues_on(__sndr, __sched))</tt>.
+    //!          `__clsur(continues_on(__sndr, __sched))`.
     template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
     constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
       -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(__tuple{static_cast<_Scheduler&&>(__sched),
-                                        static_cast<_Closure&&>(__clsur)},
-                                static_cast<_Sender&&>(__sndr));
+      return __sexpr{
+        on_t(),
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+        static_cast<_Sender&&>(__sndr)
+      };
     }
 
     //! @brief Pipe form of Form 2: construct a sender-adaptor closure that,
     //!        when applied to a sender, produces
-    //!        <tt>on(sndr, __sched, __clsur)</tt>.
+    //!        `on(sndr, __sched, __clsur)`.
     //!
     //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
     //! @tparam _Closure   A sender-adaptor closure.
@@ -346,6 +349,12 @@ namespace STDEXEC
       return __closure(*this, static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur));
     }
 
+    // For issuing a meaningful diagnostic for the erroneous `sndr | on(sch)`.
+    // The constraint is never satisfied, so this overload is never selected.
+    template <scheduler _Scheduler>
+      requires __ok<__on::__scheduler_only_error_t<_Scheduler>>
+    auto operator()(_Scheduler&&) const;
+
     template <__decay_copyable _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
     static auto transform_sender(set_value_t, _Sender&& __sndr, _Env&& __env)
@@ -360,14 +369,13 @@ namespace STDEXEC
     template <class _Sender, class _Env>
     static auto transform_sender(set_value_t, _Sender&&, _Env&&)
     {
-      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
-                            _WITH_PRETTY_SENDER_<_Sender>>{};
+      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_), _WITH_SENDER_<_Sender>>{};
     }
   };
 
   //! @brief The customization point object for the @c on sender adaptor.
   //!
-  //! @c on is an instance of @ref on_t. See @ref on_t for the full
+  //! @c on is an instance of @c on_t. See @ref on_t for the full
   //! description, the distinction between @c on, @c starts_on, and
   //! @c continues_on, and usage examples.
   //!
@@ -378,24 +386,9 @@ namespace STDEXEC
   struct __sexpr_impl<on_t> : __sexpr_defaults
   {
     static constexpr auto __get_attrs =  //
-      []<class _Data, class _Child>(__ignore, _Data const & __data, _Child const & __child) noexcept
+      [](__ignore, auto const & __data, auto const & __child) noexcept
     {
-      if constexpr (scheduler<_Data>)
-      {
-        // This is the case where `on` was called like `on(sch, sndr)`, which is equivalent
-        // to `continues_on(starts_on(sndr, sch), old_sch)`.
-        using __attrs_t = __on::__attrs<_Child, _Data>;
-        return __attrs_t{__child, __data};
-      }
-      else
-      {
-        // This is the case where `on` was called like `sndr | on(sch, clsur)` or
-        // `on(sndr, sch, clsur)`, which is equivalent to
-        // `continues_on(clsur(continues_on(sndr, sch)), old_sch)`.
-        auto const& [__sched, __clsur] = __data;
-        using __attrs_t = __on::__attrs<_Child, decltype(__sched), decltype(__clsur)>;
-        return __attrs_t{__child, __sched, __clsur};
-      }
+      return __on::__attrs{__child, __data};
     };
 
     template <class _Sender, class _Env>

@@ -21,7 +21,6 @@
 
 #include <bit>
 #include <cstddef>
-#include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_partial_spec_arg_list)
@@ -273,7 +272,8 @@ namespace experimental::execution
           swap_with_left_child(parent, cur);
         }
         child1_parent_ptr = &(parent->*Prev);
-        // The last leaf node won't percolate up beyond the top node，so the grand_parent won't be null.
+        // The last leaf node won't percolate up beyond the top node，so the
+        // grand_parent won't be null.
         if (grand_parent->*Right == parent)
         {
           grand_parent->*Right = cur;

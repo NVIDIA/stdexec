@@ -42,9 +42,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.into.variant]
   namespace __into_variant
   {
@@ -108,7 +109,7 @@ namespace STDEXEC
             {},
             completion_signatures<set_value_t(__variant_t), set_error_t(std::exception_ptr)>());
         }
-      };
+      }
     };
   }  // namespace __into_variant
 
@@ -117,8 +118,8 @@ namespace STDEXEC
   //!        @c std::variant-of-tuples value completion.
   //!
   //! @c into_variant takes a sender whose @c set_value_t completion can be
-  //! one of several shapes — e.g. <tt>set_value_t(int)</tt> *or*
-  //! <tt>set_value_t(std::string)</tt> — and produces a sender that always
+  //! one of several shapes — e.g. `set_value_t(int)` *or*
+  //! `set_value_t(std::string)` — and produces a sender that always
   //! value-completes with exactly one shape: a single
   //! `std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>` datum
   //! whose alternatives match the input's possible value completions.
@@ -127,11 +128,13 @@ namespace STDEXEC
   //! any sender into the *single-value-completion* category that
   //! @c when_all and @c sync_wait require.
   //!
-  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //! Since it takes only one argument, @c into_variant is a sender adaptor
+  //! closure object ([exec.adapt.obj]/4), so it can be piped directly:
   //!
   //! @code{.cpp}
   //! auto s1 = stdexec::into_variant(sndr);    // direct invocation
-  //! auto s2 = sndr | stdexec::into_variant(); // pipe syntax (no args)
+  //! auto s2 = sndr | stdexec::into_variant;   // pipe syntax
+  //! auto s3 = sndr | stdexec::into_variant(); // also accepted
   //! @endcode
   //!
   //! **Completion signatures.**
@@ -145,13 +148,14 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged
   //! @endcode
   //!
-  //! the sender produced by <tt>into_variant(sndr)</tt> has completion
+  //! the sender produced by `into_variant(sndr)` has completion
   //! signatures
   //!
   //! @code{.cpp}
   //! set_value_t(std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>)
   //! set_error_t(Es)...               // unchanged
-  //! set_error_t(std::exception_ptr)  // added if variant construction may throw
+  //! set_error_t(std::exception_ptr)  // added if variant construction may
+  //!                                  // throw
   //! set_stopped_t()                  // unchanged
   //! @endcode
   //!
@@ -182,10 +186,12 @@ namespace STDEXEC
   //! std::visit([](auto&& tup) { use(tup); }, v);
   //! @endcode
   //!
-  //! @see stdexec::when_all_with_variant  — applies @c into_variant to each input internally
+  //! @see stdexec::when_all_with_variant  — applies @c into_variant to each
+  //!                                        input internally
   //! @see stdexec::sync_wait_with_variant — variant-aware top-level wait
-  //! @see stdexec::sync_wait              — requires a single value-completion shape
-  struct into_variant_t
+  //! @see stdexec::sync_wait              — requires a single value-completion
+  //!                                        shape
+  struct into_variant_t : sender_adaptor_closure<into_variant_t>
   {
     //! @brief Construct a sender that value-completes with a
     //!        @c std::variant of the possible value-completion tuples of
@@ -200,27 +206,24 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr));
+      return __sexpr{into_variant_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a
-    //!        sender, produces <tt>into_variant(sndr)</tt>.
+    //! @brief Returns @c *this, so that the older spelling
+    //!        `sndr | into_variant()` keeps working.
     //!
-    //! This overload enables the pipe syntax:
-    //! <tt>sndr | into_variant()</tt> is equivalent to
-    //! <tt>into_variant(sndr)</tt>.
-    //!
-    //! @returns A sender-adaptor closure object.
+    //! @returns A copy of this sender adaptor closure object.
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto operator()() const noexcept
+    constexpr auto operator()() const noexcept -> into_variant_t
     {
-      return __closure(*this);
+      return *this;
     }
   };
 
-  //! @brief The customization point object for the @c into_variant sender adaptor.
+  //! @brief The customization point object for the @c into_variant sender
+  //! adaptor.
   //!
-  //! @c into_variant is an instance of @ref into_variant_t. See
+  //! @c into_variant is an instance of @c into_variant_t. See
   //! @ref into_variant_t for the full description and a usage example.
   //!
   //! @hideinitializer

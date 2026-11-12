@@ -20,7 +20,7 @@
 #include <exec/receiver_adaptor.hpp>
 #include <stdexec/execution.hpp>
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // then algorithm:
 template <class R, class F>
 class _then_receiver : public exec::receiver_adaptor<_then_receiver<R, F>, R>
@@ -36,7 +36,8 @@ class _then_receiver : public exec::receiver_adaptor<_then_receiver<R, F>, R>
     , f_(std::move(f))
   {}
 
-  // Customize set_value by invoking the callable and passing the result to the inner receiver
+  // Customize set_value by invoking the callable and passing the result to the
+  // inner receiver
   template <class... As>
     requires stdexec::receiver_of<R, _completions<As...>>
   void set_value(As&&... as) && noexcept
@@ -90,6 +91,7 @@ struct _then_sender
                             _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(f_)});
   }
 
+  [[nodiscard]]
   auto get_env() const noexcept -> decltype(auto)
   {
     return stdexec::get_env(s_);

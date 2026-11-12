@@ -40,7 +40,7 @@ namespace
   template <class From, class To>
   concept _decays_to = std::same_as<std::decay_t<From>, To>;
 
-  ///////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // retry algorithm:
 
   // _conv needed so we can emplace construct non-movable types into
@@ -71,7 +71,8 @@ namespace
     R            r_;
   };
 
-  // pass through all customizations except set_error, which retries the operation.
+  // pass through all customizations except set_error, which retries the
+  // operation.
   template <class S, class R>
   struct _retry_receiver
   {
@@ -83,6 +84,7 @@ namespace
       return static_cast<R&&>(o_->r_);
     }
 
+    [[nodiscard]]
     auto base() const & noexcept -> R const &
     {
       return o_->r_;
@@ -188,6 +190,7 @@ namespace
       return {static_cast<S&&>(s_), static_cast<R&&>(r)};
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> STDEXEC::env_of_t<S>
     {
       return STDEXEC::get_env(s_);

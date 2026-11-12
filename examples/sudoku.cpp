@@ -14,16 +14,17 @@
     Copyright 2026 NVIDIA Corp.
 */
 
-// This sudoku code was originally taken from TBB examples/thread_group/sudoku. The TBB
-// example leaks: https://github.com/oneapi-src/oneTBB/issues/568. The code was modified
-// by Kirk Shoop to use libunifex instead of TBB and to remove the leaks. The code was
-// later modified by David Olsen to use stdexec instead of libunifex to be a test in the
-// NVHPC test suite for stdexec.
+// This sudoku code was originally taken from TBB examples/thread_group/sudoku.
+// The TBB example leaks: https://github.com/oneapi-src/oneTBB/issues/568. The
+// code was modified by Kirk Shoop to use libunifex instead of TBB and to remove
+// the leaks. The code was later modified by David Olsen to use stdexec instead
+// of libunifex to be a test in the NVHPC test suite for stdexec.
 
 #include <cstdio>
 #include <cstdlib>
 
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <chrono>
 #include <string_view>
@@ -221,67 +222,13 @@ bool examine_potentials(board_element *b, bool *progress)
   {
     if (b[i].solved_element == 0 && b[i].potential_set == 0)  // empty set
       return false;
-    switch (b[i].potential_set)
+    // Check if potential_set is a power of 2 (only one bit set)
+    if (std::popcount(b[i].potential_set) == 1)
     {
-    case 1:
-    {
-      b[i].solved_element = 1;
+      // It's a singleton - solve it countr_zero gives the bit position
+      // (0-indexed), add 1 to get the element value
+      b[i].solved_element = std::countr_zero(b[i].potential_set) + 1;
       singletons          = true;
-      break;
-    }
-    case 2:
-    {
-      b[i].solved_element = 2;
-      singletons          = true;
-      break;
-    }
-    case 4:
-    {
-      b[i].solved_element = 3;
-      singletons          = true;
-      break;
-    }
-    case 8:
-    {
-      b[i].solved_element = 4;
-      singletons          = true;
-      break;
-    }
-    case 16:
-    {
-      b[i].solved_element = 5;
-      singletons          = true;
-      break;
-    }
-    case 32:
-    {
-      b[i].solved_element = 6;
-      singletons          = true;
-      break;
-    }
-    case 64:
-    {
-      b[i].solved_element = 7;
-      singletons          = true;
-      break;
-    }
-    case 128:
-    {
-      b[i].solved_element = 8;
-      singletons          = true;
-      break;
-    }
-    case 256:
-    {
-      b[i].solved_element = 9;
-      singletons          = true;
-      break;
-    }
-    default:
-    {
-      assert(!"potential set is not a power of 2");
-      break;
-    }
     }
   }
   *progress = singletons;
@@ -418,7 +365,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-      printf("unrecognized argument: -> %.*s", (int) arg.size(), arg.data());
+      printf("unrecognized argument: -> %.*s", static_cast<int>(arg.size()), arg.data());
     }
   }
 
@@ -449,10 +396,9 @@ int main(int argc, char *argv[])
     fflush(stdout);
   };
 
-  for (int iv = 0; iv < 4; ++iv)
+  for (auto init_values: all_init_values)
   {
-    unsigned short const *init_values = all_init_values[iv];
-    find_one                          = false;
+    find_one = false;
     one_solve(init_values);
     find_one = true;
     one_solve(init_values);

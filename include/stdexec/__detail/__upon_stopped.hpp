@@ -26,21 +26,22 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__basic_sender.hpp"
-#  include "__completion_signatures_of.hpp"
-#  include "__meta.hpp"
 #  include "__sender_adaptor_closure.hpp"
-#  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
+#  include "__sender_introspection.hpp"
+#  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
+#  include "__upon.hpp"
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
   namespace __upon_stopped
   {
-    struct __upon_stopped_impl : __sexpr_defaults
+    struct __impl : __sexpr_defaults
     {
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
@@ -51,31 +52,14 @@ namespace STDEXEC
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
           {},
           {},
-          __always{__set_value_from_t<__fn_t>()},
-          __eptr_completion_unless_t<__mbool<__nothrow_callable<__fn_t>>>());
-      };
+          __upon::__transform_completion<__fn_t, upon_stopped_t>());
+      }
 
-      static constexpr auto __complete =
-        []<class _Tag, class _State, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        if constexpr (__same_as<_Tag, set_stopped_t>)
-        {
-          STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
-                                    static_cast<_State&&>(__state).__data_,
-                                    static_cast<_Args&&>(__args)...);
-        }
-        else
-        {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-        }
-      };
+      static constexpr auto __complete = __upon::__complete<set_stopped_t>;
     };
   }  // namespace __upon_stopped
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that handles a predecessor sender's
   //!        stopped completion by invoking a nullary callable.
   //!
@@ -106,7 +90,7 @@ namespace STDEXEC
   //! set_stopped_t()                  // (must be present)
   //! @endcode
   //!
-  //! the sender produced by <tt>upon_stopped(sndr, f)</tt> has completion signatures
+  //! the sender produced by `upon_stopped(sndr, f)` has completion signatures
   //!
   //! @code{.cpp}
   //! set_value_t(Vs...)               // forwarded unchanged from sndr
@@ -154,9 +138,17 @@ namespace STDEXEC
   //!
   //! @see stdexec::then         — adapt the value channel
   //! @see stdexec::upon_error   — adapt the error channel
-  //! @see stdexec::let_stopped  — adapt the stopped channel with a sender-returning function
+  //! @see stdexec::let_stopped  — adapt the stopped channel with a
+  //!                              sender-returning function
   struct upon_stopped_t
   {
+    template <class _Fun, class _Sender>
+    struct __sender;
+
+    template <class _Fun, class _Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __sender(upon_stopped_t, _Fun, _Sender) -> __sender<_Fun, _Sender>;
+
     //! @brief Construct a sender that handles a stopped completion of @c __sndr
     //!        by invoking @c __fun and delivering its return value.
     //!
@@ -172,54 +164,68 @@ namespace STDEXEC
     //! @returns A sender that, when connected to a receiver and started, drives
     //!          @c __sndr and reacts to its @c set_stopped completion by
     //!          invoking @c __fun and forwarding the result via @c set_value.
-    //!          The value and error channels of @c __sndr are forwarded unchanged.
+    //!          The value and error channels of @c __sndr are forwarded
+    //!          unchanged.
     //!
     //! @pre @c __fun must be invocable with no arguments (the @c requires
     //!      clause enforces this). Otherwise the call is not viable.
     template <sender _Sender, __movable_value _Fun>
       requires __callable<_Fun>
-    auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
-    {
-      return __make_sexpr<upon_stopped_t>(static_cast<_Fun&&>(__fun),
-                                          static_cast<_Sender&&>(__sndr));
-    }
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const
+      noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto;
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a sender,
-    //!        produces <tt>upon_stopped(sndr, __fun)</tt>.
+    //! @brief Construct a sender-adaptor closure that, when applied to a
+    //!        sender, produces `upon_stopped(sndr, __fun)`.
     //!
-    //! This overload enables the pipe syntax: <tt>sndr | upon_stopped(__fun)</tt>
-    //! is equivalent to <tt>upon_stopped(sndr, __fun)</tt>.
+    //! This overload enables the pipe syntax: `sndr | upon_stopped(__fun)`
+    //! is equivalent to `upon_stopped(sndr, __fun)`.
     //!
     //! @tparam _Fun  A decayed, move-constructible, *nullary* callable type.
     //! @param __fun  The callable to invoke on the predecessor's stopped
     //!               completion when the closure is later applied to a sender.
     //!
-    //! @returns A sender-adaptor closure object that captures @c __fun by value.
-    //!          When piped against a sender @c sndr, it yields the sender
-    //!          <tt>upon_stopped(sndr, std::move(__fun))</tt>.
+    //! @returns A sender-adaptor closure object that captures @c __fun by
+    //!          value. When piped against a sender @c sndr, it yields the
+    //!          sender `upon_stopped(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
       requires __callable<_Fun>
-    STDEXEC_ATTRIBUTE(always_inline)
-    auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
     {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
 
-  //! @brief The customization point object for the @c upon_stopped sender adaptor.
+  template <>
+  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__impl
+  {};
+
+  template <class _Fun, class _Sender>
+  struct upon_stopped_t::__sender : __sexpr<upon_stopped_t, _Fun, _Sender>
+  {};
+
+  template <sender _Sender, __movable_value _Fun>
+    requires __callable<_Fun>
+  STDEXEC_ATTRIBUTE(host, device)
+  inline constexpr auto upon_stopped_t::operator()(_Sender && __sndr, _Fun __fun) const
+    noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto
+  {
+    return upon_stopped_t::__sender{upon_stopped_t(),
+                                    static_cast<_Fun&&>(__fun),
+                                    static_cast<_Sender&&>(__sndr)};
+  }
+
+  //! @brief The customization point object for the @c upon_stopped sender
+  //!        adaptor.
   //!
-  //! @c upon_stopped is an instance of @ref upon_stopped_t. See
+  //! @c upon_stopped is an instance of @c upon_stopped_t. See
   //! @ref upon_stopped_t for the full description, completion-signature
   //! transformation rules, exception and cancellation behavior, and a usage
   //! example.
   //!
   //! @hideinitializer
   inline constexpr upon_stopped_t upon_stopped{};
-
-  template <>
-  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__upon_stopped_impl
-  {};
-
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

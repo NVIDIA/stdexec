@@ -22,6 +22,11 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
+#  include <atomic>
+#  include <chrono>
+#  include <memory>
+#  include <optional>
+#  include <thread>
 #  include <type_traits>
 #endif
 
@@ -32,6 +37,26 @@ namespace
   {
     void operator()() && noexcept {}
   };
+
+  TEST_CASE("inplace_stop_callback exposes its callback type", "[stop_token]")
+  {
+    STATIC_REQUIRE(std::is_same_v<::STDEXEC::inplace_stop_callback<on_stop_request>::callback_type,
+                                  on_stop_request>);
+  }
+
+  struct pointer_on_stop_request
+  {
+    int* ptr;
+
+    void operator()() && noexcept {}
+  };
+
+  TEST_CASE("inplace_stop_callback adds at most four pointers to its callback", "[stop_token]")
+  {
+    // The list links share storage with the state used while the callback runs.
+    STATIC_REQUIRE(sizeof(::STDEXEC::inplace_stop_callback<pointer_on_stop_request>)
+                   <= sizeof(pointer_on_stop_request) + 4 * sizeof(void*));
+  }
 
   TEST_CASE("(un)stoppable_token correctly categorizes various standard stop token types",
             "[concepts]")
@@ -49,5 +74,151 @@ namespace
     STATIC_REQUIRE(std::is_same_v<::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
                                   std::stop_callback<on_stop_request>>);
 #endif
+  }
+
+  TEST_CASE("inplace_stop_callback supports class template argument deduction", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source   source;
+    ::STDEXEC::inplace_stop_callback cb{source.get_token(), on_stop_request{}};
+    STATIC_REQUIRE(std::is_same_v<decltype(cb), ::STDEXEC::inplace_stop_callback<on_stop_request>>);
+  }
+
+  struct stop_state;
+
+  struct destroy_on_stop
+  {
+    std::unique_ptr<stop_state>* state;
+
+    void operator()() noexcept;
+  };
+
+  struct stop_state
+  {
+    ::STDEXEC::inplace_stop_source                                   source;
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>> other;
+    std::optional<::STDEXEC::inplace_stop_callback<destroy_on_stop>> callback;
+  };
+
+  void destroy_on_stop::operator()() noexcept
+  {
+    state->reset();
+  }
+
+  TEST_CASE("a stop callback can destroy the inplace_stop_source", "[stop_token]")
+  {
+    auto state = std::make_unique<stop_state>();
+    state->other.emplace(state->source.get_token(), on_stop_request{});
+    state->callback.emplace(state->source.get_token(), destroy_on_stop{&state});
+
+    CHECK(state->source.request_stop());
+    CHECK(state == nullptr);
+  }
+
+  struct destroy_other_on_stop
+  {
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>>* other;
+
+    void operator()() noexcept
+    {
+      other->reset();
+    }
+  };
+
+  TEST_CASE("a stop callback can destroy a stop callback that already ran", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source                                         source;
+    std::optional<::STDEXEC::inplace_stop_callback<destroy_other_on_stop>> destroyer;
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>>       other;
+    // Callbacks run in reverse order of registration, so other has already run
+    // when destroyer destroys it.
+    destroyer.emplace(source.get_token(), destroy_other_on_stop{&other});
+    other.emplace(source.get_token(), on_stop_request{});
+
+    CHECK(source.request_stop());
+    CHECK(!other.has_value());
+  }
+
+  struct slow_state;
+
+  struct remove_and_sleep
+  {
+    slow_state*        state;
+    std::atomic<bool>* removed;
+
+    void operator()() noexcept;
+  };
+
+  struct slow_state
+  {
+    ::STDEXEC::inplace_stop_source                                    source;
+    std::optional<::STDEXEC::inplace_stop_callback<remove_and_sleep>> callback;
+  };
+
+  void remove_and_sleep::operator()() noexcept
+  {
+    // Like an operation that completes from inside its stop callback.
+    auto* removed_flag = removed;
+    state->callback.reset();
+    removed_flag->store(true);
+
+    // Keep request_stop() running while the main thread destroys the source.
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  TEST_CASE("inplace_stop_source destructor waits for request_stop on another thread",
+            "[stop_token]")
+  {
+    std::atomic<bool> removed{false};
+    auto              state = std::make_unique<slow_state>();
+    state->callback.emplace(state->source.get_token(),
+                            remove_and_sleep{.state = state.get(), .removed = &removed});
+
+    std::thread thread([source = &state->source] { source->request_stop(); });
+    while (!removed.load())
+      std::this_thread::yield();
+
+    state.reset();  // request_stop() is still running on the other thread
+    thread.join();
+  }
+
+  struct wait_then_finish
+  {
+    std::atomic<bool>* started;
+    std::atomic<bool>* destroying;
+    bool*              finished;
+
+    void operator()() noexcept
+    {
+      started->store(true);
+      while (!destroying->load())
+        std::this_thread::yield();
+
+      // Give the main thread time to start waiting in ~inplace_stop_callback().
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      *finished = true;
+    }
+  };
+
+  TEST_CASE("inplace_stop_callback destructor waits for the callback to finish on another thread",
+            "[stop_token]")
+  {
+    std::atomic<bool>                                                 started{false};
+    std::atomic<bool>                                                 destroying{false};
+    bool                                                              finished = false;
+    ::STDEXEC::inplace_stop_source                                    source;
+    std::optional<::STDEXEC::inplace_stop_callback<wait_then_finish>> callback;
+    callback.emplace(source.get_token(),
+                     wait_then_finish{.started    = &started,
+                                      .destroying = &destroying,
+                                      .finished   = &finished});
+
+    std::thread thread([&source] { source.request_stop(); });
+    while (!started.load())
+      std::this_thread::yield();
+
+    destroying.store(true);
+    callback.reset();  // the callback is still running on the other thread
+    CHECK(finished);
+    thread.join();
   }
 }  // namespace

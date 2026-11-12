@@ -51,7 +51,8 @@ namespace
                    }
                  });
 
-    // then won't complete until we set flag, so if the `start_detached` is blocking, we'll deadlock
+    // then won't complete until we set flag, so if the `start_detached` is
+    // blocking, we'll deadlock
     exec::start_detached(std::move(snd));
 
     cuda::atomic_ref<int, cuda::thread_scope_system> host_flag_ref(*host_flag);

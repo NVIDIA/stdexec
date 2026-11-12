@@ -100,9 +100,12 @@ namespace
     STATIC_REQUIRE(std::is_copy_assignable_v<exec::any_receiver_ref<Sigs>>);
     STATIC_REQUIRE(std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver const &>);
     STATIC_REQUIRE(!std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver &&>);
-    STATIC_REQUIRE(
-      !std::is_constructible_v<exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>,
-                               sink_receiver const &>);
+    using void_ref = exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>;
+    // void_ref names a deprecated partial specialization. Complete it here, inside this
+    // file's -Wdeprecated-declarations suppression; otherwise it is first completed inside
+    // libc++'s is_constructible_v, where the suppression doesn't apply.
+    static_assert(sizeof(void_ref) != 0);
+    STATIC_REQUIRE(!std::is_constructible_v<void_ref, sink_receiver const &>);
   }
 
   TEST_CASE("exec::any_receiver_ref is queryable", "[types][any_sender]")
@@ -153,8 +156,8 @@ namespace
     ref = error;
     ex::set_error(static_cast<receiver_ref &&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
-    // MSVC issues a warning about unreachable code in this block, hence the warning
-    // suppression at the top of the file.
+    // MSVC issues a warning about unreachable code in this block, hence the
+    // warning suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
 #endif
     // Check set stopped
@@ -469,6 +472,25 @@ namespace
     ex::start(do_check);
   }
 
+  TEST_CASE("any_sender - a declared query accepts an environment for which the query has a "
+            "default answer",
+            "[types][any_sender]")
+  {
+    using completions_t         = ex::completion_signatures<ex::set_value_t(bool)>;
+    constexpr auto domain_query = ex::get_domain.signature<ex::default_domain() noexcept>;
+
+    using sender = exec::any_receiver_ref<completions_t, domain_query>::any_sender<>;
+
+    // ex::env<> has no get_domain member, but ex::get_domain answers
+    // ex::default_domain for it
+    STATIC_REQUIRE(ex::sender_in<sender, ex::env<>>);
+
+    sender sndr = ex::read_env(ex::get_domain)
+                | ex::then([](ex::default_domain) noexcept { return true; });
+    auto [answered] = ex::sync_wait(std::move(sndr)).value();
+    CHECK(answered);
+  }
+
   TEST_CASE("any_sender - get_completion_signatures is constrained with respect to stop-token"
             "ex::receiver stop_token queries",
             "[types][any_sender]")
@@ -484,6 +506,41 @@ namespace
     STATIC_REQUIRE(requires {
       { ex::get_completion_signatures<sender, env>() } -> std::same_as<completions_t>;
     });
+  }
+
+  struct nothrow_address
+  {
+    operator void const *() const noexcept
+    {
+      return nullptr;
+    }
+  };
+
+  struct throwing_address
+  {
+    operator void const *() const
+    {
+      return nullptr;
+    }
+  };
+
+  TEST_CASE("any_sender - a noexcept query requires an answer that converts without throwing",
+            "[types][any_sender]")
+  {
+    using completions_t = ex::completion_signatures<ex::set_value_t()>;
+    using nothrow_env   = ex::prop<get_address_t, nothrow_address>;
+    using throwing_env  = ex::prop<get_address_t, throwing_address>;
+
+    using noexcept_sender =
+      exec::any_receiver_ref<completions_t,
+                             get_address.signature<void const *() noexcept>>::any_sender<>;
+    using sender =
+      exec::any_receiver_ref<completions_t, get_address.signature<void const *()>>::any_sender<>;
+
+    STATIC_REQUIRE(ex::sender_in<noexcept_sender, nothrow_env>);
+    STATIC_REQUIRE(!ex::sender_in<noexcept_sender, throwing_env>);
+    STATIC_REQUIRE(ex::sender_in<sender, nothrow_env>);
+    STATIC_REQUIRE(ex::sender_in<sender, throwing_env>);
   }
 
   TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]")
@@ -641,6 +698,8 @@ namespace
   // A scheduler that counts how many instances are extant.
   struct counting_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     static int count;
 
     counting_scheduler() noexcept
@@ -683,6 +742,7 @@ namespace
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
+      [[nodiscard]]
       auto connect(R r) const -> operation<R>
       {
         return {{}, static_cast<R &&>(r)};
@@ -730,8 +790,8 @@ namespace
     CHECK(counting_scheduler::count == 0);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                                any_scheduler
+  //////////////////////////////////////////////////////////////////////////////
+  // any_scheduler
 
   template <auto... Queries>
   using my_scheduler = any_sender_of<ex::set_value_t()>::any_scheduler<Queries...>;

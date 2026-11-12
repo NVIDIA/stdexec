@@ -51,7 +51,7 @@ namespace experimental::execution
         noexcept(STDEXEC::__nothrow_queryable_with<_Env, _OtherQuery, _Args...>)
           -> STDEXEC::__query_result_t<_Env, _OtherQuery, _Args...>
       {
-        return STDEXEC::__query<_OtherQuery>()(__env_, static_cast<_Args&&>(__args)...);
+        return __env_.query(_OtherQuery(), static_cast<_Args&&>(__args)...);
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
@@ -61,16 +61,19 @@ namespace experimental::execution
     struct __without_t
     {
       template <class _Env, class _Query>
-      constexpr auto operator()(_Env&& __env, _Query) const noexcept
+        requires STDEXEC::__queryable_with<_Env, _Query>
+      constexpr auto operator()(_Env&& __env, _Query) const
+        noexcept(STDEXEC::__nothrow_constructible_from<__without<_Env, _Query>, _Env>)
+          -> __without<_Env, _Query>
       {
-        if constexpr (STDEXEC::__queryable_with<_Env, _Query>)
-        {
-          return __without<_Env, _Query>{static_cast<_Env&&>(__env)};
-        }
-        else
-        {
-          return static_cast<_Env&&>(__env);
-        }
+        return __without<_Env, _Query>{static_cast<_Env&&>(__env)};
+      }
+
+      template <class _Env, class _Query>
+      constexpr auto operator()(_Env&& __env, _Query) const
+        noexcept(STDEXEC::__nothrow_move_constructible<_Env>) -> _Env
+      {
+        return static_cast<_Env&&>(__env);
       }
     };
 
@@ -177,8 +180,10 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class _Receiver>
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-        noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
+        noexcept(__nothrow_constructible_from<
+                 __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>,
+                 __default_t<env_of_t<_Receiver>>,
+                 _Receiver>) -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
         using __opstate_t = __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>;
         return __opstate_t{static_cast<_Self&&>(__self).__default_,

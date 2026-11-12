@@ -49,7 +49,8 @@ namespace
 
 namespace STDEXEC::parallel_scheduler_replacement
 {
-  // Should replace the function defined in __parallel_scheduler_default_impl_entry.hpp
+  // Should replace the function defined in
+  // __parallel_scheduler_default_impl_entry.hpp
   auto query_parallel_scheduler_backend()
     -> std::shared_ptr<STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend>
   {

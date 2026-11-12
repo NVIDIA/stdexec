@@ -1,0 +1,21 @@
+# Python packages needed to build stdexec's documentation locally.
+# This mirrors the install list in .github/workflows/gh-pages.yml; keep the
+# two in sync when adding or removing a documentation dependency.
+#
+# Install with:
+#   python3 -m pip install -r docs/requirements.txt
+#
+# System-level prerequisites (not installable via pip):
+#   doxygen    https://www.doxygen.nl/manual/install.html
+#   graphviz   https://graphviz.org/download/
+#
+# CMake finds these via find_package(Doxygen) and FindSphinx.cmake.
+
+sphinx
+sphinx-rtd-theme
+breathe
+sphinxcontrib-bibtex
+sphinx_copybutton
+IPython
+myst-parser
+nbsphinx

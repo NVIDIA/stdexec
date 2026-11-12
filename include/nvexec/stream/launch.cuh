@@ -19,6 +19,9 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+
+#include "../../exec/completion_signatures.hpp"
+
 #include <concepts>
 #include <cstddef>
 
@@ -106,34 +109,31 @@ namespace nv::execution
         }
       };
 
-      template <class Fun, class... Args>
-      using launch_error_t = __callable_error_t<launch_t, Fun, cudaStream_t, Args&...>;
-
-      template <class Fun, class... Args>
-      using _set_value_t =
-        __minvoke<__if_c<__callable<Fun, cudaStream_t, Args&...>,
-                         __mcompose<__q<completion_signatures>, __qf<set_value_t>>,
-                         __mbind_front_q<launch_error_t, Fun>>,
-                  Args...>;
-
-      template <class Fun, class CvSender, class... Env>
-      using completions_t =
-        __transform_completion_signatures_t<__completion_signatures_of_t<CvSender, Env...>,
-                                            completion_signatures<set_error_t(std::exception_ptr)>,
-                                            __mbind_front_q<_set_value_t, Fun>::template __f>;
+      template <class Fun>
+      constexpr auto get_value_cmplsig_transform()
+      {
+        return []<class... Args>()
+        {
+          if constexpr (__callable<Fun, cudaStream_t, Args&...>)
+          {
+            return completion_signatures<set_value_t(Args...)>();
+          }
+          else
+          {
+            return exec::throw_compile_time_error(
+              __callable_error_t<launch_t, Fun, cudaStream_t, Args&...>());
+          }
+        };
+      }
     }  // namespace _launch
 
     template <class Sender, class Fun>
     struct launch_sender : stream_sender_base
     {
-      template <class Self, class... Env>
-      using completions_t = _launch::completions_t<Fun, __copy_cvref_t<Self, Sender>, Env...>;
-
       template <class Receiver>
       using receiver_t = _launch::receiver<Receiver, Fun>;
 
       template <__decays_to<launch_sender> Self, STDEXEC::receiver Receiver>
-        requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
       {
@@ -141,14 +141,20 @@ namespace nv::execution
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
           [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-          { return receiver_t<Receiver>(stream_provider, self.fun_, self.params_); });
+          {
+            return receiver_t<Receiver>(stream_provider,
+                                        static_cast<Self&&>(self).fun_,
+                                        self.params_);
+          });
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<launch_sender> Self, class... Env>
-      static consteval auto get_completion_signatures() -> completions_t<Self, Env...>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          _launch::get_value_cmplsig_transform<Fun>());
       }
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender>
@@ -200,12 +206,5 @@ namespace nv::execution
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Fun>
-  extern __mtype<nvexec::_strm::launch_sender<__demangle_t<Sender>, Fun>>
-    __demangle_v<nvexec::_strm::launch_sender<Sender, Fun>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

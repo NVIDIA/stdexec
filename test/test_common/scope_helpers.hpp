@@ -35,7 +35,8 @@ namespace ex = STDEXEC;
 
 namespace
 {
-  // a sender adaptor that prepends the provided environment onto the provided sender's environment
+  // a sender adaptor that prepends the provided environment onto the provided
+  // sender's environment
   struct with_attrs_t
   {
     template <ex::sender Sender, class Env>
@@ -43,7 +44,7 @@ namespace
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>
                && std::is_nothrow_constructible_v<std::remove_cvref_t<Env>, Env>)
     {
-      return ex::__make_sexpr<with_attrs_t>(std::forward<Env>(env), std::forward<Sender>(sender));
+      return ex::__sexpr{with_attrs_t(), std::forward<Env>(env), std::forward<Sender>(sender)};
     }
   };
 
@@ -77,7 +78,7 @@ namespace
 
     counting_resource(counting_resource&&) = delete;
 
-    ~counting_resource() = default;
+    ~counting_resource() override = default;
 
     [[nodiscard]]
     std::intmax_t allocated() const noexcept

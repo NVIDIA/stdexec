@@ -16,11 +16,11 @@
 #pragma once
 
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 #include "completion_signatures.hpp"
 #include "env.hpp"
+#include "stoppable_base.hpp"
 
 #include "../stdexec/__detail/__atomic.hpp"
 #include <mutex>
@@ -30,7 +30,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // unreachable code
 
 namespace experimental::execution
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // async_scope
   namespace __scope
   {
@@ -87,8 +87,9 @@ namespace experimental::execution
 
       void start() & noexcept
       {
-        // must get lock before checking __active, or if the __active is drained before
-        // the waiter is queued but after __active is checked, the waiter will never be notified
+        // must get lock before checking __active, or if the __active is drained
+        // before the waiter is queued but after __active is checked, the waiter
+        // will never be notified
         std::unique_lock __guard{this->__scope_->__lock_};
         auto&            __active  = this->__scope_->__active_;
         auto&            __waiters = this->__scope_->__waiters_;
@@ -280,19 +281,6 @@ namespace experimental::execution
       __deleted
     };
 
-    template <class _Sender, class _Env>
-    struct __future_state;
-
-    struct __forward_stopped
-    {
-      inplace_stop_source* __stop_source_;
-
-      void operator()() noexcept
-      {
-        __stop_source_->request_stop();
-      }
-    };
-
     struct __subscription : __immovable
     {
       constexpr void __complete() noexcept
@@ -302,126 +290,6 @@ namespace experimental::execution
 
       void (*__complete_)(__subscription*) noexcept = nullptr;
       __subscription* __next_                       = nullptr;
-    };
-
-    template <class _Sender, class _Env, class _Receiver>
-    struct __future_opstate : __subscription
-    {
-     private:
-      using __forward_consumer_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stopped>;
-
-      constexpr void __complete_() noexcept
-      {
-        STDEXEC_TRY
-        {
-          __forward_consumer_.reset();
-          auto __state = std::move(__state_);
-          STDEXEC_ASSERT(__state != nullptr);
-          std::unique_lock __guard{__state->__mutex_};
-          // either the future is still in use or it has passed ownership to __state->__no_future_
-          if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future)
-          {
-            // invalid state - there is a code bug in the state machine
-            std::terminate();
-          }
-          else if (get_stop_token(get_env(__rcvr_)).stop_requested())
-          {
-            __guard.unlock();
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-            __guard.lock();
-          }
-          else
-          {
-            std::visit(
-              [this, &__guard]<class _Tup>(_Tup& __tup)
-              {
-                if constexpr (__std::same_as<_Tup, std::monostate>)
-                {
-                  std::terminate();
-                }
-                else
-                {
-                  std::apply(
-                    [this, &__guard]<class... _As>(auto tag, _As&... __as)
-                    {
-                      __guard.unlock();
-                      tag(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
-                      __guard.lock();
-                    },
-                    __tup);
-                }
-              },
-              __state->__data_);
-          }
-        }
-        STDEXEC_CATCH_ALL
-        {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
-        }
-      }
-
-      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
-      std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      STDEXEC::__optional<__forward_consumer_t> __forward_consumer_;
-
-     public:
-      template <class _Receiver2>
-      constexpr explicit __future_opstate(_Receiver2&&                                   __rcvr,
-                                          std::unique_ptr<__future_state<_Sender, _Env>> __state)
-        : __subscription{{},
-                         [](__subscription* __self) noexcept -> void
-                         { static_cast<__future_opstate*>(__self)->__complete_(); }}
-        , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
-        , __state_(std::move(__state))
-        , __forward_consumer_(std::in_place,
-                              get_stop_token(get_env(__rcvr_)),
-                              __forward_stopped{&__state_->__stop_source_})
-      {}
-
-      constexpr ~__future_opstate() noexcept
-      {
-        if (__state_ != nullptr)
-        {
-          auto             __raw_state = __state_.get();
-          std::unique_lock __guard{__raw_state->__mutex_};
-          if (__raw_state->__data_.index() > 0)
-          {
-            // completed given sender
-            // state is no longer needed
-            return;
-          }
-          __raw_state->__no_future_ = std::move(__state_);
-          __raw_state->__step_from_to_(__guard,
-                                       __future_step::__future,
-                                       __future_step::__no_future);
-        }
-      }
-
-      constexpr void start() & noexcept
-      {
-        STDEXEC_TRY
-        {
-          if (!!__state_)
-          {
-            std::unique_lock __guard{__state_->__mutex_};
-            if (__state_->__data_.index() != 0)
-            {
-              __guard.unlock();
-              __complete_();
-            }
-            else
-            {
-              __state_->__subscribers_.push_back(this);
-            }
-          }
-        }
-        STDEXEC_CATCH_ALL
-        {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
-        }
-      }
     };
 
 #if STDEXEC_EDG()
@@ -446,8 +314,13 @@ namespace experimental::execution
       static_cast<_Fn*>(nullptr)));
 #endif
 
+    // NB: uses the unchecked __completion_signatures_of_t because the checked
+    // completion_signatures_of_t would probe __future<_Sender, _Env> with
+    // __debug_sender, which instantiates __future_opstate member functions that
+    // need __future_state<_Sender, _Env> complete -- but this alias is used
+    // while __future_state is being defined.
     template <class _Sender, class _Env>
-    using __future_completions_t = STDEXEC::completion_signatures_of_t<__future<_Sender, _Env>>;
+    using __future_completions_t = STDEXEC::__completion_signatures_of_t<__future<_Sender, _Env>>;
 
     template <class _Completions>
     using __completions_as_variant_t = __mapply<
@@ -483,19 +356,25 @@ namespace experimental::execution
       void (*__delete_)(_Ty*);
     };
 
+    // Forwards stop requests on the scope's token to __stop_source_.
     template <class _Completions, class _Env>
     struct __future_state_base
+      : private inplace_stoppable_base<__future_state_base<_Completions, _Env>>
     {
       constexpr __future_state_base(_Env __env, __impl const * __scope)
-        : __forward_scope_{std::in_place,
-                           __scope->__stop_source_.get_token(),
-                           __forward_stopped{&__stop_source_}}
-        , __env_(make_env(static_cast<_Env&&>(__env),
+        : __env_(make_env(static_cast<_Env&&>(__env),
                           STDEXEC::prop{get_stop_token, __scope->__stop_source_.get_token()}))
-      {}
+      {
+        // Not in the initializer list: if the scope has already been stopped,
+        // this calls on_stop_requested(), which needs __stop_source_.
+        this->register_stoppable(__scope->__stop_source_.get_token());
+      }
 
       ~__future_state_base()
       {
+        // The base is destroyed after __stop_source_, so stop forwarding first.
+        this->deregister_stoppable();
+
         [[maybe_unused]]
         std::unique_lock __guard{__mutex_};
         if (__step_ == __future_step::__created)
@@ -505,7 +384,8 @@ namespace experimental::execution
         }
         else if (__step_ != __future_step::__deleted)
         {
-          // completing the given sender before the future is dropped will end here
+          // completing the given sender before the future is dropped will end
+          // here
           __step_from_to_(__guard, __future_step::__future, __future_step::__deleted);
         }
       }
@@ -520,14 +400,25 @@ namespace experimental::execution
         STDEXEC_ASSERT(actual == __from);
       }
 
-      inplace_stop_source                                           __stop_source_;
-      STDEXEC::__optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
-      std::mutex                                                    __mutex_;
-      __future_step __step_ = __future_step::__created;
+      void __stop_forwarding_scope_() noexcept
+      {
+        this->deregister_stoppable();
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
+      }
+
+      inplace_stop_source __stop_source_;
+      std::mutex          __mutex_;
+      __future_step       __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
       __completions_as_variant_t<_Completions>                                    __data_;
       __intrusive_queue<&__subscription::__next_>                                 __subscribers_;
       __env_t<_Env>                                                               __env_;
+
+      friend inplace_stoppable_base<__future_state_base>;
     };
 
     template <class _Completions, class _Env>
@@ -539,7 +430,7 @@ namespace experimental::execution
       {
         auto& __state             = *__state_;
         auto  __local_subscribers = std::move(__state.__subscribers_);
-        __state.__forward_scope_.reset();
+        __state.__stop_forwarding_scope_();
         if (__state.__no_future_.get() != nullptr)
         {
           // nobody is waiting for the results
@@ -630,15 +521,147 @@ namespace experimental::execution
                          static_cast<_Env&&>(__env),
                          __scope)
       {
-        // If the operation completes synchronously, then the following line will cause
-        // the destruction of *this, which is not a problem because we used a delegating
-        // constructor, so *this is considered fully constructed.
+        // If the operation completes synchronously, then the following line
+        // will cause the destruction of *this, which is not a problem because
+        // we used a delegating constructor, so *this is considered fully
+        // constructed.
         __op_.submit(static_cast<_Sender&&>(__sndr),
                      __future_receiver_t<_Sender, _Env>{this, __scope});
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
+      __submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
+    };
+
+    // __future_opstate is defined after __future_state because it accesses the
+    // latter's members, and its member functions are only instantiated where
+    // __future::connect is instantiated, which is below.
+    template <class _Sender, class _Env, class _Receiver>
+    struct __future_opstate
+      : __subscription
+      , private stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>,
+                                     __future_opstate<_Sender, _Env, _Receiver>>
+    {
+     private:
+      using __stop_base_t =
+        stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, __future_opstate>;
+      friend __stop_base_t;
+
+      void on_stop_requested() noexcept
+      {
+        __state_->__stop_source_.request_stop();
+      }
+
+      constexpr void __complete_() noexcept
+      {
+        STDEXEC_TRY
+        {
+          this->deregister_stoppable();
+          auto __state = std::move(__state_);
+          STDEXEC_ASSERT(__state != nullptr);
+          std::unique_lock __guard{__state->__mutex_};
+          // either the future is still in use or it has passed ownership to
+          // __state->__no_future_
+          if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future)
+          {
+            // invalid state - there is a code bug in the state machine
+            std::terminate();
+          }
+          else if (get_stop_token(get_env(__rcvr_)).stop_requested())
+          {
+            __guard.unlock();
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+            __guard.lock();
+          }
+          else
+          {
+            std::visit(
+              [this, &__guard]<class _Tup>(_Tup& __tup)
+              {
+                if constexpr (__std::same_as<_Tup, std::monostate>)
+                {
+                  std::terminate();
+                }
+                else
+                {
+                  std::apply(
+                    [this, &__guard]<class... _As>(auto tag, _As&... __as)
+                    {
+                      __guard.unlock();
+                      tag(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+                      __guard.lock();
+                    },
+                    __tup);
+                }
+              },
+              __state->__data_);
+          }
+        }
+        STDEXEC_CATCH_ALL
+        {
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+        }
+      }
+
+      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
+      std::unique_ptr<__future_state<_Sender, _Env>> __state_;
+
+     public:
+      template <class _Receiver2>
+      constexpr explicit __future_opstate(_Receiver2&&                                   __rcvr,
+                                          std::unique_ptr<__future_state<_Sender, _Env>> __state)
+        : __subscription{{},
+                         [](__subscription* __self) noexcept -> void
+                         { static_cast<__future_opstate*>(__self)->__complete_(); }}
+        , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
+        , __state_(std::move(__state))
+      {
+        this->register_stoppable(get_stop_token(get_env(__rcvr_)));
+      }
+
+      constexpr ~__future_opstate() noexcept
+      {
+        // on_stop_requested() uses __state_, which is moved below.
+        this->deregister_stoppable();
+        if (__state_ != nullptr)
+        {
+          auto             __raw_state = __state_.get();
+          std::unique_lock __guard{__raw_state->__mutex_};
+          if (__raw_state->__data_.index() > 0)
+          {
+            // completed given sender. state is no longer needed.
+            return;
+          }
+          __raw_state->__no_future_ = std::move(__state_);
+          __raw_state->__step_from_to_(__guard,
+                                       __future_step::__future,
+                                       __future_step::__no_future);
+        }
+      }
+
+      constexpr void start() & noexcept
+      {
+        STDEXEC_TRY
+        {
+          if (!!__state_)
+          {
+            std::unique_lock __guard{__state_->__mutex_};
+            if (__state_->__data_.index() != 0)
+            {
+              __guard.unlock();
+              __complete_();
+            }
+            else
+            {
+              __state_->__subscribers_.push_back(this);
+            }
+          }
+        }
+        STDEXEC_CATCH_ALL
+        {
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+        }
+      }
     };
 
     template <class _Sender, class _Env>
@@ -789,14 +812,15 @@ namespace experimental::execution
                           static_cast<_Env&&>(__env),
                           __scope)
       {
-        // If the operation completes synchronously, then the following line will cause
-        // the destruction of *this, which is not a problem because we used a delegating
-        // constructor, so *this is considered fully constructed.
+        // If the operation completes synchronously, then the following line
+        // will cause the destruction of *this, which is not a problem because
+        // we used a delegating constructor, so *this is considered fully
+        // constructed.
         __data_.submit(static_cast<_Sender&&>(__sndr), __spawn_receiver<_Env>{this});
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      submit_result<_Sender, __spawn_receiver<_Env>> __data_;
+      __submit_result<_Sender, __spawn_receiver<_Env>> __data_;
     };
 
     ////////////////////////////////////////////////////////////////////////////
@@ -833,8 +857,8 @@ namespace experimental::execution
       void spawn(_Sender&& __sndr, _Env __env = {})
       {
         using __opstate_t = __spawn_opstate<__nest_sender<__decay_t<_Sender>>, _Env>;
-        // this will connect and start the operation, after which the operation state is
-        // responsible for deleting itself after it completes.
+        // this will connect and start the operation, after which the operation
+        // state is responsible for deleting itself after it completes.
         [[maybe_unused]]
         auto* __opstate = new __opstate_t{nest(static_cast<_Sender&&>(__sndr)),
                                           static_cast<_Env&&>(__env),

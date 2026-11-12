@@ -33,16 +33,17 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.schedule.from]
   struct schedule_from_t
   {
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const
     {
-      return __make_sexpr<schedule_from_t>({}, static_cast<_Sender&&>(__sndr));
+      return __sexpr{schedule_from_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
   };
 

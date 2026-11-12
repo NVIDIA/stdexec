@@ -110,7 +110,7 @@ namespace nv::execution
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
           [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-          { return receiver_t<Receiver>(stream_provider, std::move(self.name_)); });
+          { return receiver_t<Receiver>(stream_provider, static_cast<Self&&>(self).name_); });
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
@@ -192,12 +192,5 @@ namespace nv::execution
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <nvexec::_strm::nvtx::kind Kind, class Sender>
-  extern __mtype<nvexec::_strm::nvtx::nvtx_sender<Kind, __demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::nvtx::nvtx_sender<Kind, Sender>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -99,7 +99,6 @@ endforeach()
 set(nvexec_gpu_examples
     "         example.nvexec.bulk : bulk.cu"
     "       example.nvexec.reduce : reduce.cu"
-    "        example.nvexec.split : split.cu"
     "         example.nvexec.nvtx : nvtx.cu"
     "       example.nvexec.launch : launch.cu"
     "example.nvexec.maxwell_gpu_s : maxwell_gpu_s.cu"

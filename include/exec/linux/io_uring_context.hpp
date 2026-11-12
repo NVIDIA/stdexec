@@ -33,6 +33,7 @@
 #  include "./safe_file_descriptor.hpp"
 
 #  include "../scope.hpp"
+#  include "../stoppable_base.hpp"
 
 #  if !__has_include(<linux/version.h>)
 #    error "linux/version.h not found. Do you use Linux?"
@@ -106,7 +107,8 @@ namespace experimental::execution
       return memory_mapped_region{__ptr, __size};
     }
 
-    // This base class maps the Linux kernel's io_uring data structures into the process.
+    // This base class maps the Linux kernel's io_uring data structures into the
+    // process.
     struct __context_base : STDEXEC::__immovable
     {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
@@ -154,22 +156,22 @@ namespace experimental::execution
     // Each io operation provides the following interface:
     struct __task_vtable
     {
-      // If this function returns true, the __submit_ function will not be called.
-      // The task is marked ready to be completed and will be returned by the
-      // by the context's completion queue.
-      // If this function returns false, the __submit_ function will be called.
+      // If this function returns true, the __submit_ function will not be
+      // called. The task is marked ready to be completed and will be returned
+      // by the by the context's completion queue. If this function returns
+      // false, the __submit_ function will be called.
       bool (*__ready_)(__task*) noexcept;
-      // This function is called to submit the task to the io_uring.
-      // Its purpose is to fill the io_uring_sqe structure to describe the io
-      // operation and its completion condition.
+      // This function is called to submit the task to the io_uring. Its purpose
+      // is to fill the io_uring_sqe structure to describe the io operation and
+      // its completion condition.
       void (*__submit_)(__task*, ::io_uring_sqe&) noexcept;
-      // This function is called when the io operation is completed.
-      // The status of the operation is passed as a parameter.
+      // This function is called when the io operation is completed. The status
+      // of the operation is passed as a parameter.
       void (*__complete_)(__task*, ::io_uring_cqe const &) noexcept;
     };
 
-    // This is the base class for all io operations.
-    // It provides the vtable and the next pointer for the intrusive queues.
+    // This is the base class for all io operations. It provides the vtable and
+    // the next pointer for the intrusive queues.
     struct __task : STDEXEC::__immovable
     {
       __task_vtable const * __vtable_;
@@ -200,7 +202,7 @@ namespace experimental::execution
     {
       ::io_uring_cqe __cqe{};
       __cqe.res       = -ECANCELED;
-      __cqe.user_data = bit_cast<__u64>(__op);
+      __cqe.user_data = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
       __op->__vtable_->__complete_(__op, __cqe);
     }
 
@@ -229,10 +231,11 @@ namespace experimental::execution
 
       // Each task that is ready to be completed is moved to the __ready queue.
       // If the submission queue gets full before all tasks are submitted, the
-      // remaining tasks are moved to the __pending queue.
-      // If is_stopped is true, no new tasks are submitted to the io_uring unless it is a cancellation.
-      // If is_stopped is true and a task is not ready to be completed, the task is completed with
-      // an io_uring_cqe object with the result field set to -ECANCELED.
+      // remaining tasks are moved to the __pending queue. If is_stopped is
+      // true, no new tasks are submitted to the io_uring unless it is a
+      // cancellation. If is_stopped is true and a task is not ready to be
+      // completed, the task is completed with an io_uring_cqe object with the
+      // result field set to -ECANCELED.
       auto submit(__task_queue __tasks, __u32 __max_submissions, bool __is_stopped) noexcept
         -> __submission_result
       {
@@ -266,7 +269,7 @@ namespace experimental::execution
             }
             else
             {
-              __sqe.user_data   = bit_cast<__u64>(__op);
+              __sqe.user_data   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
               __array_[__index] = __index;
               ++__result.__n_submitted;
               ++__tail;
@@ -305,9 +308,10 @@ namespace experimental::execution
         , __mask_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)}
       {}
 
-      // This function first completes all tasks that are ready in the completion queue of the io_uring.
-      // Then it completes all tasks that are ready in the given queue of ready tasks.
-      // The function returns the number of previously submitted completed tasks.
+      // This function first completes all tasks that are ready in the
+      // completion queue of the io_uring. Then it completes all tasks that are
+      // ready in the given queue of ready tasks. The function returns the
+      // number of previously submitted completed tasks.
       auto complete(STDEXEC::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
         -> int
       {
@@ -318,7 +322,7 @@ namespace experimental::execution
         {
           __u32 const            __index = __head & __mask_;
           ::io_uring_cqe const & __cqe   = __entries_[__index];
-          auto*                  __op    = bit_cast<__task*>(__cqe.user_data);
+          auto* __op = reinterpret_cast<__task*>(static_cast<std::uintptr_t>(__cqe.user_data));
           __op->__vtable_->__complete_(__op, __cqe);
           ++__head;
           ++__count;
@@ -329,7 +333,7 @@ namespace experimental::execution
         {
           __task*        __op = __ready.pop_front();
           ::io_uring_cqe __dummy_cqe{};
-          __dummy_cqe.user_data = bit_cast<__u64>(__op);
+          __dummy_cqe.user_data = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
           __op->__vtable_->__complete_(__op, __dummy_cqe);
         }
         return __count;
@@ -359,7 +363,7 @@ namespace experimental::execution
         __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
         __entry                    = ::io_uring_sqe{};
         __entry.fd                 = __self.__eventfd_;
-        __entry.addr               = bit_cast<__u64>(&__self.__buffer_);
+        __entry.addr = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__self.__buffer_));
 #    ifdef STDEXEC_HAS_IORING_OP_READ
         __entry.opcode = IORING_OP_READ;
         __entry.len    = sizeof(__self.__buffer_);
@@ -424,7 +428,7 @@ namespace experimental::execution
         }
       }
 
-      /// @brief Resets the io context to its initial state.
+      //! @brief Resets the io context to its initial state.
       void reset()
       {
         if (__is_running_.load(STDEXEC::__std::memory_order_relaxed) || __n_total_submitted_ > 0)
@@ -458,23 +462,27 @@ namespace experimental::execution
         return __is_running_.load(STDEXEC::__std::memory_order_relaxed);
       }
 
-      /// @brief  Breaks out of the run loop of the io context without stopping the context.
+      //! @brief  Breaks out of the run loop of the io context without stopping
+      //! the context.
       void finish()
       {
         __break_loop_.store(true, STDEXEC::__std::memory_order_release);
         wakeup();
       }
 
-      /// \brief Submits the given task to the io_uring.
-      /// \returns true if the task was submitted, false if this io context and this task is have been stopped.
+      //! @brief Submits the given task to the io_uring. @returns true if the
+      //! task was submitted, false if this io context and this task is have
+      //! been stopped.
       auto submit(__task* __op) noexcept -> bool
       {
-        // As long as the number of in-flight submissions is not __no_new_submissions, we can
-        // increment the counter and push the operation onto the queue.
-        // If the number of in-flight submissions is __no_new_submissions, we have already
-        // finished the stop operation of the io context and we can immediately stop the operation inline.
-        // Remark: As long as the stopping is in progress we can still submit new operations.
-        // But no operation will be submitted to io uring unless it is a cancellation operation.
+        // As long as the number of in-flight submissions is not
+        // __no_new_submissions, we can increment the counter and push the
+        // operation onto the queue. If the number of in-flight submissions is
+        // __no_new_submissions, we have already finished the stop operation of
+        // the io context and we can immediately stop the operation inline.
+        // Remark: As long as the stopping is in progress we can still submit
+        // new operations. But no operation will be submitted to io uring unless
+        // it is a cancellation operation.
         int __n = 0;
         while (__n != __no_new_submissions
                && !__n_submissions_in_flight_.compare_exchange_weak(
@@ -499,9 +507,10 @@ namespace experimental::execution
         }
       }
 
-      /// @brief Submit any pending tasks and complete any ready tasks.
-      ///
-      /// This function is not thread-safe and must only be called from the thread that drives the io context.
+      //! @brief Submit any pending tasks and complete any ready tasks.
+      //!
+      //! This function is not thread-safe and must only be called from the
+      //! thread that drives the io context.
       void run_some() noexcept
       {
         __n_total_submitted_ -= __completion_queue_.complete();
@@ -553,12 +562,14 @@ namespace experimental::execution
           if (__in_flight == __no_new_submissions)
           {
             __stop_source_.emplace();
-            // Make emplacement of stop source visible to other threads and open the door for new submissions.
+            // Make emplacement of stop source visible to other threads and open
+            // the door for new submissions.
             __n_submissions_in_flight_.store(0, STDEXEC::__std::memory_order_release);
           }
           else
           {
-            // This can only happen for the very first pass of run_until_stopped()
+            // This can only happen for the very first pass of
+            // run_until_stopped()
             __wakeup_operation_.start();
           }
         }
@@ -611,8 +622,8 @@ namespace experimental::execution
           }
           STDEXEC_ASSERT(__n_submissions_in_flight_.load(STDEXEC::__std::memory_order_relaxed)
                          == __no_new_submissions);
-          // There could have been requests in flight. Complete all of them
-          // and then stop it, finally.
+          // There could have been requests in flight. Complete all of them and
+          // then stop it, finally.
           __pending_.append(__requests_.pop_all_reversed());
           __submission_result __result = __submission_queue_.submit(static_cast<__task_queue&&>(
                                                                       __pending_),
@@ -724,8 +735,8 @@ namespace experimental::execution
      private:
       friend struct __wakeup_operation;
 
-      // This constant is used for __n_submissions_in_flight to indicate that no new submissions
-      // to this context will be completed by this context.
+      // This constant is used for __n_submissions_in_flight to indicate that no
+      // new submissions to this context will be completed by this context.
       static constexpr int __no_new_submissions = -1;
 
       STDEXEC::__std::atomic<bool>                __is_running_{false};
@@ -908,7 +919,7 @@ namespace experimental::execution
         {
           std::memset(&__sqe, 0, sizeof(__sqe));
           __sqe.opcode = IORING_OP_ASYNC_CANCEL;
-          __sqe.addr   = bit_cast<__u64>(__op_->__parent_);
+          __sqe.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op_->__parent_));
         }
 #    else
         __op_->submit_stop(__sqe);
@@ -919,8 +930,7 @@ namespace experimental::execution
       {
         if (__op_->__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1)
         {
-          __op_->__on_context_stop_.reset();
-          __op_->__on_receiver_stop_.reset();
+          __op_->__deregister_stop_callbacks_();
           STDEXEC::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
         }
       }
@@ -934,7 +944,10 @@ namespace experimental::execution
         {
           if (__op_->context().submit(this))
           {
-            __op_->context().wakeup();
+            if (auto __ec = __op_->context().try_wakeup())
+            {
+              std::terminate();  // TODO: handle error
+            }
           }
         }
       }
@@ -978,26 +991,31 @@ namespace experimental::execution
       __base.submit_stop(__sqe);
     };
 
+    struct __context_stop_tag
+    {};
+
+    struct __receiver_stop_tag
+    {};
+
+    // Stop requests on either the context's or the receiver's token start
+    // __stop_operation_.
     template <__stoppable_task _Base>
-    struct __stoppable_task_facade : __impl_base<_Base, __has_submit_stop<_Base>>
+    struct __stoppable_task_facade
+      : __impl_base<_Base, __has_submit_stop<_Base>>
+      , private inplace_stoppable_base<__stoppable_task_facade<_Base>, __context_stop_tag>
+      , private stoppable_base_for_t<
+          STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_of_t<_Base>>>,
+          __stoppable_task_facade<_Base>,
+          __receiver_stop_tag>
     {
       using __receiver_t = __receiver_of_t<_Base>;
       using __base_t     = __impl_base<_Base, __has_submit_stop<_Base>>;
-
-      struct __stop_callback
-      {
-        __stoppable_task_facade* __self_;
-
-        void operator()() noexcept
-        {
-          __self_->__stop_operation_.start();
-        }
-      };
-
-      using __on_context_stop_t  = std::optional<STDEXEC::inplace_stop_callback<__stop_callback>>;
-      using __on_receiver_stop_t = std::optional<
-        STDEXEC::stop_callback_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_t>>,
-                                     __stop_callback>>;
+      using __context_stop_base_t =
+        inplace_stoppable_base<__stoppable_task_facade, __context_stop_tag>;
+      using __receiver_stop_base_t =
+        stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_t>>,
+                             __stoppable_task_facade,
+                             __receiver_stop_tag>;
 
       template <class... _Args>
         requires STDEXEC::__std::constructible_from<_Base, _Args...>
@@ -1035,9 +1053,9 @@ namespace experimental::execution
         STDEXEC_ASSERT(prev == 0);
         __context&    __context_ = this->__base_.context();
         __receiver_t& __receiver = this->__base_.receiver();
-        __on_context_stop_.emplace(__context_.get_stop_token(), __stop_callback{this});
-        __on_receiver_stop_.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(__receiver)),
-                                    __stop_callback{this});
+        __context_stop_base_t::register_stoppable(__context_.get_stop_token());
+        __receiver_stop_base_t::register_stoppable(
+          STDEXEC::get_stop_token(STDEXEC::get_env(__receiver)));
         this->__base_.submit(__sqe);
       }
 
@@ -1045,8 +1063,7 @@ namespace experimental::execution
       {
         if (__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1)
         {
-          __on_context_stop_.reset();
-          __on_receiver_stop_.reset();
+          __deregister_stop_callbacks_();
           __receiver_t& __receiver = this->__base_.receiver();
           __context&    __context_ = this->__base_.context();
           auto          token      = STDEXEC::get_stop_token(STDEXEC::get_env(__receiver));
@@ -1061,10 +1078,28 @@ namespace experimental::execution
         }
       }
 
+      void __deregister_stop_callbacks_() noexcept
+      {
+        __context_stop_base_t::deregister_stoppable();
+        __receiver_stop_base_t::deregister_stoppable();
+      }
+
       __stop_operation<__stoppable_task_facade> __stop_operation_;
       STDEXEC::__std::atomic<int>               __n_ops_{0};
-      __on_context_stop_t                       __on_context_stop_{};
-      __on_receiver_stop_t                      __on_receiver_stop_{};
+
+     private:
+      void on_stop_requested(__context_stop_tag) noexcept
+      {
+        __stop_operation_.start();
+      }
+
+      void on_stop_requested(__receiver_stop_tag) noexcept
+      {
+        __stop_operation_.start();
+      }
+
+      friend __context_stop_base_t;
+      friend __receiver_stop_base_t;
     };
 
     template <class _Base>
@@ -1183,14 +1218,14 @@ namespace experimental::execution
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         ::io_uring_sqe __sqe_{};
         __sqe_.opcode = IORING_OP_TIMEOUT;
-        __sqe_.addr   = bit_cast<__u64>(&__duration_);
+        __sqe_.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__duration_));
         __sqe_.len    = 1;
         __sqe         = __sqe_;
 #    else
         ::io_uring_sqe __sqe_{};
         __sqe_.opcode = IORING_OP_READV;
         __sqe_.fd     = __timerfd_;
-        __sqe_.addr   = bit_cast<__u64>(&__iov_);
+        __sqe_.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__iov_));
         __sqe_.len    = 1;
         __sqe         = __sqe_;
 #    endif
@@ -1226,6 +1261,8 @@ namespace experimental::execution
     class __scheduler
     {
      public:
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       __context* __context_;
 
       auto operator==(__scheduler const &) const -> bool = default;

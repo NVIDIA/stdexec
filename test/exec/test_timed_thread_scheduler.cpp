@@ -17,12 +17,17 @@
 
 #include <exec/timed_thread_scheduler.hpp>
 
-#include "test_common/catch2.hpp"
+#include "test_common/catch2.hpp"  // IWYU pragma: keep
+#include "test_common/receivers.hpp"
 
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
+#include <chrono>
 #include <concepts>
+#include <future>
+#include <optional>
+#include <thread>
 #include <utility>
 
 // Avoid a TSAN bug in GCC 11 and earlier
@@ -31,6 +36,179 @@
 #else
 namespace
 {
+  struct schedule_after_only_scheduler
+  {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
+
+    struct sender;
+
+    constexpr auto
+    operator==(schedule_after_only_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto now() const noexcept -> time_point
+    {
+      return std::chrono::steady_clock::now();
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender;
+
+    [[nodiscard]]
+    auto schedule_after(duration) const noexcept -> sender;
+  };
+
+  struct schedule_after_only_scheduler::sender
+  {
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
+        -> schedule_after_only_scheduler
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        STDEXEC::set_value(static_cast<Receiver &&>(receiver_));
+      }
+
+      Receiver receiver_;
+    };
+
+    template <class Receiver>
+    [[nodiscard]]
+    auto connect(Receiver receiver) const -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(receiver)};
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  auto schedule_after_only_scheduler::schedule() const noexcept -> sender
+  {
+    return {};
+  }
+
+  auto schedule_after_only_scheduler::schedule_after(duration) const noexcept -> sender
+  {
+    return {};
+  }
+
+  template <class CompletionScheduler>
+  struct sender_with_completion_scheduler
+  {
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
+        -> CompletionScheduler
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        STDEXEC::set_value(static_cast<Receiver &&>(receiver_));
+      }
+
+      Receiver receiver_;
+    };
+
+    template <class Receiver>
+    [[nodiscard]]
+    auto connect(Receiver receiver) const -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(receiver)};
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  struct schedule_after_delegating_scheduler
+  {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
+    using sender            = sender_with_completion_scheduler<schedule_after_only_scheduler>;
+
+    constexpr auto
+    operator==(schedule_after_delegating_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto now() const noexcept -> time_point
+    {
+      return std::chrono::steady_clock::now();
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender
+    {
+      return {};
+    }
+
+    [[nodiscard]]
+    auto schedule_after(duration) const noexcept -> sender
+    {
+      return {};
+    }
+  };
+
+  struct schedule_at_delegating_scheduler
+  {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
+    using sender            = sender_with_completion_scheduler<schedule_after_only_scheduler>;
+
+    constexpr auto
+    operator==(schedule_at_delegating_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto now() const noexcept -> time_point
+    {
+      return std::chrono::steady_clock::now();
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender
+    {
+      return {};
+    }
+
+    [[nodiscard]]
+    auto schedule_at(time_point) const noexcept -> sender
+    {
+      return {};
+    }
+  };
+
   TEST_CASE("timed_thread_scheduler - unused context",
             "[types][timed_thread_scheduler][schedulers]")
   {
@@ -80,6 +258,51 @@ namespace
     CHECK(STDEXEC::sync_wait(exec::schedule_after(scheduler, duration)));
   }
 
+  TEST_CASE("timed scheduler fallbacks advertise completion schedulers",
+            "[timed_scheduler][completion_scheduler]")
+  {
+    static_assert(exec::timed_scheduler<schedule_after_only_scheduler>);
+
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler timed_scheduler = context.get_scheduler();
+    auto after_sender = exec::schedule_after(timed_scheduler, std::chrono::milliseconds(10));
+
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(after_sender))
+          == timed_scheduler);
+
+    schedule_after_only_scheduler after_only_scheduler;
+    auto at_sender = exec::schedule_at(after_only_scheduler, exec::now(after_only_scheduler));
+
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(at_sender))
+          == after_only_scheduler);
+    CHECK(STDEXEC::sync_wait(std::move(at_sender)));
+  }
+
+  TEST_CASE("timed scheduler fallbacks do not invent completion schedulers",
+            "[timed_scheduler][completion_scheduler]")
+  {
+    using completion_scheduler_query = STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>;
+
+    static_assert(exec::timed_scheduler<schedule_after_delegating_scheduler>);
+    using at_sender_t = decltype(exec::schedule_at(
+      std::declval<schedule_after_delegating_scheduler>(),
+      std::declval<exec::time_point_of_t<schedule_after_delegating_scheduler> const &>()));
+    static_assert(!STDEXEC::__callable<completion_scheduler_query, STDEXEC::env_of_t<at_sender_t>>);
+
+    static_assert(exec::timed_scheduler<schedule_at_delegating_scheduler>);
+    using after_sender_t = decltype(exec::schedule_after(
+      std::declval<schedule_at_delegating_scheduler>(),
+      std::declval<exec::duration_of_t<schedule_at_delegating_scheduler> const &>()));
+    static_assert(
+      !STDEXEC::__callable<completion_scheduler_query, STDEXEC::env_of_t<after_sender_t>>);
+
+    schedule_after_delegating_scheduler after_scheduler;
+    CHECK(STDEXEC::sync_wait(exec::schedule_at(after_scheduler, exec::now(after_scheduler))));
+
+    schedule_at_delegating_scheduler at_scheduler;
+    CHECK(STDEXEC::sync_wait(exec::schedule_after(at_scheduler, std::chrono::milliseconds(0))));
+  }
+
   TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]")
   {
     exec::timed_thread_context   context;
@@ -120,6 +343,53 @@ namespace
     CHECK(n == 1);
   }
 
+  TEST_CASE("timed_thread_scheduler - stop on the context thread completes inline",
+            "[timed_thread_scheduler][when_any]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    exec::async_scope            scope;
+    bool                         completed_before_start_returned = false;
+    STDEXEC::sync_wait(
+      STDEXEC::schedule(scheduler)
+      | STDEXEC::then(
+        [&]
+        {
+          bool completed = false;
+          scope.spawn(exec::when_any(exec::schedule_after(scheduler, std::chrono::seconds(5)),
+                                     STDEXEC::just())
+                      | STDEXEC::then([&completed] { completed = true; }));
+          completed_before_start_returned = completed;
+        }));
+    CHECK(completed_before_start_returned);
+    CHECK(STDEXEC::sync_wait(scope.on_empty()));
+  }
+
+  TEST_CASE("timed_thread_scheduler - destroying the context completes a queued stop",
+            "[timed_thread_scheduler][stop]")
+  {
+    // Each iteration hits the window with high but not certain probability (the context thread
+    // can wake up and drain the stop command first); repeat so a regression is reliably caught.
+    for (int i = 0; i < 5; ++i)
+    {
+      bool                                      stopped = false;
+      STDEXEC::inplace_stop_source              source;
+      std::optional<exec::timed_thread_context> context{std::in_place};
+      auto env = STDEXEC::prop{STDEXEC::get_stop_token, source.get_token()};
+      auto op  = STDEXEC::connect(exec::schedule_after(context->get_scheduler(),
+                                                      std::chrono::hours(1)),
+                                 expect_stopped_receiver_ex{env, stopped});
+      STDEXEC::start(op);
+      // Let the context thread put the operation in its heap and go to sleep.
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      // Queue a stop command, then stop the context before the sleeping thread can wake and
+      // drain it: the thread sees both at once and takes the shutdown path.
+      source.request_stop();
+      context.reset();
+      CHECK(stopped);
+    }
+  }
+
   TEST_CASE("timed_thread_scheduler - many timers with async scope",
             "[timed_thread_scheduler][async_scope]")
   {
@@ -142,5 +412,66 @@ namespace
     auto duration = t1 - t0;
     CHECK(duration > std::chrono::milliseconds(100));
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  enum class completion
+  {
+    value,
+    stopped
+  };
+
+  struct std_stop_token_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    void set_value() && noexcept
+    {
+      done_->set_value(completion::value);
+    }
+
+    void set_stopped() && noexcept
+    {
+      done_->set_value(completion::stopped);
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop{STDEXEC::get_stop_token, token_};
+    }
+
+    std::promise<completion> *done_;
+    std::stop_token           token_;
+  };
+
+  TEST_CASE("timed_thread_scheduler - schedule_after with a std::stop_token receiver",
+            "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    std::stop_source             source;
+    std::promise<completion>     done;
+    auto op = STDEXEC::connect(exec::schedule_after(scheduler, std::chrono::milliseconds(10)),
+                               std_stop_token_receiver{&done, source.get_token()});
+    STDEXEC::start(op);
+    CHECK(done.get_future().get() == completion::value);
+  }
+
+  TEST_CASE("timed_thread_scheduler - schedule_after stops through a std::stop_token",
+            "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    std::stop_source             source;
+    std::promise<completion>     done;
+    auto                         future = done.get_future();
+    auto op = STDEXEC::connect(exec::schedule_after(scheduler, std::chrono::hours(1)),
+                               std_stop_token_receiver{&done, source.get_token()});
+    STDEXEC::start(op);
+    source.request_stop();
+    REQUIRE(future.wait_for(std::chrono::seconds(10)) == std::future_status::ready);
+    CHECK(future.get() == completion::stopped);
+  }
+#  endif
 }  // namespace
 #endif

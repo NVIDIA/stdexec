@@ -18,6 +18,7 @@
 #pragma once
 
 #include "detail/intrusive_heap.hpp"
+#include "stoppable_base.hpp"
 #include "timed_scheduler.hpp"  // IWYU pragma: keep for schedule_at and schedule_after
 
 #include "../stdexec/__detail/__atomic.hpp"
@@ -25,12 +26,12 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__schedulers.hpp"
 #include "../stdexec/__detail/__spin_loop_pause.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
 
 #include <chrono>
 #include <condition_variable>
 #include <limits>
 #include <mutex>
-#include <optional>
 #include <utility>
 
 namespace experimental::execution
@@ -149,38 +150,49 @@ namespace experimental::execution
     using stop_type    = _time_thrd_sched::timed_thread_stop_operation;
     using time_point   = std::chrono::steady_clock::time_point;
 
+    [[nodiscard]]
+    auto is_running_thread() const noexcept -> bool
+    {
+      return std::this_thread::get_id() == run_thread_.get_id();
+    }
+
+    void drain_commands()
+    {
+      while (command_type* op = command_queue_.pop_front())
+      {
+        if (op->command_ == command_type::command_type::schedule)
+        {
+          auto* task  = static_cast<task_type*>(op);
+          task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
+          heap_.insert(task);
+        }
+        else
+        {
+          STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
+          auto* stop_op = static_cast<stop_type*>(op);
+          if (heap_.erase(stop_op->target_))
+          {
+            stop_op->target_->set_stopped_(stop_op->target_);
+          }
+          stop_op->set_value_(stop_op);
+        }
+      }
+    }
+
     void run()
     {
       while (true)
       {
-        while (command_type* op = command_queue_.pop_front())
-        {
-          if (op->command_ == command_type::command_type::schedule)
-          {
-            auto* task  = static_cast<task_type*>(op);
-            task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
-            heap_.insert(task);
-          }
-          else
-          {
-            STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
-            auto* stop_op = static_cast<stop_type*>(op);
-            if (heap_.erase(stop_op->target_))
-            {
-              stop_op->target_->set_stopped_(stop_op->target_);
-            }
-            stop_op->set_value_(stop_op);
-          }
-        }
-        time_point now = std::chrono::steady_clock::now();
-        task_type* op  = heap_.front();
-        while (op && op->time_point_ <= now)
+        drain_commands();
+        time_point current_time = std::chrono::steady_clock::now();
+        task_type* op           = heap_.front();
+        while (op && op->time_point_ <= current_time)
         {
           heap_.pop_front();
           op->set_value_(op);
           op = heap_.front();
         }
-        time_point       deadline = op ? op->time_point_ : now + std::chrono::seconds(2);
+        time_point       deadline = op ? op->time_point_ : current_time + std::chrono::seconds(2);
         std::unique_lock lock{ready_mutex_};
         cv_.wait_until(lock, deadline, [this] { return ready_ || stop_requested_; });
         bool stop_requested = stop_requested_;
@@ -192,11 +204,14 @@ namespace experimental::execution
           while (
             !n_submissions_in_flight_.compare_exchange_weak(expected,
                                                             context_closed,
-                                                            STDEXEC::__std::memory_order_relaxed))
+                                                            STDEXEC::__std::memory_order_acquire))
           {
             STDEXEC::__spin_loop_pause();
             expected = 0;
           }
+          // No submission is in flight and none can start, so this drain is the last one:
+          // commands pushed since the drain above complete here.
+          drain_commands();
           op = heap_.front();
           while (op)
           {
@@ -211,6 +226,23 @@ namespace experimental::execution
 
     void schedule(command_type* op)
     {
+      // A stop requested on the context thread completes inline only if it finds the operation
+      // in the heap (see timed_thread_schedule_at_op::on_stop_requested()), so on this thread
+      // insert straight into the heap rather than queueing a schedule command. run() rereads
+      // heap_.front() after every completion, so the operation is still seen before the thread
+      // next waits.
+      if (op->command_ == command_type::command_type::schedule && is_running_thread())
+      {
+        auto* task = static_cast<task_type*>(op);
+        if (n_submissions_in_flight_.load(STDEXEC::__std::memory_order_relaxed) < 0)
+        {
+          task->set_stopped_(task);
+          return;
+        }
+        task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
+        heap_.insert(task);
+        return;
+      }
       std::ptrdiff_t n = n_submissions_in_flight_.fetch_add(1,
                                                             STDEXEC::__std::memory_order_relaxed);
       if (n < 0)
@@ -229,13 +261,13 @@ namespace experimental::execution
                                                          STDEXEC::__std::memory_order_relaxed);
         return;
       }
-      if (command_queue_.push_back(op))
+      command_queue_.push_back(op);
       {
         std::scoped_lock lock{ready_mutex_};
         ready_ = true;
-        cv_.notify_one();
       }
-      n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
+      cv_.notify_one();
+      n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_release);
     }
 
     void request_stop()
@@ -265,22 +297,29 @@ namespace experimental::execution
   namespace _time_thrd_sched
   {
     template <class Receiver>
-    class timed_thread_schedule_at_op : _time_thrd_sched::timed_thread_schedule_operation_base
+    class timed_thread_schedule_at_op
+      : _time_thrd_sched::timed_thread_schedule_operation_base
+      , stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>,
+                             timed_thread_schedule_at_op<Receiver>>
     {
+      using stop_base_t =
+        stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>,
+                             timed_thread_schedule_at_op>;
+      friend stop_base_t;
+
      public:
-      constexpr explicit timed_thread_schedule_at_op(
-        timed_thread_context&                 context,
-        std::chrono::steady_clock::time_point time_point,
-        Receiver                              receiver) noexcept
+      constexpr explicit timed_thread_schedule_at_op(timed_thread_context&                 context,
+                                                     std::chrono::steady_clock::time_point tp,
+                                                     Receiver receiver) noexcept
         : _time_thrd_sched::timed_thread_schedule_operation_base{
-            time_point,
+            tp,
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept
             {
               auto* self    = static_cast<timed_thread_schedule_at_op*>(op);
               int   counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1)
               {
-                self->stop_callback_.reset();
+                self->deregister_stoppable();
                 STDEXEC::set_stopped(std::move(self->rcvr_));
               }
             },
@@ -290,7 +329,7 @@ namespace experimental::execution
               int   counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1)
               {
-                self->stop_callback_.reset();
+                self->deregister_stoppable();
                 STDEXEC::set_value(std::move(self->rcvr_));
               }
             }}
@@ -304,7 +343,7 @@ namespace experimental::execution
                                                               STDEXEC::__std::memory_order_relaxed);
                      if (counter == 1)
                      {
-                       self->stop_callback_.reset();
+                       self->deregister_stoppable();
                        STDEXEC::set_stopped(std::move(self->rcvr_));
                      }
                    },
@@ -313,8 +352,7 @@ namespace experimental::execution
 
       constexpr void start() & noexcept
       {
-        stop_callback_.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)),
-                               on_stopped_t{*this});
+        this->register_stoppable(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
         int expected = 0;
         if (ref_count_.compare_exchange_strong(expected, 1, STDEXEC::__std::memory_order_relaxed))
         {
@@ -322,7 +360,7 @@ namespace experimental::execution
         }
         else
         {
-          stop_callback_.reset();
+          this->deregister_stoppable();
           STDEXEC::set_stopped(std::move(rcvr_));
         }
       }
@@ -333,22 +371,21 @@ namespace experimental::execution
         context_.schedule(this);
       }
 
-      struct on_stopped_t
+      constexpr void on_stop_requested() noexcept
       {
-        timed_thread_schedule_at_op& self_;
-
-        constexpr void operator()() const noexcept
+        // On the context thread, an operation still waiting in the heap (ref_count_ == 1:
+        // started, no stop in flight) is removed and completed with set_stopped() inline.
+        // Queueing a stop command instead would hold the completion until run() next drains
+        // its queue.
+        if (context_.is_running_thread()
+            && ref_count_.load(STDEXEC::__std::memory_order_relaxed) == 1
+            && context_.heap_.erase(this))
         {
-          self_.request_stop();
+          ref_count_.store(0, STDEXEC::__std::memory_order_relaxed);
+          this->deregister_stoppable();
+          STDEXEC::set_stopped(std::move(rcvr_));
         }
-      };
-
-      using callback_type =
-        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
-
-      constexpr void request_stop() noexcept
-      {
-        if (ref_count_.fetch_add(1, STDEXEC::__std::memory_order_relaxed) == 1)
+        else if (ref_count_.fetch_add(1, STDEXEC::__std::memory_order_relaxed) == 1)
         {
           context_.schedule(&stop_op_);
         }
@@ -357,7 +394,6 @@ namespace experimental::execution
       timed_thread_context&                         context_;
       Receiver                                      rcvr_;
       _time_thrd_sched::timed_thread_stop_operation stop_op_;
-      std::optional<callback_type>                  stop_callback_;
       STDEXEC::__std::atomic<int>                   ref_count_{0};
     };
   }  // namespace _time_thrd_sched
@@ -365,8 +401,9 @@ namespace experimental::execution
   class timed_thread_scheduler
   {
    public:
-    using time_point = std::chrono::steady_clock::time_point;
-    using duration   = std::chrono::steady_clock::duration;
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = std::chrono::steady_clock::duration;
 
     class schedule_at_sender
     {

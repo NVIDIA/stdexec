@@ -22,6 +22,7 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
+#include "../completion_signatures.hpp"
 #include "as_default_on.hpp"
 #include "completion_token.hpp"
 
@@ -34,35 +35,41 @@ import stdexec;
 #  include "../../stdexec/__detail/__completion_signatures_of.hpp"
 #  include "../../stdexec/__detail/__receivers.hpp"
 #  include "../../stdexec/__detail/__senders.hpp"
-#  include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #  include "../../stdexec/__detail/__type_traits.hpp"
 
-#  include <concepts>
 #  include <exception>
 #  include <mutex>
 #  include <system_error>
 #  include <type_traits>
-#  include <utility>
 #endif
 
 namespace experimental::execution::asio
 {
-
   namespace detail::use_sender
   {
+    template <class Ty>
+    concept error_code_like =
+      ::STDEXEC::__one_of<std::remove_cvref_t<Ty>, error_code, std::error_code>;
 
-    template <typename T>
-    concept is_error_code = std::is_same_v<std::remove_cvref_t<T>, error_code>
-                         || std::is_same_v<std::remove_cvref_t<T>, std::error_code>;
+    inline bool is_cancelled(std::error_code ec) noexcept
+    {
+      return ec == std::errc::operation_canceled;
+    }
 
-    template <is_error_code T>
-    std::exception_ptr to_exception_ptr(T t) noexcept
+    inline bool is_cancelled(error_code ec) noexcept
+    {
+      return ec == asio_impl::error::operation_aborted || ec == errc::operation_canceled;
+    }
+
+    template <error_code_like Ty>
+    std::exception_ptr to_exception_ptr(Ty ty) noexcept
     {
       using exception_type =
-        std::conditional_t<std::is_same_v<T, std::error_code>, std::system_error, system_error>;
+        std::conditional_t<std::is_same_v<Ty, std::error_code>, std::system_error, system_error>;
+
       STDEXEC_TRY
       {
-        return std::make_exception_ptr(exception_type(static_cast<T&&>(t)));
+        return std::make_exception_ptr(exception_type(static_cast<Ty &&>(ty)));
       }
       STDEXEC_CATCH_ALL
       {
@@ -70,158 +77,86 @@ namespace experimental::execution::asio
       }
     }
 
-    template <typename Receiver>
-    struct receiver
+    template <class Receiver>
+    struct receiver : Receiver
     {
-      template <typename T>
-        requires std::constructible_from<Receiver, T>
-      constexpr explicit receiver(T&& t) noexcept(std::is_nothrow_constructible_v<Receiver, T>)
-        : r_(static_cast<T&&>(t))
-      {}
-
-      using receiver_concept = ::STDEXEC::receiver_tag;
-
-      constexpr void set_stopped() && noexcept
-        requires ::STDEXEC::receiver_of<
-          Receiver,
-          ::STDEXEC::completion_signatures<::STDEXEC::set_stopped_t()>>
+      template <error_code_like Ty, class... Args>
+      void set_value(Ty &&ty, Args &&...args) && noexcept
       {
-        ::STDEXEC::set_stopped(static_cast<Receiver&&>(r_));
-      }
-
-      void set_error(std::exception_ptr ex) && noexcept
-        requires ::STDEXEC::receiver_of<
-          Receiver,
-          ::STDEXEC::completion_signatures<::STDEXEC::set_error_t(std::exception_ptr)>>
-      {
-        ::STDEXEC::set_error(static_cast<Receiver&&>(r_), std::move(ex));
-      }
-
-      template <typename T, typename... Args>
-        requires is_error_code<T>
-              && ::STDEXEC::receiver_of<
-                   Receiver,
-                   ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Args...),
-                                                    ::STDEXEC::set_error_t(std::exception_ptr),
-                                                    ::STDEXEC::set_stopped_t()>>
-      void set_value(T&& t, Args&&... args) && noexcept
-      {
-        if (!t)
+        if (!ty)
         {
-          ::STDEXEC::set_value(static_cast<Receiver&&>(r_), static_cast<Args&&>(args)...);
-          return;
+          ::STDEXEC::set_value(static_cast<Receiver &&>(*this), static_cast<Args &&>(args)...);
         }
-        if (
-          [&]() noexcept
-          {
-            using type = std::remove_cvref_t<T>;
-            if constexpr (std::is_same_v<type, error_code>)
-            {
-              if (t == asio_impl::error::operation_aborted)
-              {
-                return true;
-              }
-            }
-            if constexpr (std::is_same_v<std::error_code, std::remove_cvref_t<T>>)
-            {
-              return t == std::errc::operation_canceled;
-            }
-            else
-            {
-              return t == errc::operation_canceled;
-            }
-          }())
+        else if (use_sender::is_cancelled(ty))
         {
-          ::STDEXEC::set_stopped(static_cast<Receiver&&>(r_));
-          return;
+          ::STDEXEC::set_stopped(static_cast<Receiver &&>(*this));
         }
-        ::STDEXEC::set_error(static_cast<Receiver&&>(r_),
-                             use_sender::to_exception_ptr(static_cast<T&&>(t)));
+        else
+        {
+          ::STDEXEC::set_error(static_cast<Receiver &&>(*this),
+                               use_sender::to_exception_ptr(static_cast<Ty &&>(ty)));
+        }
       }
 
-      template <typename... Args>
-        requires ::STDEXEC::receiver_of<
-          Receiver,
-          ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Args...)>>
-      constexpr void set_value(Args&&... args) && noexcept
+      template <class... Args>
+      constexpr void set_value(Args &&...args) && noexcept
       {
-        ::STDEXEC::set_value(static_cast<Receiver&&>(r_), static_cast<Args&&>(args)...);
+        ::STDEXEC::set_value(static_cast<Receiver &&>(*this), static_cast<Args &&>(args)...);
       }
+    };
 
-      constexpr decltype(auto) get_env() const noexcept
+    template <class Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE receiver(Receiver) -> receiver<Receiver>;
+
+    inline constexpr auto _value_sig_transform = []<class Ty = void, class... Args>() noexcept
+    {
+      if constexpr (std::is_same_v<Ty, void>)
       {
-        return ::STDEXEC::get_env(r_);
+        return ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>();
       }
-     private:
-      Receiver r_;
+      else if constexpr (error_code_like<Ty>)
+      {
+        return ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Args...)>();
+      }
+      else
+      {
+        return ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Ty, Args...)>();
+      }
     };
 
-    template <typename... Args>
-    struct transform_set_value
-    {
-      using type = ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Args...)>;
-    };
-
-    template <typename T, typename... Args>
-      requires is_error_code<T>
-    struct transform_set_value<T, Args...>
-    {
-      using type = ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(Args...)>;
-    };
-
-    template <typename... Args>
-    using transform_set_value_t = transform_set_value<Args...>::type;
-
-    template <typename Signatures>
-    using completion_signatures =
-      ::STDEXEC::__transform_completion_signatures_t<Signatures,
-                                                     ::STDEXEC::completion_signatures<>,
-                                                     transform_set_value_t>;
-
-    template <typename Sender>
+    template <class Sender>
     struct sender
     {
-      template <typename T>
-        requires std::constructible_from<Sender, T>
-      constexpr explicit sender(T&& t) noexcept(std::is_nothrow_constructible_v<Sender, T>)
-        : s_(static_cast<T&&>(t))
-      {}
-
       using sender_concept = ::STDEXEC::sender_tag;
 
-      template <typename Self, typename... Env>
-      static consteval completion_signatures<
-        ::STDEXEC::completion_signatures_of_t<::STDEXEC::__copy_cvref_t<Self, Sender>, Env...>>
-      get_completion_signatures() noexcept
+      template <class Self, class... Env>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          ::STDEXEC::get_completion_signatures<::STDEXEC::__copy_cvref_t<Self, Sender>, Env...>(),
+          _value_sig_transform);
       }
 
-      template <typename Receiver>
-        requires ::STDEXEC::sender_to<Sender const &, receiver<Receiver>>
-      constexpr auto connect(Receiver r) const & noexcept(
-        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>
-        && noexcept(::STDEXEC::connect(std::declval<Sender const &>(),
-                                       std::declval<receiver<Receiver>>())))
+      template <::STDEXEC::receiver Receiver>
+      constexpr auto connect(Receiver rcvr) const & noexcept(
+        ::STDEXEC::__nothrow_connectable<Sender const &, receiver<Receiver>>)
       {
-        return ::STDEXEC::connect(s_, receiver<Receiver>(static_cast<Receiver&&>(r)));
+        return ::STDEXEC::connect(sndr_, receiver{static_cast<Receiver &&>(rcvr)});
       }
 
-      template <typename Receiver>
-        requires ::STDEXEC::sender_to<Sender, receiver<Receiver>>
-      constexpr auto connect(Receiver r) && noexcept(
-        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>
-        && noexcept(::STDEXEC::connect(std::declval<Sender>(), std::declval<receiver<Receiver>>())))
+      template <::STDEXEC::receiver Receiver>
+      constexpr auto connect(Receiver rcvr) && noexcept(
+        ::STDEXEC::__nothrow_connectable<Sender, receiver<Receiver>>)
       {
-        return ::STDEXEC::connect(static_cast<Sender&&>(s_),
-                                  receiver<Receiver>(static_cast<Receiver&&>(r)));
+        return ::STDEXEC::connect(static_cast<Sender &&>(sndr_),
+                                  receiver{static_cast<Receiver &&>(rcvr)});
       }
-     private:
-      Sender s_;
+
+      Sender sndr_;
     };
 
-    template <typename Sender>
-    explicit sender(Sender) -> sender<Sender>;
+    template <class Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE explicit sender(Sender) -> sender<Sender>;
 
     template <typename Mutex>
     struct token
@@ -230,7 +165,6 @@ namespace experimental::execution::asio
       template <typename IoObject>
       using as_default_on_t = asio::as_default_on_t<token, IoObject>;
     };
-
   }  // namespace detail::use_sender
 
   using use_sender_t = detail::use_sender::token<std::recursive_mutex>;
@@ -248,12 +182,10 @@ namespace exec = experimental::execution;
 
 namespace ASIOEXEC_ASIO_NAMESPACE
 {
-
   template <typename Mutex, typename... Signatures>
   struct async_result<::exec::asio::detail::use_sender::token<Mutex>, Signatures...>
   {
-    template <typename Initiation, typename... Args>
-      requires(std::is_constructible_v<std::decay_t<Args>, Args> && ...)
+    template <typename Initiation, ::STDEXEC::__decay_copyable... Args>
     static constexpr auto
     initiate(Initiation&& i, ::exec::asio::detail::use_sender::token<Mutex> const &, Args&&... args)
     {
@@ -264,5 +196,4 @@ namespace ASIOEXEC_ASIO_NAMESPACE
           static_cast<Args&&>(args)...));
     }
   };
-
 }  // namespace ASIOEXEC_ASIO_NAMESPACE

@@ -192,7 +192,7 @@ namespace nv::execution
     }
 
     union_t storage_;
-    index_t index_;
+    index_t index_{detail::npos<index_t>()};
   };
 }  // namespace nv::execution
 

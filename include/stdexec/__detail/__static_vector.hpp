@@ -35,6 +35,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Tp, std::size_t _Capacity>
@@ -166,18 +167,24 @@ namespace STDEXEC
       STDEXEC_ASSERT(__last >= __first && __last <= end());
       if (__first != __last)
       {
+        STDEXEC_PRAGMA_PUSH()
+        // Disable a false positive on gcc-14 in Release ASAN mode.
+        STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+        STDEXEC_PRAGMA_IGNORE_GNU("-Wstringop-overread")
         std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
+        STDEXEC_PRAGMA_POP()
+
         resize(size() - (__last - __first));
       }
-      return end();
+      return const_cast<iterator>(__first);
     }
 
     std::size_t __size_ = 0;
     value_type  __data_[_Capacity];
   };
 
-  // Specialization of __static_vector for zero capacity that doesn't require default
-  // constructibility of _Tp.
+  // Specialization of __static_vector for zero capacity that doesn't require
+  // default constructibility of _Tp.
   template <class _Tp>
   struct __static_vector<_Tp, 0> : __detail::__static_vector_base
   {

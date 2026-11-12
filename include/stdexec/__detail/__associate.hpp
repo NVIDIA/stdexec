@@ -46,9 +46,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.associate]
   namespace __associate
   {
@@ -80,8 +81,9 @@ namespace STDEXEC
 
       using __sender_ref = std::unique_ptr<__wrap_sender_t, __deleter>;
 
-      // BUGBUG: should the spec require __token to be declared as a const _Token, or should this be
-      //         changed to declare __token as a mutable _Token?
+      // BUGBUG: should the spec require __token to be declared as a const
+      // _Token, or should this be changed to declare __token as a mutable
+      // _Token?
       explicit __associate_data(_Token const __token, _Sender&& __sndr)
         noexcept(__nothrow_constructible_from<__wrap_sender_t, __wrap_result_t>
                  && noexcept(__token.wrap(static_cast<_Sender&&>(__sndr)))
@@ -154,23 +156,23 @@ namespace STDEXEC
     template <scope_token _Token, sender _Sender>
     __associate_data(_Token, _Sender&&) -> __associate_data<_Token, _Sender>;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     STDEXEC_MODULE_EXPORT
     struct associate_t
     {
       template <sender _Sender, scope_token _Token>
-      auto operator()(_Sender&& __sndr, _Token&& __token) const noexcept(
-        __nothrow_constructible_from<__associate_data<std::remove_cvref_t<_Token>, _Sender>,
-                                     _Token,
-                                     _Sender>) -> __well_formed_sender auto
+      auto operator()(_Sender&& __sndr, _Token __token) const
+        noexcept(__nothrow_constructible_from<__associate_data<_Token, _Sender>, _Token, _Sender>)
+          -> __well_formed_sender auto
       {
-        return __make_sexpr<associate_t>(
-          __associate_data(static_cast<_Token&&>(__token), static_cast<_Sender&&>(__sndr)));
+        return __sexpr{associate_t(),
+                       __associate_data(static_cast<_Token&&>(__token),
+                                        static_cast<_Sender&&>(__sndr))};
       }
 
       template <scope_token _Token>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Token&& __token) const noexcept
+      auto operator()(_Token __token) const noexcept
       {
         return __closure(*this, static_cast<_Token&&>(__token));
       }
@@ -262,7 +264,7 @@ namespace STDEXEC
         return STDEXEC::__concat_completion_signatures(
           STDEXEC::get_completion_signatures<__wrap_sender_of_t<_Sender>, _Env...>(),
           completion_signatures<set_stopped_t()>());
-      };
+      }
 
       static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept(
@@ -287,9 +289,9 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   using __associate::associate_t;
 
-  /// @brief The associate sender adaptor, which associates a sender with the
-  ///        async scope referred to by the given token
-  /// @hideinitializer
+  //! @brief The associate sender adaptor, which associates a sender with the
+  //!        async scope referred to by the given token
+  //! @hideinitializer
   STDEXEC_MODULE_EXPORT
   inline constexpr associate_t associate{};
 

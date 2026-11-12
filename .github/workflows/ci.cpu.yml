@@ -15,36 +15,53 @@ jobs:
   build-cpu:
     runs-on: ubuntu-latest
     name: ${{ matrix.name }}
+    continue-on-error: ${{ matrix.allow_failure || false }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - { name: "CPU (clang 16, Debug)",         build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Debug, c++23)",  build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "23", cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 16, Debug, TSAN)",   build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (clang 22, Debug)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 22, Debug, modules)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
+          # Clang built from source at a pinned llvm-project commit, for the
+          # modular build only. Pinned to the merge of llvm/llvm-project#224528,
+          # which fixes the nondeterministic Clang 23.1.0 ICE
+          # (llvm/llvm-project#191361) seen in the modular build. The toolchain
+          # is cached by commit, so only bumping llvm_sha (or the image tag)
+          # triggers a rebuild. This is the only modules row: move it to a
+          # released Clang's image once one contains the fix.
+          - { name: "CPU (clang trunk, Debug, modules)", build: "Debug", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++", llvm_sha: f970f59a9d4e6b8738547d01bc33e8a12df5244b }
           - { name: "CPU (clang 22, Release)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release, noexcept)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++ -fno-exceptions" }
+          # TSan in Clang < 18 and GCC < 15 aborts at startup ("unexpected
+          # memory mapping") when high-entropy ASLR places the executable
+          # outside its fixed shadow layout; newer runtimes re-exec without
+          # ASLR instead. Keep TSan jobs on toolchains at least that new.
+          - { name: "CPU (clang 22, Debug, TSAN)",   build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          # Clang 16's ASan segfaults at startup under the same high-entropy
+          # ASLR; Clang 22's re-execs without ASLR instead.
+          - { name: "CPU (clang 22, Release, ASAN)", build: "Release", tag: llvm22-cuda13.2, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (gcc 12, Debug)",           build: "Debug",   tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
           - { name: "CPU (gcc 12, Release)",         build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
           # With the following config, 2 tests mysteriously time out, but only in CI and not locally.
           # - { name: "CPU (gcc 12, Release, ASAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
-          - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 13, Debug)",           build: "Debug",   tag: gcc13-cuda12.9,  cxxstd: "20", cxxflags: "", }
           - { name: "CPU (gcc 14, Debug)",           build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "", }
+          - { name: "CPU (gcc 14, Debug, 32-bit)",   build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-m32 -D_GLIBCXX_USE_TBB_PAR_BACKEND=0", arch: 32 }
           - { name: "CPU (gcc 14, Debug, ASAN)",     build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
-          - { name: "CPU (gcc 14, Debug, TSAN)",     build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 14, Release, ASAN)",   build: "Release", tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
           - { name: "CPU (gcc 14, Release, LEAK)",   build: "Release", tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=leak", }
           - { name: "CPU (gcc 14, Release, c++23)",  build: "Release", tag: gcc14-cuda12.9,  cxxstd: "23", cxxflags: "", }
           - { name: "CPU (gcc 15, Release, c++23)",  build: "Release", tag: gcc15-cuda12.9,  cxxstd: "23", cxxflags: "", }
           - { name: "CPU (gcc 15, Release, c++23,noexcept)",  build: "Release", tag: gcc15-cuda12.9,  cxxstd: "23", cxxflags: "-fno-exceptions", }
+          # See the note on the Clang TSan job above.
+          - { name: "CPU (gcc 15, Debug, TSAN)",     build: "Debug",   tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 15, Release, TSAN)",   build: "Release", tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 16, Release, c++26)",  build: "Release", tag: gcc16-cuda13.5,  cxxstd: "26", cxxflags: "", }
     container:
-      options: -u root
-      image: rapidsai/devcontainers:26.08-cpp-${{ matrix.tag }}
+      options: -u root --cap-add SYS_PTRACE --security-opt label=disable --security-opt seccomp=unconfined
+      image: rapidsai/devcontainers:latest-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
@@ -62,6 +79,115 @@ jobs:
         run: |
           echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
+      - if: ${{ matrix.llvm_sha }}
+        name: Restore cached Clang (llvm-project@${{ matrix.llvm_sha }})
+        id: llvm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/coder/llvm-${{ matrix.llvm_sha }}
+          # The toolchain is built with the image's compiler and against its
+          # glibc, so the image tag is part of the key. Bump the trailing
+          # version to force a rebuild after changing the build recipe below.
+          key: llvm-${{ matrix.llvm_sha }}-${{ matrix.tag }}-v1
+      - if: ${{ matrix.llvm_sha && steps.llvm-cache.outputs.cache-hit != 'true' }}
+        name: Build Clang from source (llvm-project@${{ matrix.llvm_sha }})
+        run: |
+          set -e;
+          source /etc/profile
+          set -x;
+
+          # Keep this build independent of the job's sccache setup.
+          unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER;
+
+          # The image sets PYTHONSAFEPATH=1, which stops Python from putting a
+          # script's own directory on sys.path. libc++'s build scripts (e.g.
+          # utils/generate_iwyu_mapping.py) import their sibling `libcxx`
+          # package that way.
+          unset PYTHONSAFEPATH;
+
+          # LLVM's CMake needs Python 3.
+          command -v python3 >/dev/null || {
+            sudo apt-get update;
+            sudo apt-get install -y --no-install-recommends python3;
+          };
+
+          # Fetch only the pinned commit, and only the subtrees this build uses.
+          src=/tmp/llvm-project;
+          git init -q "${src}";
+          git -C "${src}" sparse-checkout set \
+            llvm clang cmake third-party runtimes libcxx libcxxabi libunwind libc;
+          git -C "${src}" fetch -q --depth 1 --filter=blob:none \
+            https://github.com/llvm/llvm-project.git ${{ matrix.llvm_sha }};
+          git -C "${src}" checkout -q FETCH_HEAD;
+
+          # Linking Clang with ld.bfd on a 4-core/16GB runner is slow and
+          # memory-hungry; use lld when the host compiler can find it.
+          link_flags="-DLLVM_PARALLEL_LINK_JOBS=1";
+          if echo 'int main(){}' | clang++ -x c++ -fuse-ld=lld - -o /dev/null 2>/dev/null; then
+            link_flags="-DLLVM_USE_LINKER=lld -DLLVM_PARALLEL_LINK_JOBS=2";
+            # LLVM_USE_LINKER is forwarded to the runtimes, which are built
+            # with the new Clang. That Clang looks for ld.lld in its own bin/
+            # and on PATH, but the image's ld.lld is only next to the image's
+            # clang (/usr/lib/llvm-22/bin), so put that one on PATH too.
+            mkdir -p /tmp/lld-bin;
+            ln -sf "$(clang++ -print-prog-name=ld.lld)" /tmp/lld-bin/ld.lld;
+            export PATH="/tmp/lld-bin:${PATH}";
+          fi
+
+          # Release, no assertions: the compiler users would actually get.
+          # The install is limited to what the modular build needs: the driver,
+          # its resource headers, clang-scan-deps (for CMake's module
+          # dependency scanning), and libc++/libc++abi/libunwind, including
+          # libc++'s std module sources and libc++.modules.json.
+          cmake -S "${src}/llvm" -B /tmp/llvm-build -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_INSTALL_PREFIX=/home/coder/llvm-${{ matrix.llvm_sha }} \
+            -DLLVM_ENABLE_PROJECTS=clang \
+            -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
+            -DLLVM_TARGETS_TO_BUILD=X86 \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DLLVM_INCLUDE_DOCS=OFF \
+            -DCLANG_INCLUDE_TESTS=OFF \
+            -DCLANG_INCLUDE_DOCS=OFF \
+            -DLLVM_DISTRIBUTION_COMPONENTS="clang;clang-resource-headers;clang-scan-deps;runtimes" \
+            ${link_flags} \
+            ;
+          cmake --build /tmp/llvm-build --target install-distribution-stripped;
+
+          # Free the disk space for the stdexec build.
+          rm -rf /tmp/llvm-build /tmp/lld-bin "${src}";
+      - if: ${{ matrix.llvm_sha && steps.llvm-cache.outputs.cache-hit != 'true' }}
+        name: Save cached Clang (llvm-project@${{ matrix.llvm_sha }})
+        # Saved explicitly, rather than via actions/cache's post-job hook, so
+        # the toolchain is cached even when the stdexec build or tests fail.
+        uses: actions/cache/save@v4
+        with:
+          path: /home/coder/llvm-${{ matrix.llvm_sha }}
+          key: ${{ steps.llvm-cache.outputs.cache-primary-key }}
+      - if: ${{ matrix.llvm_sha }}
+        name: Use Clang from llvm-project@${{ matrix.llvm_sha }}
+        run: |
+          set -ex;
+          prefix=/home/coder/llvm-${{ matrix.llvm_sha }};
+          # The runtimes may be installed in a per-target subdirectory of lib/
+          # (e.g. lib/x86_64-unknown-linux-gnu), so locate them rather than
+          # hardcoding the layout.
+          modules_json="$(find "${prefix}/lib" -name libc++.modules.json -print -quit)";
+          libcxx_so="$(find "${prefix}/lib" -name 'libc++.so.1' -print -quit)";
+          test -f "${modules_json}";
+          test -f "${libcxx_so}";
+          libdir="$(dirname "${libcxx_so}")";
+          "${prefix}/bin/clang++" --version;
+          "${prefix}/bin/clang-scan-deps" --version;
+          {
+            echo "LLVM_FROM_SOURCE_PREFIX=${prefix}";
+            echo "LLVM_FROM_SOURCE_LIBDIR=${libdir}";
+            echo "LLVM_FROM_SOURCE_MODULES_JSON=${modules_json}";
+          } >> "${GITHUB_ENV}";
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -69,6 +195,14 @@ jobs:
           aws-region: us-east-2
           role-duration-seconds: 28800 # 8 hours
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
+      # gcc-multilib provides /usr/include/asm for -m32; g++-14-multilib only
+      # recommends it.
+      - if: ${{ matrix.arch == 32 }}
+        name: Install the 32-bit toolchain
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++-14-multilib gcc-multilib
       - name: Build and test CPU schedulers
         env:
           ASAN_OPTIONS: alloc_dealloc_mismatch=0
@@ -112,7 +246,8 @@ jobs:
           cmake -S . -B build -GNinja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
-            -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') && !contains(matrix.name, 'modules') }} \
+            -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') && !contains(matrix.name, 'modules') && matrix.arch != 32 }} \
+            -DSTDEXEC_ENABLE_TASKFLOW:BOOL=${{ matrix.name == 'CPU (clang 22, Debug)' }} \
             -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
             -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
             -DCMAKE_CXX_STANDARD:STRING=${{ matrix.cxxstd }} \
@@ -120,13 +255,32 @@ jobs:
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             -DSTDEXEC_BUILD_EXAMPLES:BOOL=${{ !contains(matrix.name, 'modules') }} \
             -DSTDEXEC_BUILD_MODULES:BOOL=${{ contains(matrix.name, 'modules') }} \
-            -DCMAKE_CXX_STDLIB_MODULES_JSON=/usr/lib/llvm-22/lib/libc++.modules.json \
+            ${LLVM_FROM_SOURCE_PREFIX:+"-DCMAKE_CXX_COMPILER=${LLVM_FROM_SOURCE_PREFIX}/bin/clang++"} \
+            ${LLVM_FROM_SOURCE_LIBDIR:+"-DCMAKE_BUILD_RPATH=${LLVM_FROM_SOURCE_LIBDIR}"} \
+            -DCMAKE_CXX_STDLIB_MODULES_JSON="${LLVM_FROM_SOURCE_MODULES_JSON:-/usr/lib/llvm-22/lib/libc++.modules.json}" \
             ;
 
           # Compile
           # Run a serial build if we're building the modular build because it tends
           # to result in fewer Clang ICEs.
           cmake --build build -v -j ${{ contains(matrix.name, 'modules') && 1 || 512 }};
+
+          # Verify that public headers are self-contained. This alone doesn't
+          # depend on the rest of the build matrix, but the SKIP_LINTING
+          # exclusions in CMakeLists.txt for optional-dependency and
+          # platform-specific headers do: run it only here and it would
+          # silently never compile exec/taskflow/taskflow_thread_pool.hpp,
+          # exec/windows/filetime_clock.hpp, or exec/windows/windows_thread_pool.hpp
+          # anywhere in CI, defeating the point of checking them at all. So:
+          # Taskflow is force-enabled above just for this one job (verified
+          # locally that STDEXEC_ENABLE_TASKFLOW builds clean via CPM, same as
+          # the existing Boost/ASIO fetch), which covers the TBB and Taskflow
+          # exclusions between them; the Windows-only headers are covered
+          # separately by the equivalent step added to test-windows.ps1, which
+          # runs on an actual Windows job where WIN32 is true.
+          if [ "${{ matrix.name }}" = "CPU (clang 22, Debug)" ]; then
+            cmake --build build -v --target all_verify_interface_header_sets;
+          fi
 
           # Print sccache stats
           sccache -s;
@@ -142,11 +296,46 @@ jobs:
           path: /tmp/sccache*.log
           compression-level: 9
 
+  valgrind-run-loop:
+    runs-on: ubuntu-latest
+    name: CPU (gcc 14, Valgrind run_loop)
+    container:
+      options: -u root
+      image: rapidsai/devcontainers:26.08-cpp-gcc14-cuda12.9
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Valgrind
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends valgrind
+
+      - name: Build run_loop reproducer
+        run: |
+          cmake -S . -B build -GNinja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_EXTENSIONS=OFF \
+            -DSTDEXEC_BUILD_TESTS=ON
+          cmake --build build --target test.run_loop_finish_repro -v
+
+      - name: Run run_loop reproducer under Valgrind
+        run: |
+          timeout 60s valgrind \
+            --fair-sched=no \
+            --error-exitcode=1 \
+            --quiet \
+            ./build/test/test.run_loop_finish_repro
+
   ci-cpu:
     runs-on: ubuntu-latest
     name: CI (CPU)
     needs:
       - build-cpu
+      - valgrind-run-loop
     steps:
       - run: echo "CI (CPU) success"
 

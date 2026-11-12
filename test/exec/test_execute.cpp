@@ -32,8 +32,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
 STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
-// Trying to test `execute` with error flows will result in calling `std::terminate()`.
-// We don't want that
+// Trying to test `execute` with error flows will result in calling
+// `std::terminate()`. We don't want that
 
 namespace
 {
@@ -67,9 +67,9 @@ namespace
       // launch some work on the thread pool
       exec::execute(pool.get_scheduler(), [&] { called.store(true, std::memory_order_relaxed); });
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(std::memory_order_relaxed); i++)
     {
       std::this_thread::sleep_for(1ms);

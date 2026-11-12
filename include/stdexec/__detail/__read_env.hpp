@@ -46,6 +46,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __read_env
@@ -78,7 +79,8 @@ namespace STDEXEC
     {
       constexpr void start() noexcept
       {
-        // The query returns a reference type; pass it straight through to the receiver.
+        // The query returns a reference type; pass it straight through to the
+        // receiver.
         STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_),
                                   _Query(),
                                   STDEXEC::get_env(__rcvr_));
@@ -137,7 +139,7 @@ namespace STDEXEC
             _WITH_QUERY_(__query_t),
             _WITH_ENVIRONMENT_(_Env)>();
         }
-      };
+      }
 
       static constexpr auto __connect =
         []<class _Self, class _Receiver>(_Self const &, _Receiver&& __rcvr) noexcept
@@ -164,7 +166,7 @@ namespace STDEXEC
     template <class _Query>
     constexpr auto operator()(_Query) const noexcept
     {
-      return __make_sexpr<__read_env_t>(_Query());
+      return __sexpr{__read_env_t(), _Query()};
     }
   };
 
@@ -193,12 +195,12 @@ namespace STDEXEC
   //!
   //! **Completion signatures.**
   //!
-  //! Given <tt>read_env(q)</tt> and an environment type @c Env (taken from
+  //! Given `read_env(q)` and an environment type @c Env (taken from
   //! the connected receiver), the resulting sender has completion signatures:
   //!
   //! @code{.cpp}
   //! set_value_t(decltype(q(declval<Env>())))    // always present
-  //! set_error_t(std::exception_ptr)             // present iff q(env) may throw
+  //! set_error_t(std::exception_ptr)             // present if q(env) may throw
   //! @endcode
   //!
   //! The query result type is taken from the *actual* environment at
@@ -207,7 +209,7 @@ namespace STDEXEC
   //! connected to.
   //!
   //! If the environment does not provide a value for @c q (i.e.
-  //! <tt>q(env)</tt> is ill-formed or returns @c void), the program is
+  //! `q(env)` is ill-formed or returns @c void), the program is
   //! ill-formed at the point where the sender is connected, with a
   //! diagnostic that names the offending query.
   //!
@@ -238,9 +240,9 @@ namespace STDEXEC
   //!     });
   //! @endcode
   //!
-  //! @see stdexec::just          — synchronously complete with literal values
-  //! @see stdexec::get_stop_token  — equivalent to <tt>read_env(get_stop_token)</tt>
-  //! @see stdexec::get_scheduler   — equivalent to <tt>read_env(get_scheduler)</tt>
+  //! @see stdexec::just           — synchronously complete with literal values
+  //! @see stdexec::get_stop_token — equivalent to `read_env(get_stop_token)`
+  //! @see stdexec::get_scheduler  — equivalent to `read_env(get_scheduler)`
   //!
   //! @hideinitializer
   inline constexpr __read_env_t read_env{};

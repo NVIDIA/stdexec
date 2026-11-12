@@ -21,6 +21,7 @@
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/variant_sender.hpp>
 #include <test_common/receivers.hpp>
 
 #if STDEXEC_USE_MODULES()
@@ -92,6 +93,13 @@ TEST_CASE("trivial schedule task on parallel scheduler", "[scheduler][parallel_s
   STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
 
   ex::sync_wait(ex::schedule(sched));
+}
+
+TEST_CASE("can schedule from parallel scheduler to parallel scheduler",
+          "[scheduler][parallel_scheduler]")
+{
+  auto sched = ex::get_parallel_scheduler();
+  ex::sync_wait(ex::starts_on(sched, ex::starts_on(sched, ex::just())));
 }
 
 TEST_CASE("simple schedule task on parallel scheduler", "[scheduler][parallel_scheduler]")
@@ -182,6 +190,34 @@ TEST_CASE("simple bulk task on parallel scheduler", "[scheduler][parallel_schedu
   }
 }
 
+TEST_CASE("bulk task on parallel scheduler following a variant sender",
+          "[scheduler][parallel_scheduler]")
+{
+  std::thread::id             this_id   = std::this_thread::get_id();
+  constexpr size_t            num_tasks = 16;
+  std::thread::id             pool_ids[num_tasks];
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+  using sndr1_t                     = decltype(ex::just(42));
+  using sndr2_t                     = decltype(ex::just(42.0));
+  exec::variant_sender<sndr1_t, sndr2_t> var_snd{ex::just(42)};
+
+  auto bulk_snd = std::move(var_snd)       //
+                | ex::continues_on(sched)  //
+                | ex::bulk(ex::par,
+                           num_tasks,
+                           [&](size_t id, auto&) { pool_ids[id] = std::this_thread::get_id(); })
+                | ex::then([](auto data) { return int(data); });
+
+  auto [result] = ex::sync_wait(std::move(bulk_snd)).value();
+  CHECK(result == 42);
+
+  for (auto pool_id: pool_ids)
+  {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+  }
+}
+
 TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
@@ -209,7 +245,8 @@ TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_sc
 
   std::optional<std::tuple<std::thread::id>> res = ex::sync_wait(std::move(bulk_snd));
 
-  // Assert: first `schedule` is run on a different thread than the current thread.
+  // Assert: first `schedule` is run on a different thread than the current
+  // thread.
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
   // Assert: bulk items are run and they propagate the received value.
@@ -219,7 +256,8 @@ TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_sc
     REQUIRE(propagated_pool_ids[i] == pool_id);
     REQUIRE(this_id != pool_ids[i]);
   }
-  // Assert: the result of the bulk operation is the same as the result of the first `schedule`.
+  // Assert: the result of the bulk operation is the same as the result of the
+  // first `schedule`.
   CHECK(res.has_value());
   CHECK(std::get<0>(res.value()) == pool_id);
 }
@@ -336,9 +374,9 @@ TEST_CASE("bulk_chunked on parallel_scheduler covers the entire range",
                                    });
   ex::sync_wait(std::move(bulk_snd));
 
-  for (size_t i = 0; i < num_tasks; ++i)
+  for (bool i: covered)
   {
-    REQUIRE(covered[i]);
+    REQUIRE(i);
   }
 }
 
@@ -526,12 +564,14 @@ struct tracked_value_sender
   {
     STDEXEC::parallel_scheduler sched_;
 
+    [[nodiscard]]
     auto query(ex::get_completion_scheduler_t<ex::set_value_t>, auto const &...) const noexcept
       -> STDEXEC::parallel_scheduler
     {
       return sched_;
     }
 
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>, auto const &...) const noexcept
     {
       return ex::get_completion_domain<ex::set_value_t>(sched_);
@@ -557,6 +597,7 @@ struct tracked_value_sender
     , value_(std::move(live))
   {}
 
+  [[nodiscard]]
   auto get_env() const noexcept -> env
   {
     return {sched_};
@@ -650,6 +691,79 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after e
 
   CHECK(live->load(std::memory_order_relaxed) == 0);
 }
+
+TEST_CASE("bulk on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  auto live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    auto fn = [](std::size_t i, destructor_tracked_value&)
+    {
+      if (i == 7)
+        throw std::runtime_error{"bulk"};
+    };
+    STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+    auto                        snd = tracked_value_sender{sched, live} | ex::bulk(ex::par, 16, fn);
+
+    CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk_chunked on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+  std::atomic<int>            calls = 0;
+
+  auto par_snd = ex::bulk_chunked(ex::schedule(sched),
+                                  ex::par,
+                                  1'000,
+                                  [&](std::size_t, std::size_t)
+                                  {
+                                    ++calls;
+                                    throw std::runtime_error{"bulk_chunked"};
+                                  });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(par_snd)), std::runtime_error);
+  CHECK(calls.load() >= 1);
+
+  auto seq_snd = ex::bulk_chunked(ex::schedule(sched),
+                                  ex::seq,
+                                  1'000,
+                                  [](std::size_t, std::size_t)
+                                  { throw std::runtime_error{"bulk_chunked"}; });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(seq_snd)), std::runtime_error);
+}
+
+TEST_CASE("bulk_unchunked on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+
+  auto par_snd = ex::bulk_unchunked(ex::schedule(sched),
+                                    ex::par,
+                                    64,
+                                    [](std::size_t i)
+                                    {
+                                      if (i % 2 == 0)
+                                        throw std::runtime_error{"bulk_unchunked"};
+                                    });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(par_snd)), std::runtime_error);
+
+  // With `seq`, the iterations after the throwing one are not executed.
+  std::size_t executed = 0;
+  auto        seq_fn   = [&](std::size_t i)
+  {
+    ++executed;
+    if (i == 3)
+      throw std::runtime_error{"bulk_unchunked"};
+  };
+  auto seq_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, 64, seq_fn);
+  CHECK_THROWS_AS(ex::sync_wait(std::move(seq_snd)), std::runtime_error);
+  CHECK(executed == 4);
+}
 #endif
 
 TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after stopped",
@@ -729,4 +843,15 @@ TEST_CASE("environment with a stop token can expose its stop token",
 
   REQUIRE(rcvr.try_query<int>(ex::get_stop_token) == std::nullopt);
   REQUIRE(rcvr.try_query<std::allocator<int>>(ex::get_allocator) == std::nullopt);
+}
+
+TEST_CASE("environment with an allocator can expose its allocator",
+          "[scheduler][parallel_scheduler]")
+{
+  auto sched = ex::get_parallel_scheduler();
+  auto work  = ex::read_env(ex::get_allocator)  //
+            | ex::continues_on(sched)           //
+            | ex::write_env(ex::prop{ex::get_allocator, std::allocator<int>{}});
+  auto [alloc] = ex::sync_wait(std::move(work)).value();
+  STATIC_REQUIRE(std::is_same_v<decltype(alloc), std::allocator<int>>);
 }

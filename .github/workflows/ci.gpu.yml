@@ -21,14 +21,14 @@ jobs:
         include:
           - { name: "clang 22",    cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "-Wno-deprecated-declarations" }
           - { name: "clang 22",    cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.1",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.1",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.3",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.3",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Release", tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Release", tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
-      image: rapidsai/devcontainers:26.08-cpp-${{ matrix.tag }}
+      image: rapidsai/devcontainers:26.12-cpp-${{ matrix.tag }}
       env:
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     permissions:
@@ -99,15 +99,16 @@ jobs:
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DSTDEXEC_ENABLE_IO_URING=OFF \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
-            -DCMAKE_CXX_FLAGS=${{ matrix.flags }} \
+            -DCMAKE_CXX_FLAGS="${{ matrix.flags }}" \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
-            -DCMAKE_CUDA_FLAGS=${{ matrix.flags }} \
+            -DCMAKE_CUDA_FLAGS="${{ matrix.flags }}" \
             -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }} \
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             ;
 
           # Compile
+          SCCACHE_NO_DIST_COMPILE=1 \
           cmake --build build -v -j 512;
 
           # Print sccache stats

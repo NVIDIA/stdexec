@@ -40,6 +40,7 @@ namespace
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
+      [[maybe_unused]]
       auto connect(R &&) const -> operation_state
       {
         return {};
@@ -48,6 +49,7 @@ namespace
       struct env
       {
         template <STDEXEC::__completion_tag Tag>
+        [[maybe_unused]]
         auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> uncustomized_scheduler
         {
           return {};

@@ -23,9 +23,11 @@ import stdexec;
 
 #else
 
+#  include "__execution_fwd.hpp"
+
 #  include "__concepts.hpp"
-#  include "__config.hpp"
 #  include "__memory.hpp"
+#  include "__scope.hpp"
 #  include "__type_traits.hpp"
 #  include "__typeinfo.hpp"
 #  include "__utility.hpp"
@@ -37,6 +39,7 @@ import stdexec;
 
 #    include <bit>
 #    include <exception>
+#    include <functional>
 #    include <memory>
 #    include <span>
 #    include <type_traits>
@@ -48,24 +51,24 @@ import stdexec;
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
-// NOLINTBEGIN(moderize-use-override)
+// NOLINTBEGIN(modernize-use-override)
 
 STDEXEC_MODULE_EXPORT_AUTHORING
-namespace STDEXEC::__any
+namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 {}
 
-namespace STDEXEC::__any
+namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 {
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! any: a library for ad hoc polymorphism with value semantics
   //!
   //! @par Terminology:
   //!
   //! - "root":
   //!
-  //!   A type satisfying the @c root concept that is used as the nucleus of a "model".
-  //!   There are 5 root types:
+  //!   A type satisfying the @c root concept that is used as the nucleus of a
+  //!   "model". There are 5 root types:
   //!
   //!   - @c __iroot:                 the abstract root
   //!   - @c __value_root:            holds a concrete value
@@ -73,7 +76,8 @@ namespace STDEXEC::__any
   //!   - @c __value_proxy_root:      holds a type-erased value model
   //!   - @c __reference_proxy_root:  holds a type-erased reference model
   //!
-  //!   Aside from @c __iroot, all root types inherit from @c __iabstract<Interface>, where
+  //!   Aside from @c __iroot, all root types inherit from
+  //!   @c __iabstract<Interface>, where
   //!   @c Interface is the interface that the root type implements.
   //!
   //!   The @c root concept is defined as:
@@ -92,60 +96,68 @@ namespace STDEXEC::__any
   //!
   //! - "model":
   //!
-  //!   A polymorphic wrapper around a root that is constructed by recursively applying a
-  //!   given interface and its base interfaces to the root type. For example, given an
-  //!   interface @c Derived that __extends @c Base, the value proxy model is a type derived
-  //!   from @c Derived<Base<__value_proxy_root<Derived>>>. Model types implement their given
-  //!   interfaces in terms of the root type. There are 5 model types:
+  //!   A polymorphic wrapper around a root that is constructed by recursively
+  //!   applying a given interface and its base interfaces to the root type. For
+  //!   example, given an interface @c Derived that extends @c Base, the value
+  //!   proxy model is a type derived from
+  //!   @c Derived<Base<__value_proxy_root<Derived>>>. Model types implement
+  //!   their given interfaces in terms of the root type. There are 5 model
+  //!   types:
   //!
   //!   - @c __iabstract:             akin to an abstract base class for the
   //!                                 interface
-  //!   - @c __value_model:           implements the interface for a concrete value
+  //!   - @c __value_model:           implements the interface for a concrete
+  //!                                 value
   //!   - @c __reference_model:       implements the interface for a concrete
   //!                                 reference
-  //!   - @c __value_proxy_model:     implements the interface over a type-erased
-  //!                                 value model
-  //!   - @c __reference_proxy_model: implements the interface over a type-erased
-  //!                                 reference model
+  //!   - @c __value_proxy_model:     implements the interface over a type-
+  //!                                 erased value model
+  //!   - @c __reference_proxy_model: implements the interface over a type-
+  //!                                 erased reference model
   //!
   //! - "proxy":
   //!
-  //!   A level of indirection that stores either a type-erased model in a small buffer or a
-  //!   pointer to an object stored elsewhere. The @c __value_proxy_root and @c
-  //!   __reference_proxy_root types model the @c root concept and contain an array of bytes
-  //!   in which they stores either a polymorphic model in-situ or a (tagged) pointer to a
-  //!   heap-allocated model. The @c __value_proxy_model and @c __reference_proxy_model types
-  //!   implement the given interface in terms of the root type.
+  //!   A level of indirection that stores either a type-erased model in a small
+  //!   buffer or a pointer to an object stored elsewhere. The
+  //!   @c __value_proxy_root and @c __reference_proxy_root types model the
+  //!   @c root concept and contain an array of bytes in which they stores
+  //!   either a polymorphic model in-situ or a (tagged) pointer to a heap-
+  //!   allocated model. The @c __value_proxy_model and
+  //!   @c __reference_proxy_model types implement the given interface in terms
+  //!   of the root type.
   //!
   //! @par Notes:
   //!
-  //! - @c Interface<Base> inherits directly from @c any::interface<Interface,Base>, which
-  //!   inherits directly from @c Base.
+  //! - @c Interface<Base> inherits directly from
+  //!   @c any::interface<Interface,Base>, which inherits directly from @c Base.
   //!
   //! - Given an interface template @c Derived that __extends @c Base, the type
   //!   @c __iabstract<Derived> is derived from @c __iabstract<Base>.
   //!
-  //! - In the case of multiple interface extension, the inheritance is forced to be linear.
-  //!   As a result, for an interface @c C that __extends @c A and @c B (in that order),
-  //!   @c __iabstract<C> will have a linear inheritance hierarchy; it will be an alias for
-  //!   @c C<B<A<__iroot>>>. The result is that @c __iabstract<C> inherits from @c __iabstract<A>
-  //!   but not from @c __iabstract<B>.
+  //! - In the case of multiple interface extension, the inheritance is forced
+  //!   to be linear. As a result, for an interface @c C that __extends @c A and
+  //!   @c B (in that order), @c __iabstract<C> will have a linear inheritance
+  //!   hierarchy; it will be an alias for @c C<B<A<__iroot>>>. The result is
+  //!   that @c __iabstract<C> inherits from @c __iabstract<A> but not from
+  //!   @c __iabstract<B>.
   //!
-  //! - The "`__proxy_root`" types both implement an @c emplace function that accepts a
-  //!   concrete value or reference, wraps it in the appropriate "`__model`" type, and stores
-  //!   it either in-situ or on the heap depending on its size and whether it is nothrow
-  //!   moveable.
+  //! - The "`__proxy_root`" types both implement an @c emplace function that
+  //!   accepts a concrete value or reference, wraps it in the appropriate
+  //!   "`__model`" type, and stores it either in-situ or on the heap depending
+  //!   on its size and whether it is nothrow moveable.
   //!
-  //! - The @c __root types (excluding @c __iroot) all inherit from @c __iabstract<Interface>.
-  //!   The @c __model types implement the interface in terms of the root type.
+  //! - The @c __root types (excluding @c __iroot) all inherit from
+  //!   @c __iabstract<Interface>. The @c __model types implement the interface
+  //!   in terms of the root type.
   //!
-  //! - @c any<Derived> inherits from @c __value_proxy_model<Derived>, which in turn inherits
-  //!   from @c Derived<Base<__value_proxy_root<Derived>>>, which in turn inherits from
-  //!   @c Derived<Base<__iroot>> (aka @c __iabstract<Derived> ).
+  //! - @c any<Derived> inherits from @c __value_proxy_model<Derived>, which in
+  //!   turn inherits from @c Derived<Base<__value_proxy_root<Derived>>>, which
+  //!   in turn inherits from @c Derived<Base<__iroot>> (aka
+  //!   `__iabstract<Derived>`).
   //!
   //! - @c __any_ptr<Derived> is implemented in terms of a mutable private
-  //!   @c __reference_proxy_model<Derived> data member, which in turn inherits from
-  //!   @c Derived<Base<__reference_proxy_root<Derived>>>.
+  //!   @c __reference_proxy_model<Derived> data member, which in turn inherits
+  //!   from @c Derived<Base<__reference_proxy_root<Derived>>>.
   //!
   //! - For every @c any<Interface> instantiation, there are 5 instantiations of
   //!   @c Interface:
@@ -159,7 +171,7 @@ namespace STDEXEC::__any
   inline constexpr size_t      __default_buffer_size = 3 * sizeof(void *);
   inline constexpr char const *__pure_virt_msg       = "internal error: pure virtual %s() called\n";
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // forward declarations
 
   // any types
@@ -210,7 +222,7 @@ namespace STDEXEC::__any
             size_t _BufferAlignment = alignof(void *)>
   struct __interface_base;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __interface_cast
   template <template <class> class _Interface, class _Base>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline)
@@ -226,7 +238,7 @@ namespace STDEXEC::__any
     return __arg;  // NOLINT(bugprone-return-const-ref-from-parameter)
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // accessors
   struct __access
   {
@@ -327,7 +339,7 @@ namespace STDEXEC::__any
   template <class _Ty>
   using __value_of_t = std::decay_t<decltype(__value(__declval<_Ty &>()))>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __extension_of
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Interface, template <class> class _BaseInterface>
@@ -335,7 +347,7 @@ namespace STDEXEC::__any
     STDEXEC::__any::__interface_cast<_BaseInterface>(__arg);
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_AUTHORING
   enum class __box_kind
   {
@@ -344,20 +356,20 @@ namespace STDEXEC::__any
     __proxy
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   enum class __root_kind
   {
-    __value,
-    __reference
+    __by_value,
+    __by_reference
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __is_small: Model is Interface<_Ty> for some concrete _Ty
   template <class _Model>
   [[nodiscard]]
   constexpr bool __is_small(size_t __buffer_size) noexcept
   {
-    if constexpr (_Model::__root_kind == __root_kind::__reference)
+    if constexpr (_Model::__root_kind == __root_kind::__by_reference)
     {
       STDEXEC_ASSERT(sizeof(_Model) <= __buffer_size);
       return true;
@@ -371,7 +383,7 @@ namespace STDEXEC::__any
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __tagged_ptr
   struct __tagged_ptr
   {
@@ -417,22 +429,21 @@ namespace STDEXEC::__any
   //   { root.__empty_() } -> std::same_as<bool>;
   // };
 
-  //! @c __iabstract must be an alias in order for @c __iabstract<_Derived> to be
-  //! derived from
-  //! @c __iabstract<_Base>. @c __iabstract<_Derived> is an alias for @c
-  //! Derived<Base<__iroot>>.
+  //! @c __iabstract must be an alias in order for @c __iabstract<_Derived> to
+  //! be derived from @c __iabstract<_Base>. @c __iabstract<_Derived> is an
+  //! alias for @c Derived<Base<__iroot>>.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <template <class> class _Interface, class _BaseInterfaces = __bases_of<_Interface>>
   using __iabstract = _Interface<__mcall1<_BaseInterfaces, __iroot>>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __iroot
   struct __iroot
   {
-    static constexpr STDEXEC::__any::__box_kind __box_kind = STDEXEC::__any::__box_kind::__abstract;
-    static constexpr size_t __buffer_size                  = sizeof(__tagged_ptr);  // minimum size
-    static constexpr size_t __buffer_alignment = alignof(__tagged_ptr);  // minimum alignment
-    using __bases_type                         = __extends<>;
+    static constexpr auto __box_kind         = STDEXEC::__any::__box_kind::__abstract;
+    static constexpr auto __buffer_size      = sizeof(__tagged_ptr);   // minimum size
+    static constexpr auto __buffer_alignment = alignof(__tagged_ptr);  // minimum alignment
+    using __bases_type                       = __extends<>;
 
     // needed by MSVC for EBO to work for some reason:
     constexpr virtual ~__iroot() = default;
@@ -480,7 +491,7 @@ namespace STDEXEC::__any
     void __indirect_bind_() const noexcept = delete;  // NOLINT(modernize-use-equals-delete)
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __box
   template <class _Value>
   struct __box
@@ -507,11 +518,11 @@ namespace STDEXEC::__any
     constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       noexcept(__nothrow_callable<_Fn, _Args...>)
     {
-      // for unknown reasons, GCC (sometimes) doesn't like initializing __val_ with the
-      // result of this function call in the member initialization clause when _Value
-      // is immovable even though the conditions should be right to trigger C++17's
-      // mandatory copy elision, but this in-place new into an uninitialized anonymous
-      // union member works just fine
+      // for unknown reasons, GCC (sometimes) doesn't like initializing __val_
+      // with the result of this function call in the member initialization
+      // clause when _Value is immovable even though the conditions should be
+      // right to trigger C++17's mandatory copy elision, but this in-place new
+      // into an uninitialized anonymous union member works just fine
       static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
       new ((void *) std::addressof(__val_))
         _Value(static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...));
@@ -576,8 +587,8 @@ namespace STDEXEC::__any
   //
   // any<Derived>
   //   : __value_proxy_model<Derived, V>
-  //       : Derived<Base<__value_proxy_root<Derived, V>>>    // __box_kind == proxy
-  //         ^^^^^^^        : Derived<Base<__iroot>>          // __box_kind == abstract
+  //       : Derived<Base<__value_proxy_root<Derived, V>>> // __box_kind == proxy
+  //         ^^^^^^^        : Derived<Base<__iroot>>       // __box_kind == abstract
   //                          ^^^^^^^
 
   template <class _Derived, template <class> class _Interface>
@@ -589,10 +600,10 @@ namespace STDEXEC::__any
   // may throw.
   template <class _Interface, class _Base, size_t _BufferSize>
   concept __nothrow_slice = (_Base::__box_kind != __box_kind::__abstract)
-                         && (_Base::__root_kind == __root_kind::__value)
+                         && (_Base::__root_kind == __root_kind::__by_value)
                          && (_Interface::__buffer_size >= _BufferSize);
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __extends
   template <>
   struct __extends<>
@@ -606,63 +617,97 @@ namespace STDEXEC::__any
   {
     template <class _Base, class _BasesOfBase = __mcall1<__bases_of<_BaseInterface>, _Base>>
     using __f = __mcall1<__extends<_BaseInterfaces...>,
-                         // If Base already implements BaseInterface, do not re-apply it.
+                         // If Base already implements BaseInterface, do not
+                         // re-apply it.
                          __if_c<__already_implements<_Base, _BaseInterface>,
                                 _BasesOfBase,
                                 _BaseInterface<_BasesOfBase>>>;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
-  // __emplace_into
-  template <class _Alloc2>
-  struct __dealloc_guard
+  //////////////////////////////////////////////////////////////////////////////
+  // __storage_ref
+  union __storage_ref
   {
-    _Alloc2                                         &__alloc;
-    typename std::allocator_traits<_Alloc2>::pointer __ptr;
-    bool                                             __dismissed = false;
-
-    constexpr void __dismiss() noexcept
+    [[nodiscard]]
+    constexpr bool __empty() const noexcept
     {
-      __dismissed = true;
-    }
-
-    constexpr ~__dealloc_guard() noexcept
-    {
-      if (!__dismissed)
+      STDEXEC_IF_CONSTEVAL
       {
-        std::allocator_traits<_Alloc2>::deallocate(__alloc, __ptr, 1);
+        return *__root_ptr_ptr == nullptr;
+      }
+      else
+      {
+        return *__std::start_lifetime_as<__tagged_ptr>(__buffer.data()) == nullptr;
       }
     }
+
+    __iroot            **__root_ptr_ptr;  //< Used in consteval contexts
+    std::span<std::byte> __buffer;        //< Used in runtime contexts
   };
 
+  template <std::size_t _Size, std::size_t _Align>
+  union __storage
+  {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __storage() noexcept
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        __root_ptr = nullptr;
+      }
+      else
+      {
+        *__std::start_lifetime_as<__tagged_ptr>(__buffer) = __tagged_ptr();
+      }
+    }
+
+    inline constexpr /*implicit*/ operator __storage_ref() const noexcept
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        return __storage_ref{.__root_ptr_ptr = &__root_ptr};
+      }
+      else
+      {
+        return __storage_ref{.__buffer = __buffer};
+      }
+    }
+
+    mutable __iroot *__root_ptr;                        //< Used in consteval contexts
+    alignas(_Align) mutable std::byte __buffer[_Size];  //< Used in runtime contexts
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  // __emplace_into
   template <class _Model, class _Allocator, class... _Args>
-  constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const    &__alloc,
-                                   [[maybe_unused]] __iroot            *&__root_ptr,
-                                   [[maybe_unused]] std::span<std::byte> __buff,
+  constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const &__alloc,
+                                   __storage_ref                      __storage,
                                    _Args &&...__args)
   {
-    static_assert(__decays_to<_Model, _Model>);
+    static_assert(__decayed<_Model>);
     STDEXEC_IF_CONSTEVAL
     {
-      __root_ptr = ::new _Model(static_cast<_Args &&>(__args)...);
-      return *static_cast<_Model *>(__root_ptr);
+      *__storage.__root_ptr_ptr = ::new _Model(static_cast<_Args &&>(__args)...);
+      return *static_cast<_Model *>(*__storage.__root_ptr_ptr);
     }
     else
     {
-      if (STDEXEC::__any::__is_small<_Model>(__buff.size()))
+      if (STDEXEC::__any::__is_small<_Model>(__storage.__buffer.size()))
       {
-        return *std::construct_at(reinterpret_cast<_Model *>(__buff.data()),
+        return *std::construct_at(reinterpret_cast<_Model *>(__storage.__buffer.data()),
                                   static_cast<_Args &&>(__args)...);
       }
       else
       {
-        auto __alloc2                               = STDEXEC::__rebind_allocator<_Model>(__alloc);
-        using __traits_t                            = std::allocator_traits<decltype(__alloc2)>;
-        auto *const                         __model = __traits_t::allocate(__alloc2, 1);
-        __dealloc_guard<decltype(__alloc2)> __guard{__alloc2, __model};
+        auto __alloc2       = STDEXEC::__rebind_allocator<_Model>(__alloc);
+        using __traits_t    = std::allocator_traits<decltype(__alloc2)>;
+        auto *const __model = __traits_t::allocate(__alloc2, 1);
+
+        auto __guard = __scope_guard{&__traits_t::deallocate, std::ref(__alloc2), __model, 1};
         __traits_t::construct(__alloc2, __model, static_cast<_Args &&>(__args)...);
         __guard.__dismiss();
-        *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(__model);
+
+        *__std::start_lifetime_as<__tagged_ptr>(__storage.__buffer.data()) = __tagged_ptr(__model);
         return *__model;
       }
     }
@@ -670,14 +715,12 @@ namespace STDEXEC::__any
 
   template <int = 0, class _CvRefValue, class _Allocator, class _Value = std::decay_t<_CvRefValue>>
   STDEXEC_ATTRIBUTE(always_inline)
-  constexpr _Value &__emplace_into(_Allocator const    &__alloc,
-                                   __iroot            *&__root_ptr,
-                                   std::span<std::byte> __buff,
-                                   _CvRefValue        &&__val)
+  constexpr _Value &__emplace_into(_Allocator const &__alloc,
+                                   __storage_ref     __storage,
+                                   _CvRefValue     &&__val)
   {
     return STDEXEC::__any::__emplace_into<_Value>(__alloc,
-                                                  __root_ptr,
-                                                  __buff,
+                                                  __storage,
                                                   static_cast<_CvRefValue &&>(__val));
   }
 
@@ -734,13 +777,12 @@ namespace STDEXEC::__any
 
     // This is a virtual override if _Interface extends __imovable
     //! @pre __is_small<__value_model>(__buff.size())
-    constexpr void __move_to(__iroot *&__ptr, std::span<std::byte> __buff) noexcept
+    constexpr void __move_to(__storage_ref __storage) noexcept
     {
       static_assert(__extension_of<__iabstract<_Interface>, __imovable>);
-      STDEXEC_ASSERT(STDEXEC::__any::__is_small<__value_model>(__buff.size()));
+      STDEXEC_ASSERT(STDEXEC::__any::__is_small<__value_model>(__storage.__buffer.size()));
       STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
-                                                    __ptr,
-                                                    __buff,
+                                                    __storage,
                                                     std::allocator_arg,
                                                     this->__get_allocator(),
                                                     __value(std::move(*this)));
@@ -748,13 +790,12 @@ namespace STDEXEC::__any
     }
 
     // This is a virtual override if _Interface extends __icopyable
-    constexpr void __copy_to(__iroot *&__ptr, std::span<std::byte> __buff) const
+    constexpr void __copy_to(__storage_ref __storage) const
     {
       static_assert(__extension_of<__iabstract<_Interface>, __icopyable>);
       STDEXEC_ASSERT(!__empty(*this));
       STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
-                                                    __ptr,
-                                                    __buff,
+                                                    __storage,
                                                     std::allocator_arg,
                                                     this->__get_allocator(),
                                                     __value(*this));
@@ -773,7 +814,7 @@ namespace STDEXEC::__any
   template <class _Interface, __root_kind _RootKind>
   concept __has_root_kind = _Interface::__root_kind == _RootKind;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! __interface_base
   template <template <class> class _Interface,
             class _Base,
@@ -789,8 +830,8 @@ namespace STDEXEC::__any
     using _Base::__slice_to_;
     using _Base::_Base;
 
-    // The actual buffer size is the user-specified buffer size plus the size of a pointer,
-    // because space is needed for the virtual table pointer.
+    // The actual buffer size is the user-specified buffer size plus the size of
+    // a pointer, because space is needed for the virtual table pointer.
     static constexpr size_t __buffer_size = _BufferSize + sizeof(void *) > _Base::__buffer_size
                                             ? _BufferSize + sizeof(void *)
                                             : _Base::__buffer_size;
@@ -800,7 +841,7 @@ namespace STDEXEC::__any
                                                  : _Base::__buffer_alignment;
 
     static constexpr bool __can_slice = __extension_of<_Base, __imovable>
-                                     && (__has_root_kind<_Base, __root_kind::__value>
+                                     && (__has_root_kind<_Base, __root_kind::__by_value>
                                          || __extension_of<_Base, __icopyable>);
 
     static constexpr bool __nothrow_slice =
@@ -831,7 +872,7 @@ namespace STDEXEC::__any
       else
       {
         // Move from type-erased values, but not from type-erased references.
-        STDEXEC_CONSTEXPR_LOCAL bool __is_value = _Base::__root_kind == __root_kind::__value;
+        STDEXEC_CONSTEXPR_LOCAL bool __is_value = _Base::__root_kind == __root_kind::__by_value;
         __result.emplace(__value(STDEXEC::__maybe_move<__is_value>(*this)));  // could throw
       }
     }
@@ -858,7 +899,7 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __box_root_kind
   template <__box_kind _BoxKind, __root_kind _RootKind>
   struct __box_root_kind
@@ -867,12 +908,12 @@ namespace STDEXEC::__any
     static constexpr STDEXEC::__any::__root_kind __root_kind = _RootKind;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __value_root
   template <template <class> class _Interface, class _Value>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__object, __root_kind::__value>
+    , __box_root_kind<__box_kind::__object, __root_kind::__by_value>
     , __box<_Value>
   {
     using __value_type     = _Value;
@@ -905,7 +946,7 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __value_root_with_allocator
   template <template <class> class _Interface, class _Value, class _Allocator>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_root_with_allocator
@@ -933,12 +974,12 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __value_proxy_root
   template <template <class> class _Interface>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_proxy_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__proxy, __root_kind::__value>
+    , __box_root_kind<__box_kind::__proxy, __root_kind::__by_value>
   {
     using __interface_type = __iabstract<_Interface>;
     using __iabstract<_Interface>::__buffer_size;
@@ -948,18 +989,7 @@ namespace STDEXEC::__any
     static constexpr bool __movable  = __extension_of<__iabstract<_Interface>, __imovable>;
     static constexpr bool __copyable = __extension_of<__iabstract<_Interface>, __icopyable>;
 
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __value_proxy_root() noexcept
-    {
-      STDEXEC_IF_CONSTEVAL
-      {
-        __root_ptr_ = nullptr;
-      }
-      else
-      {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
-      }
-    }
+    constexpr __value_proxy_root() noexcept = default;
 
     constexpr __value_proxy_root(__value_proxy_root &&__other) noexcept
       requires __movable
@@ -973,7 +1003,7 @@ namespace STDEXEC::__any
       : __value_proxy_root()
     {
       if (!__empty(__other))
-        __value(__other).__copy_to(__root_ptr_, __buff_);
+        __value(__other).__copy_to(__storage_);
     }
 
     constexpr ~__value_proxy_root()
@@ -1005,15 +1035,15 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        std::swap(__root_ptr_, __other.__root_ptr_);
+        std::swap(__storage_.__root_ptr, __other.__storage_.__root_ptr);
       }
       else
       {
         if (this == std::addressof(__other))
           return;
 
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
 
         // This also covers the case where both __this_ptr and __that_ptr are null.
         if (__this_ptr.__is_tagged() && __that_ptr.__is_tagged())
@@ -1054,7 +1084,7 @@ namespace STDEXEC::__any
       }
       else
       {
-        return !(*__std::start_lifetime_as<__tagged_ptr>(__buff_)).__is_tagged();
+        return !(*__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer)).__is_tagged();
       }
     }
 
@@ -1066,13 +1096,12 @@ namespace STDEXEC::__any
     template <class _Value, class _Allocator, class... _Args>
     constexpr _Value &__emplace_(std::allocator_arg_t, _Allocator const &__alloc, _Args &&...__args)
     {
-      static_assert(__decays_to<_Value, _Value>, "Value must be an object type.");
+      static_assert(__decayed<_Value>, "Value must be an object type.");
       static_assert(__simple_allocator<_Allocator>);
       using __model_type = __value_model<_Interface, _Value, _Allocator>;
       auto &__model      =  //
         STDEXEC::__any::__emplace_into<__model_type>(__alloc,
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      std::allocator_arg,
                                                      __alloc,
                                                      static_cast<_Args &&>(__args)...);
@@ -1096,8 +1125,7 @@ namespace STDEXEC::__any
       using __model_type = __value_model<_Interface, __value_type, _Allocator>;
       auto &__model      =  //
         STDEXEC::__any::__emplace_into<__model_type>(__alloc,
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      std::allocator_arg,
                                                      __alloc,
                                                      __in_place_from,
@@ -1128,14 +1156,14 @@ namespace STDEXEC::__any
       STDEXEC_IF_CONSTEVAL
       {
         return static_cast<__interface_ref_t>(
-          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__root_ptr_));
+          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__storage_.__root_ptr));
       }
       else
       {
-        auto const __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__buff_);
+        auto const __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__storage_.__buffer);
         STDEXEC_ASSERT(__ptr != nullptr);
-        auto *__root_ptr = static_cast<__root_ptr_t>(__ptr.__is_tagged() ? __ptr.__get()
-                                                                         : __self.__buff_);
+        auto *__root_ptr = static_cast<__root_ptr_t>(
+          __ptr.__is_tagged() ? __ptr.__get() : __self.__storage_.__buffer);
         return static_cast<__interface_ref_t>(
           *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__root_ptr));
       }
@@ -1144,14 +1172,7 @@ namespace STDEXEC::__any
     [[nodiscard]]
     constexpr bool __empty_() const noexcept final
     {
-      STDEXEC_IF_CONSTEVAL
-      {
-        return __root_ptr_ == nullptr;
-      }
-      else
-      {
-        return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
-      }
+      return __storage_ref(__storage_).__empty();
     }
 
     constexpr void __move_to_empty(__value_proxy_root &__other) noexcept
@@ -1159,21 +1180,21 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        __other.__root_ptr_ = std::exchange(__root_ptr_, nullptr);
+        __other.__storage_.__root_ptr = std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
         STDEXEC_ASSERT(!__empty(*this));
         STDEXEC_ASSERT(__empty(__other));
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
         if (__this_ptr.__is_tagged())
         {
           __that_ptr = std::exchange(__this_ptr, nullptr);
         }
         else
         {
-          __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          __value(*this).__move_to(__other.__storage_);
           __reset(*this);
         }
       }
@@ -1184,11 +1205,11 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        delete std::exchange(__root_ptr_, nullptr);
+        delete std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
-        auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+        auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
         if (__ptr == nullptr)
           return;
         else if (!__ptr.__is_tagged())
@@ -1212,14 +1233,10 @@ namespace STDEXEC::__any
       return __empty_() ? nullptr : __data(__value(*this));
     }
 
-    union
-    {
-      __iroot *__root_ptr_ = nullptr;                                //!< Used in consteval context
-      alignas(__buffer_alignment) std::byte __buff_[__buffer_size];  //!< Used in runtime context
-    };
+    __storage<__buffer_size, __buffer_alignment> __storage_;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __reference_union
   template <class _Value>
   struct __reference_union
@@ -1232,12 +1249,12 @@ namespace STDEXEC::__any
     bool __which_ = false;  // true if root, false if value
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __reference_root
   template <template <class> class _Interface, class _Value>
   struct STDEXEC_ATTRIBUTE(empty_bases) __reference_root<_Interface, _Value>
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__object, __root_kind::__reference>
+    , __box_root_kind<__box_kind::__object, __root_kind::__by_reference>
   {
     using __value_type     = _Value;
     using __interface_type = __iabstract<_Interface>;
@@ -1398,27 +1415,17 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __reference_proxy_root
   template <template <class> class _Interface>
   struct STDEXEC_ATTRIBUTE(empty_bases) __reference_proxy_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__proxy, __root_kind::__reference>
+    , __box_root_kind<__box_kind::__proxy, __root_kind::__by_reference>
   {
     using __interface_type = __iabstract<_Interface>;
     using __reference_proxy_root::__box_root_kind::__box_kind;
 
-    constexpr __reference_proxy_root() noexcept
-    {
-      STDEXEC_IF_CONSTEVAL
-      {
-        __root_ptr_ = nullptr;
-      }
-      else
-      {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
-      }
-    }
+    constexpr __reference_proxy_root() noexcept = default;
 
     // __reference_proxy_root is not movable or copyable to preserve const-correctness of
     // __any_cptr. Dereferencing an __any_cptr returns an lvalue reference to a const
@@ -1436,7 +1443,7 @@ namespace STDEXEC::__any
       }
       else
       {
-        std::memcpy(__buff_, __other.__buff_, sizeof(__buff_));
+        std::memcpy(__storage_.__buffer, __other.__storage_.__buffer, sizeof(__storage_.__buffer));
       }
     }
 
@@ -1452,11 +1459,11 @@ namespace STDEXEC::__any
 
       STDEXEC_IF_CONSTEVAL
       {
-        std::swap(__root_ptr_, __other.__root_ptr_);
+        std::swap(__storage_.__root_ptr, __other.__storage_.__root_ptr);
       }
       else
       {
-        std::swap(__buff_, __other.__buff_);
+        std::swap(__storage_.__buffer, __other.__storage_.__buffer);
       }
     }
 
@@ -1472,11 +1479,11 @@ namespace STDEXEC::__any
       {
         if constexpr (std::derived_from<_CvModel, __iabstract<_Interface>>)
         {
-          //! Optimize for when Base derives from __iabstract<_Interface>. _Store the
-          //! address of __value(__other) directly in __result as a tagged ptr instead of
-          //! introducing an indirection.
+          //! Optimize for when Base derives from __iabstract<_Interface>.
+          //! Store the address of __value(__other) directly in __result as a
+          //! tagged ptr instead of introducing an indirection.
           //! @post __is_tagged() == true
-          auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+          auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
           __ptr = static_cast<__interface_type *>(std::addressof(STDEXEC::__unconst(__model)));
         }
         else
@@ -1494,11 +1501,10 @@ namespace STDEXEC::__any
       using __extension_type = _CvModel::__interface_type;
       using __value_type     = _CvModel::__value_type;
       using __model_type     = __reference_model<_Interface, __value_type, __extension_type>;
-      if constexpr (_CvModel::__root_kind == __root_kind::__reference)
+      if constexpr (_CvModel::__root_kind == __root_kind::__by_reference)
       {
         STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      __model.__get_value_ptr_(),
                                                      __model.__get_root_ptr_());
       }
@@ -1506,8 +1512,7 @@ namespace STDEXEC::__any
       {
         __iroot *__root_ptr = std::addressof(STDEXEC::__unconst(__model));
         STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      static_cast<__value_type *>(nullptr),
                                                      STDEXEC_DECAY_COPY(__root_ptr));
       }
@@ -1519,8 +1524,7 @@ namespace STDEXEC::__any
       static_assert(!__extension_of<_CvValue, _Interface>);
       using __model_type = __reference_model<_Interface, _CvValue>;
       STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                   __root_ptr_,
-                                                   __buff_,
+                                                   __storage_,
                                                    std::addressof(__val),
                                                    static_cast<__iroot *>(nullptr));
     }
@@ -1535,14 +1539,14 @@ namespace STDEXEC::__any
       STDEXEC_IF_CONSTEVAL
       {
         return static_cast<__interface_ref_t>(
-          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__root_ptr_));
+          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__storage_.__root_ptr));
       }
       else
       {
         STDEXEC_ASSERT(!__empty(__self));
-        auto const  __ptr      = *__std::start_lifetime_as<__tagged_ptr>(__self.__buff_);
-        auto *const __root_ptr = static_cast<__root_ptr_t>(__ptr.__is_tagged() ? __ptr.__get()
-                                                                               : __self.__buff_);
+        auto const  __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__storage_.__buffer);
+        auto *const __root_ptr = static_cast<__root_ptr_t>(
+          __ptr.__is_tagged() ? __ptr.__get() : __self.__storage_.__buffer);
         return static_cast<__interface_ref_t>(
           *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__root_ptr));
       }
@@ -1551,25 +1555,18 @@ namespace STDEXEC::__any
     [[nodiscard]]
     constexpr bool __empty_() const noexcept final
     {
-      STDEXEC_IF_CONSTEVAL
-      {
-        return __root_ptr_ == nullptr;
-      }
-      else
-      {
-        return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
-      }
+      return __storage_ref(__storage_).__empty();
     }
 
     constexpr void __reset_() noexcept final
     {
       STDEXEC_IF_CONSTEVAL
       {
-        delete std::exchange(__root_ptr_, nullptr);
+        delete std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
+        *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer) = __tagged_ptr();
       }
     }
 
@@ -1594,20 +1591,15 @@ namespace STDEXEC::__any
       }
       else
       {
-        return !(*__std::start_lifetime_as<__tagged_ptr>(__buff_)).__is_tagged();
+        return !(*__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer)).__is_tagged();
       }
     }
 
    private:
-    union
-    {
-      __iroot *__root_ptr_ = nullptr;  //!< Used in consteval context
-      // storage for one vtable __ptr and one pointer for the referant
-      mutable std::byte __buff_[2 * sizeof(void *)];  //!< Used in runtime context
-    };
+    __storage<2 * sizeof(void *), alignof(void *)> __storage_;
   };  // struct __reference_proxy_root
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __bad_any_cast
   struct __bad_any_cast : std::exception
   {
@@ -1635,7 +1627,7 @@ namespace STDEXEC::__any
   }
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! __any_static_cast
   template <class _Value>
   struct __any_static_cast_impl_t
@@ -1655,7 +1647,7 @@ namespace STDEXEC::__any
     }
 
    private:
-    static_assert(__decays_to<_Value, _Value>, "Value must be a decayed type.");
+    static_assert(__decayed<_Value>, "Value must be a decayed type.");
 
     template <class _CvModel>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
@@ -1668,7 +1660,7 @@ namespace STDEXEC::__any
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
     static constexpr bool __is_reference_(_CvProxy *__proxy_ptr) noexcept
     {
-      if constexpr (_CvProxy::__root_kind == __root_kind::__reference)
+      if constexpr (_CvProxy::__root_kind == __root_kind::__by_reference)
         return (*__proxy_ptr).__is_indirect_();
       else
         return false;
@@ -1695,7 +1687,7 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! __any_static_cast
   template <class _Value>
   struct __any_dynamic_cast_t
@@ -1710,7 +1702,7 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __basic_cast_t
   template <class _Value, template <class> class _Cast>
   struct __basic_cast_t
@@ -1746,7 +1738,7 @@ namespace STDEXEC::__any
       auto *__ptr = (*this)(std::addressof(__object));
       if (__ptr == nullptr)
         __throw_bad_any_cast();
-      if constexpr (_Base::__root_kind == __root_kind::__reference)
+      if constexpr (_Base::__root_kind == __root_kind::__by_reference)
         return *__ptr;
       else
         return std::move(*__ptr);
@@ -1787,12 +1779,12 @@ namespace STDEXEC::__any
     }
 
    private:
-    static_assert(__decays_to<_Value, _Value>);
+    static_assert(__decayed<_Value>);
     // The cast is either checked (dynamic) or unchecked (static)
     static constexpr _Cast<_Value> __cast{};
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __any_cast
   template <class _Value>
   struct __any_cast_t : __basic_cast_t<_Value, __any_dynamic_cast_t>
@@ -1802,7 +1794,7 @@ namespace STDEXEC::__any
   template <class _Value>
   constexpr __any_cast_t<_Value> __any_cast{};
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __any_static_cast
   template <class _Value>
   struct __any_static_cast_t : __basic_cast_t<_Value, __any_static_cast_impl_t>
@@ -1812,38 +1804,38 @@ namespace STDEXEC::__any
   template <class _Value>
   constexpr __any_static_cast_t<_Value> __any_static_cast{};
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __imovable
   template <class _Base>
   struct __imovable : __interface_base<__imovable, _Base>
   {
     using __imovable::__interface_base::__interface_base;
 
-    constexpr virtual void __move_to(__iroot *&, std::span<std::byte>) noexcept
+    constexpr virtual void __move_to(__storage_ref) noexcept
     {
       STDEXEC::__die(__pure_virt_msg, "__move_to");
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __icopyable
   template <class _Base>
   struct __icopyable : __interface_base<__icopyable, _Base, __extends<__imovable>>
   {
     using __icopyable::__interface_base::__interface_base;
 
-    constexpr virtual void __copy_to(__iroot *&, std::span<std::byte>) const
+    constexpr virtual void __copy_to(__storage_ref) const
     {
       STDEXEC::__die(__pure_virt_msg, "__copy_to");
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // utils
   template <class _Value, template <class> class _Interface>
-  concept __model_of = __decays_to<_Value, _Value> && !std::derived_from<_Value, __iroot>;
+  concept __model_of = __decayed<_Value> && !std::derived_from<_Value, __iroot>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any
   template <template <class> class _Interface>
   struct __any : __value_proxy_model<_Interface>
@@ -1853,13 +1845,13 @@ namespace STDEXEC::__any
     static constexpr bool __as_large_as =
       (__iabstract<_Interface>::__buffer_size >= _Interface<_Other>::__buffer_size)
       && (_Interface<_Other>::__buffer_alignment % __iabstract<_Interface>::__buffer_alignment == 0)
-      && (_Other::__root_kind == __root_kind::__value);
+      && (_Other::__root_kind == __root_kind::__by_value);
 
    public:
     __any() = default;
 
-    // Construct from an object that implements the interface (and is not an any<>
-    // itself)
+    // Construct from an object that implements the interface (and is not an
+    // any<> itself)
     template <__model_of<_Interface> _Value, class _Allocator = std::allocator<_Value>>
     constexpr __any(_Value __val, _Allocator const &__alloc = _Allocator())
       : __any()
@@ -1885,7 +1877,7 @@ namespace STDEXEC::__any
     // Implicit derived-to-base conversion constructor
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
-            && (_Other::__root_kind == __root_kind::__value)
+            && (_Other::__root_kind == __root_kind::__by_value)
     constexpr __any(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
       (*this).__assign_from(std::move(__other));
@@ -1893,7 +1885,7 @@ namespace STDEXEC::__any
 
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __icopyable>
-            && (_Other::__root_kind == __root_kind::__reference)
+            && (_Other::__root_kind == __root_kind::__by_reference)
     constexpr __any(_Interface<_Other> const &__other)
     {
       _Interface<_Other> __tmp;
@@ -1912,7 +1904,7 @@ namespace STDEXEC::__any
     // Implicit derived-to-base conversion constructor
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
-            && (_Other::__root_kind == __root_kind::__value)
+            && (_Other::__root_kind == __root_kind::__by_value)
     constexpr __any &operator=(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
       __reset(*this);
@@ -1922,7 +1914,7 @@ namespace STDEXEC::__any
 
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __icopyable>
-            && (_Other::__root_kind == __root_kind::__reference)
+            && (_Other::__root_kind == __root_kind::__by_reference)
     constexpr __any &operator=(_Interface<_Other> const &__other)
     {
       // Guard against self-assignment when __other is a reference to *this
@@ -1944,8 +1936,8 @@ namespace STDEXEC::__any
     }
 
    private:
-    // Assigning from a type that __extends _Interface. Its buffer may be larger than
-    // ours, or it may be a reference type, so we can be only conditionally
+    // Assigning from a type that __extends _Interface. Its buffer may be larger
+    // than ours, or it may be a reference type, so we can be only conditionally
     // noexcept.
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
@@ -1953,7 +1945,7 @@ namespace STDEXEC::__any
     {
       using __root_t = __value_proxy_root<_Interface>;
       STDEXEC_CONSTEXPR_LOCAL
-      bool __is_value = _Other::__root_kind == __root_kind::__value;
+      bool __is_value = _Other::__root_kind == __root_kind::__by_value;
       STDEXEC_CONSTEXPR_LOCAL
       bool __ptr_convertible = std::derived_from<_Other, __iabstract<_Interface>>;
 
@@ -1974,12 +1966,12 @@ namespace STDEXEC::__any
       }
       else STDEXEC_IF_CONSTEVAL
       {
-        (*this).__root_ptr_ = std::exchange(__other.__root_ptr_, nullptr);
+        (*this).__storage_.__root_ptr = std::exchange(__other.__storage_.__root_ptr, nullptr);
       }
       else
       {
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>((*this).__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>((*this).__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
         __this_ptr       = std::exchange(__that_ptr, nullptr);
       }
     }
@@ -1987,7 +1979,7 @@ namespace STDEXEC::__any
     static_assert(sizeof(__iabstract<_Interface>) == sizeof(void *));  // sanity check
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __any_ptr_base
   template <template <class> class _Interface>
   struct __any_ptr_base
@@ -2063,9 +2055,9 @@ namespace STDEXEC::__any
 
       if (__proxy_ptr == nullptr || __empty(*__proxy_ptr))
         return;
-      // _Optimize for when _CvValueProxy derives from __iabstract<_Interface>. _Store the address
-      // of __value(__other) directly in __result as a tagged ptr instead of introducing an
-      // indirection.
+      // Optimize for when _CvValueProxy derives from __iabstract<_Interface>.
+      // Store the address of __value(__other) directly in __result as a tagged
+      // ptr instead of introducing an indirection.
       else if constexpr (std::derived_from<_CvValueProxy, __iabstract<_Interface>>)
         __reference_.__model_bind_(STDEXEC::__as_const_if<__is_const_>(__value(*__proxy_ptr)));
       else
@@ -2074,7 +2066,7 @@ namespace STDEXEC::__any
 
     //! @param __other A pointer to a reference proxy model implementing _Interface.
     template <__extension_of<_Interface> _CvReferenceProxy>
-      requires(_CvReferenceProxy::__root_kind == __root_kind::__reference)
+      requires(_CvReferenceProxy::__root_kind == __root_kind::__by_reference)
     constexpr void __proxy_assign(_CvReferenceProxy *__proxy_ptr) noexcept
     {
       static_assert(_CvReferenceProxy::__box_kind == __box_kind::__proxy);
@@ -2082,14 +2074,14 @@ namespace STDEXEC::__any
 
       if (__proxy_ptr == nullptr || __empty(*__proxy_ptr))
         return;
-      // in the case where _CvReferenceProxy is a base class of __model_type, we can simply
-      // downcast and copy the model directly.
+      // in the case where _CvReferenceProxy is a base class of __model_type, we
+      // can simply downcast and copy the model directly.
       else if constexpr (std::derived_from<__model_type, _CvReferenceProxy>)
         __reference_.__copy_from(
           *STDEXEC::__polymorphic_downcast<__model_type const *>(__proxy_ptr));
-      // _Otherwise, we are assigning from a derived reference to a base reference, and the
-      // __other reference is indirect (i.e., it holds a __reference_model in its buffer). We
-      // need to copy the referant model.
+      // Otherwise, we are assigning from a derived reference to a base
+      // reference, and the __other reference is indirect (i.e., it holds a
+      // __reference_model in its buffer). We need to copy the referant model.
       else if ((*__proxy_ptr).__is_indirect_())
         __value(*__proxy_ptr).__indirect_bind_(__reference_);
       else
@@ -2108,7 +2100,7 @@ namespace STDEXEC::__any
     mutable __model_type __reference_;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __any_ptr
   template <template <class> class _Interface>
   struct __any_ptr : __any_ptr_base<_Interface>
@@ -2177,7 +2169,7 @@ namespace STDEXEC::__any
   template <template <class> class _Interface, class _Base>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __any_ptr(_Interface<_Base> *) -> __any_ptr<_Interface>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __any_cptr
   template <template <class> class _Interface>
   struct __any_cptr : __any_ptr_base<_Interface>
@@ -2240,7 +2232,7 @@ namespace STDEXEC::__any
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __any_cptr(_Interface<_Base> const *) -> __any_cptr<_Interface>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __iequality_comparable
   template <class _Base>
   struct __iequality_comparable : __interface_base<__iequality_comparable, _Base>
@@ -2272,7 +2264,7 @@ namespace STDEXEC::__any
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __isemiregular
   template <class _Base>
   struct __isemiregular
@@ -2283,7 +2275,7 @@ namespace STDEXEC::__any
 
 }  // namespace STDEXEC::__any
 
-// NOLINTEND(moderize-use-override)
+// NOLINTEND(modernize-use-override)
 
 #  include "__epilogue.hpp"
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

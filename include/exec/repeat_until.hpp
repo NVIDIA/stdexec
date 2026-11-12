@@ -70,16 +70,17 @@ namespace experimental::execution
       template <class... _Booleans>
       constexpr void set_value(_Booleans &&...__bools) noexcept
       {
+        auto *__state = __state_;
         if constexpr ((__is_bool_constant<_Booleans, true> && ...))
         {
           // Always done:
-          __state_->__cleanup();
-          STDEXEC::set_value(std::move(__state_->__rcvr_));
+          __state->__cleanup();
+          STDEXEC::set_value(std::move(__state->__rcvr_));
         }
         else if constexpr ((__is_bool_constant<_Booleans, false> && ...))
         {
           // Never done:
-          __state_->__repeat();
+          __state->__repeat();
         }
         else
         {
@@ -91,20 +92,20 @@ namespace experimental::execution
             bool const __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
             if (__done)
             {
-              __state_->__cleanup();
-              STDEXEC::set_value(std::move(__state_->__rcvr_));
+              __state->__cleanup();
+              STDEXEC::set_value(std::move(__state->__rcvr_));
             }
             else
             {
-              __state_->__repeat();
+              __state->__repeat();
             }
           }
           STDEXEC_CATCH_ALL
           {
             if constexpr (!__is_nothrow)
             {
-              __state_->__cleanup();
-              STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+              __state->__cleanup();
+              STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
             }
           }
         }
@@ -113,26 +114,30 @@ namespace experimental::execution
       template <class _Error>
       constexpr void set_error(_Error &&__err) noexcept
       {
+        auto *__state = __state_;
         STDEXEC_TRY
         {
-          auto __err_copy = static_cast<_Error &&>(__err);  // make a local copy of the error...
-          __state_->__cleanup();  // ... because this could potentially invalidate it.
-          STDEXEC::set_error(std::move(__state_->__rcvr_), static_cast<_Error &&>(__err_copy));
+          // make a local copy of the error...
+          auto __err_copy = static_cast<_Error &&>(__err);
+          // ... because this could potentially invalidate it.
+          __state->__cleanup();
+          STDEXEC::set_error(std::move(__state->__rcvr_), static_cast<_Error &&>(__err_copy));
         }
         STDEXEC_CATCH_ALL
         {
           if constexpr (!__nothrow_decay_copyable<_Error>)
           {
-            __state_->__cleanup();
-            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+            __state->__cleanup();
+            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
           }
         }
       }
 
       constexpr void set_stopped() noexcept
       {
-        __state_->__cleanup();
-        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+        auto *__state = __state_;
+        __state->__cleanup();
+        STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
       [[nodiscard]]
@@ -238,7 +243,7 @@ namespace experimental::execution
             _WHAT_(_INVALID_ARGUMENT_),
             _WHERE_(_IN_ALGORITHM_, repeat_until_t),
             _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
-            _WITH_PRETTY_SENDER_<_Child>>();
+            _WITH_SENDER_<_Child>>();
         }
         else if constexpr ((__is_bool_constant<_Args, false> && ...))
         {
@@ -281,19 +286,19 @@ namespace experimental::execution
                                                 __transform_errors);
         STDEXEC_IF_OK(__sigs)
         {
-          // The repeat_until sender is a dependent sender if one of the following is
-          // true:
-          //   - the child sender is a dependent sender, or
-          //   - the trampoline scheduler's sender is a dependent sender, or
-          //   - sizeof...(_Env) == 0 and the child sender does not have a
-          //     set_error(exception_ptr) completion.
+          // The repeat_until sender is a dependent sender if one of the
+          // following is true:
+          // - the child sender is a dependent sender, or
+          // - the trampoline scheduler's sender is a dependent sender, or
+          // - sizeof...(_Env) == 0 and the child sender does not have a
+          //   set_error(exception_ptr) completion.
           constexpr bool __is_dependent = (sizeof...(_Env) == 0)
                                        && (dependent_sender<__bouncer_t>
                                            || !__sigs.__contains(__eptr_completion));
           if constexpr (__is_dependent)
           {
             return exec::throw_compile_time_error<dependent_sender_error,
-                                                  _WITH_PRETTY_SENDER_<__child_t>>();
+                                                  _WITH_SENDER_<__child_t>>();
           }
           else
           {
@@ -338,7 +343,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_until_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_until_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -355,7 +360,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -381,7 +386,7 @@ namespace experimental::execution
       {
         return __not_a_sender<_WHAT_(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
                               _WHERE_(_IN_ALGORITHM_, repeat_until_t),
-                              _WITH_PRETTY_SENDER_<__child_t>,
+                              _WITH_SENDER_<__child_t>,
                               _WITH_ENVIRONMENT_(_Env)>();
       }
     }
@@ -389,7 +394,7 @@ namespace experimental::execution
 
   inline constexpr repeat_t repeat{};
 
-  /// deprecated interfaces
+  //! deprecated interfaces
   using repeat_effect_t [[deprecated("use exec::repeat_t instead")]]             = repeat_t;
   using repeat_effect_until_t [[deprecated("use exec::repeat_until_t instead")]] = repeat_until_t;
   [[deprecated("use exec::repeat instead")]]
@@ -400,6 +405,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

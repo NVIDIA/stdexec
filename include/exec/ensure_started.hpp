@@ -27,7 +27,7 @@
 
 namespace experimental::execution
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   namespace __ensure_started
   {
     using namespace __shared;
@@ -51,10 +51,10 @@ namespace experimental::execution
       }
       else
       {
-        return STDEXEC::transform_sender(
-          STDEXEC::__make_sexpr<ensure_started_t>(static_cast<_Env&&>(__env),
-                                                  static_cast<_CvSender&&>(__sndr)),
-          __env);
+        return STDEXEC::transform_sender(STDEXEC::__sexpr{ensure_started_t(),
+                                                          static_cast<_Env&&>(__env),
+                                                          static_cast<_CvSender&&>(__sndr)},
+                                         __env);
       }
     }
 
@@ -83,6 +83,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

@@ -29,6 +29,7 @@
 import std;
 #else
 #  include <chrono>  // IWYU pragma: keep for chrono_literals
+#  include <cstdint>
 #  include <exception>
 #  include <memory>
 #endif
@@ -80,6 +81,25 @@ namespace
   {
     ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
     STDEXEC::sync_wait(std::move(snd));
+  }
+
+  // Regression test for https://github.com/NVIDIA/stdexec/issues/2099: MSVC miscompiled
+  // the layout of [[msvc::no_unique_address]] members, so constructing this sender wrote
+  // past the end of a stack temporary and corrupted the captured values.
+  TEST_CASE("let_value preserves a function's captures alongside a nested sender",
+            "[adaptors][let_value]")
+  {
+    auto work = ex::just() | ex::let_value([] { return ex::just(); });
+    auto snd  = ex::just(std::uintptr_t{0x1111})
+             | ex::let_value(
+                 [sentinel = 0x5A5A5A5A, work](std::uintptr_t v)
+                 {
+                   (void) work;
+                   return ex::just(sentinel, v);
+                 });
+    auto [sentinel, v] = STDEXEC::sync_wait(std::move(snd)).value();
+    CHECK(sentinel == 0x5A5A5A5A);
+    CHECK(v == 0x1111);
   }
 
   TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]")
@@ -277,14 +297,16 @@ namespace
       ex::start(op);
       // The function is called immediately after starting the operation
       CHECK(fun_called);
-      // As the returned sender didn't complete yet, the parameter must still be alive
+      // As the returned sender didn't complete yet, the parameter must still be
+      // alive
       CHECK_FALSE(param_destructed);
       CHECK(res == 0);
 
       // Now, tell the scheduler to execute the final operation
       sched.start_next();
 
-      // The parameter is going to be destructed when the op is destructed; it should be valid now
+      // The parameter is going to be destructed when the op is destructed; it
+      // should be valid now
       CHECK_FALSE(param_destructed);
       CHECK(res == 13);
     }
@@ -309,9 +331,9 @@ namespace
                               });
       exec::start_detached(std::move(snd));
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(); i++)
       std::this_thread::sleep_for(1ms);
     // the work should be executed
@@ -363,7 +385,8 @@ namespace
                               | ex::let_value([] { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined let_value implementation
+  // Return a different sender when we invoke this custom defined let_value
+  // implementation
   struct let_value_test_domain
   {
     template <exec::sender_for<ex::let_value_t> Sender>
@@ -430,6 +453,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto
     connect(Receiver) const -> ::STDEXEC::connect_result_t<decltype(::STDEXEC::just()), Receiver>
     {
@@ -495,6 +519,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver r) const & noexcept
     {
       return ::STDEXEC::connect(::STDEXEC::just(), std::move(r));
@@ -522,4 +547,58 @@ namespace
     ex::start(op);
   }
 #endif
+
+  struct my_query_t : public STDEXEC::__query<my_query_t>
+  {
+    using STDEXEC::__query<my_query_t>::operator();
+  };
+
+  inline constexpr my_query_t my_query{};
+
+  template <typename ParentOp>
+  struct Receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    void set_value() && noexcept {}
+
+    [[nodiscard]]
+    constexpr auto
+    get_env() const noexcept -> STDEXEC::prop<my_query_t, typename ParentOp::my_query_result_t>
+    {
+      return STDEXEC::prop{my_query, my_query(*parent_op)};
+    }
+
+    ParentOp* parent_op;
+  };
+
+  template <STDEXEC::sender Sndr>
+  struct OpState
+  {
+    using my_query_result_t = int;
+
+    using inner_op_state_t = STDEXEC::connect_result_t<Sndr, Receiver<OpState>>;
+
+    [[nodiscard]]
+    constexpr auto query(my_query_t) const noexcept -> my_query_result_t
+    {
+      return 42;
+    }
+  };
+
+  consteval bool test_receiver_may_refer_to_opstate_of_incomplete_type()
+  {
+    using sndr_t = decltype(STDEXEC::just()
+                            | STDEXEC::let_value([]() noexcept { return STDEXEC::just(); }));
+
+    static_assert(STDEXEC::operation_state<typename OpState<sndr_t>::inner_op_state_t>);
+
+    return true;
+  }
+
+  TEST_CASE("receiver_may_refer_to_opstate_of_incomplete_type", "[adaptors][let_value]")
+  {
+    STATIC_CHECK(test_receiver_may_refer_to_opstate_of_incomplete_type());
+  }
+
 }  // namespace

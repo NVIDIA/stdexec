@@ -31,6 +31,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct __inline_attrs
@@ -93,7 +94,9 @@ namespace STDEXEC
     constexpr auto operator==(inline_scheduler const &) const noexcept -> bool = default;
   };
 
+#  if !defined(__CUDACC__)
   static_assert(__completes_inline<set_value_t, env_of_t<schedule_result_t<inline_scheduler>>>);
+#  endif
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

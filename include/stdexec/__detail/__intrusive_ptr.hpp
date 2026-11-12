@@ -42,6 +42,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __ptr
@@ -118,8 +119,9 @@ namespace STDEXEC
         noexcept(__nothrow_constructible_from<_Ty, _Us...>)
         : __ref_count_(__ref_count_increment)
       {
-        // Construct the value *after* the initialization of the atomic in case the constructor of
-        // _Ty calls __intrusive_from_this() (which increments the ref count):
+        // Construct the value *after* the initialization of the atomic in case
+        // the constructor of _Ty calls __intrusive_from_this() (which
+        // increments the ref count):
         std::construct_at(std::addressof(__value), static_cast<_Us&&>(__us)...);
       }
 
@@ -206,8 +208,9 @@ namespace STDEXEC
         }
       }
 
-      // For use when types want to take over manual control of the reference count.
-      // Very unsafe, but useful for implementing custom reference counting.
+      // For use when types want to take over manual control of the reference
+      // count. Very unsafe, but useful for implementing custom reference
+      // counting.
       [[nodiscard]]
       constexpr auto __release_() noexcept -> __enable_intrusive_t*
       {

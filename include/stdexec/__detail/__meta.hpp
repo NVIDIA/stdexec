@@ -37,16 +37,20 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //! Convenience metafunction getting the dependent type `__t` out of `_Tp`.
   //! That is, `typename _Tp::__t`.
+  STDEXEC_MODULE_EXPORT_META
   template <class _Tp>
   using __t = _Tp::__t;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Ret, class... _Args>
   using __fn_t = _Ret(_Args...);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Ret, class... _Args>
   using __fn_ptr_t = _Ret (*)(_Args...);
 
@@ -294,13 +298,16 @@ namespace STDEXEC
 
   //! The struct `__i` is the implementation of P2300's
   //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
-  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): 
-  //! > The purpose of META-APPLY is to make it valid to use non-variadic
-  //! > templates as Variant and Tuple arguments to gather-signatures. — end note]
-  //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
-  //! it is part of the meta-error propagation mechanism. if any of the argument types
-  //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
-  //! `__minvoke` and `__minvoke_q` are implemented in terms of `__i`.
+  //!
+  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): The purpose
+  //! > of META-APPLY is to make it valid to use non-variadic templates as
+  //! > Variant and Tuple arguments to gather-signatures. — end note]
+  //!
+  //! In addition to avoiding the dreaded "pack expanded into non-pack argument"
+  //! error, it is part of the meta-error propagation mechanism. if any of the
+  //! argument types are a specialization of `_ERROR_`, `__i` will short-circuit
+  //! and return the error. `__minvoke` and `__minvoke_q` are implemented in
+  //! terms of `__i`.
   template <bool _OK>
   struct __i;
 
@@ -327,9 +334,10 @@ namespace STDEXEC
   template <template <class...> class _Fn, class... _Args>
   using __minvoke_q = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
-  //! Metafunction invocation
-  //! Given a metafunction, `_Fn`, and args.
-  //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
+  //! @brief Invokes a metafunction with the given arguments.
+  //!
+  //! Given a metafunction, `_Fn`, and args. We expect `_Fn::__f` to be a type
+  //! alias template "implementing" the metafunction `_Fn`.
   STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Args>
   using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
@@ -361,12 +369,13 @@ namespace STDEXEC
   //! [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
   //! It turns an alias/class template into a metafunction that also propagates
   //! "meta-exceptions". All of the meta utilities recognize specializations of
-  //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the evaluation of the
-  //! metafunction and are automatically propagated like an exception. Note: `__minvoke`
-  //! and `__minvoke_q` also participate in this error propagation.
+  //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the
+  //! evaluation of the metafunction and are automatically propagated like an
+  //! exception. Note: `__minvoke` and `__minvoke_q` also participate in this
+  //! error propagation.
   //!
-  //! This design lets us report type errors briefly at the library boundary, even if the
-  //! actual error happens deep inside a meta-program.
+  //! This design lets us report type errors briefly at the library boundary,
+  //! even if the actual error happens deep inside a meta-program.
   STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __q
@@ -449,8 +458,8 @@ namespace STDEXEC
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
 #  if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1800)
-  // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an indirection
-  // that hides the builtin from the mangler.
+  // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an
+  // indirection that hides the builtin from the mangler.
   template <template <class...> class _Fn, class... _Args>
   using __mmangle_t = __mmemoize_q<_Fn, _Args...>;
 #  else
@@ -478,9 +487,9 @@ namespace STDEXEC
     using __if_t = __if_<bool(_Pred::value)>::template __f<_Then, _Else>;
   }  // namespace __detail
 
-  //! Metafunction selects `_Then` if the bool template is `true`, otherwise the second.
-  //! This is similar to `std::conditional_t<Pred, Then, Else>` but instantiates fewer
-  //! templates.
+  //! Metafunction selects `_Then` if the bool template is `true`, otherwise the
+  //! second. This is similar to `std::conditional_t<Pred, Then, Else>` but
+  //! instantiates fewer templates.
   template <class _Pred, class _Then, class _Else>
   using __if = __minvoke_q<__detail::__if_t, _Pred, _Then, _Else>;
 
@@ -539,49 +548,86 @@ namespace STDEXEC
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
   };
 
-  template <bool>
-  struct __mfold_right_
-  {
-    template <class _Fn, class _State, class _Head, class... _Tail>
-    using __f =
-      __minvoke<__mfold_right_<sizeof...(_Tail) == 0>, _Fn, __minvoke<_Fn, _State, _Head>, _Tail...>;
-  };
+#  define _M0(_Iy, _Ty) , class _Ty ## _Iy
+#  define _M1(_Iy, _Fn) __mcall2<_Fn,
+#  define _M2(_Iy, _Ty) , _Ty ## _Iy>
 
-  template <>
-  struct __mfold_right_<true>
-  {  // empty pack
-    template <class _Fn, class _State, class...>
-    using __f = _State;
-  };
-
-  template <class _Init, class _Fn>
-  struct __mfold_right
-  {
-    template <class... _Args>
-    using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
-  };
-
-  template <bool>
+  template <std::size_t _Size>
   struct __mfold_left_
   {
-    template <class _Fn, class _State, class _Head, class... _Tail>
-    using __f =
-      __minvoke<_Fn, __minvoke<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(8, _M0, _T), class... _Rest>
+    using __f = __minvoke<__mfold_left_<sizeof...(_Rest)>,
+                          _Fn,
+                          STDEXEC_PP_REPEAT(8, _M1, _Fn) _State STDEXEC_PP_REPEAT(8, _M2, _T),
+                          _Rest...>;
   };
 
   template <>
-  struct __mfold_left_<true>
-  {  // empty pack
-    template <class _Fn, class _State, class...>
+  struct __mfold_left_<0>
+  {
+    template <class, class _State>
     using __f = _State;
+  };
+
+  template <>
+  struct __mfold_left_<1>
+  {
+    template <class _Fn, class _State, class _T0>
+    using __f = __mcall2<_Fn, _State, _T0>;
+  };
+
+  template <>
+  struct __mfold_left_<2>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(2, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(2, _M1, _Fn) _State STDEXEC_PP_REPEAT(2, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<3>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(3, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(3, _M1, _Fn) _State STDEXEC_PP_REPEAT(3, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<4>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(4, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(4, _M1, _Fn) _State STDEXEC_PP_REPEAT(4, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<5>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(5, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(5, _M1, _Fn) _State STDEXEC_PP_REPEAT(5, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<6>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(6, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(6, _M1, _Fn) _State STDEXEC_PP_REPEAT(6, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<7>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(7, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(7, _M1, _Fn) _State STDEXEC_PP_REPEAT(7, _M2, _T);
   };
 
   template <class _Init, class _Fn>
   struct __mfold_left
   {
     template <class... _Args>
-    using __f = __minvoke<__mfold_left_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
+    using __f = __minvoke<__mfold_left_<sizeof...(_Args)>, _Fn, _Init, _Args...>;
   };
+
+#  undef _M2
+#  undef _M1
+#  undef _M0
 
   // for:: [a] -> (a -> b) -> [b]
   template <class _Tp>
@@ -1073,8 +1119,10 @@ namespace STDEXEC
   struct __msort
   {
     template <class... _Ts>
-    using __f = __detail::__msort_apply<_Continuation,
-                                        __detail::__msort_impl(std::array{__mtypeid<_Ts>...})>::__t;
+    using __f = __detail::__msort_apply<
+      _Continuation,
+      // name the array type explicitly: CTAD can't deduce one from an empty pack
+      __detail::__msort_impl(std::array<__type_index, sizeof...(_Ts)>{__mtypeid<_Ts>...})>::__t;
   };
 }  // namespace STDEXEC
 

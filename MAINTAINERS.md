@@ -10,8 +10,6 @@ stdexec should follow.
 * Assume that schedulers and receivers contain nothing but a pointer and
   are cheap to copy. Take them by value.
 
-* Do not use `tag_invoke` anywhere. It's deprecated.
-
 * In a sender adaptor, a reasonable way to constrain
   `ThisSender<InnerSender>::connect(OuterReceiver)` is by
   requiring `sender_to<InnerSender, ThisReceiver<OuterReceiver>>`.
@@ -23,7 +21,9 @@ stdexec should follow.
 
 * Regarding the modularized build:
   * Enable the modularized build with `-DSTDEXEC_BUILD_MODULES=1` at
-    configure time. It has so far only been tested with Clang 22.
+    configure time. CI tests it with Clang built from llvm-project trunk
+    (see the `modules` row in `.github/workflows/ci.cpu.yml`); Clang 22.1.x
+    and 23.1.0 both hit ICEs in the modular build.
   * Every header that is transitively included by `modules/stdexec.cppm` must
     check its build context:
     * if `STDEXEC_USE_MODULES()` is true then modules are enabled

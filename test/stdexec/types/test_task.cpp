@@ -33,7 +33,10 @@
 import std;
 #  else
 #    include <atomic>
+#    include <system_error>
+#    include <tuple>
 #    include <utility>
+#    include <variant>
 #  endif
 
 namespace ex = STDEXEC;
@@ -124,6 +127,58 @@ namespace
     CHECK(bytes > 0);
     ex::sync_wait(std::move(t) | ex::write_env(env));
     CHECK(bytes == 0);
+  }
+
+  constinit std::size_t g_default_allocator_bytes = 0;
+
+  template <class T>
+  struct default_counting_allocator
+  {
+    using value_type = T;
+
+    default_counting_allocator() = default;
+
+    template <class Other>
+    default_counting_allocator(default_counting_allocator<Other> const &) noexcept
+    {}
+
+    auto allocate(std::size_t n) -> T *
+    {
+      g_default_allocator_bytes += n * sizeof(T);
+      return static_cast<T *>(::operator new(n * sizeof(T)));
+    }
+
+    void deallocate(T *p, std::size_t n)
+    {
+      g_default_allocator_bytes -= n * sizeof(T);
+      ::operator delete(p);
+    }
+
+    auto operator==(default_counting_allocator const &) const -> bool = default;
+  };
+
+  struct default_allocator_env : ex::env<>
+  {
+    using allocator_type = default_counting_allocator<std::byte>;
+  };
+
+  auto test_task_default_allocator() -> ex::task<void, default_allocator_env>
+  {
+    co_return;
+  }
+
+  TEST_CASE("task without an allocator argument allocates its frame with a default-constructed "
+            "allocator_type",
+            "[types][task]")
+  {
+    // Called through a volatile pointer so the coroutine is not inlined, which would let the
+    // compiler elide the frame allocation.
+    auto *volatile make_task  = &test_task_default_allocator;
+    g_default_allocator_bytes = 0;
+    auto t                    = make_task();
+    CHECK(g_default_allocator_bytes > 0);
+    ex::sync_wait(std::move(t));
+    CHECK(g_default_allocator_bytes == 0);
   }
 
   auto test_task_awaits_just_sender() -> ex::task<int>
@@ -365,6 +420,146 @@ namespace
 #    endif
 #  endif
 
+  // Regression test for NVIDIA/stdexec#2222: when a task is given an
+  // environment that declares custom error_types, the task's completion
+  // signatures -- and the errors it delivers when connected to a receiver --
+  // must use those types rather than always reporting/delivering
+  // std::exception_ptr.
+  struct error_code_env
+  {
+    using error_types = ex::completion_signatures<ex::set_error_t(std::error_code)>;
+  };
+
+  auto test_task_yields_error_code() noexcept -> ex::task<int, error_code_env>
+  {
+    co_yield ex::with_error{std::make_error_code(std::errc::invalid_argument)};
+    co_return 1;
+  }
+
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("task's completion signatures and errors honor custom error_types", "[types][task]")
+  {
+    // This is the repro from issue 2222: it only compiles (and produces the
+    // error_code value at runtime) if the task's error is reported and
+    // delivered as std::error_code, not as std::exception_ptr:
+    auto s = test_task_yields_error_code() | ex::upon_error([](auto err) noexcept { return err; })
+           | ex::into_variant();
+    auto [r] = ex::sync_wait(std::move(s)).value();
+    CHECK(std::holds_alternative<std::tuple<std::error_code>>(r));
+    CHECK(std::get<std::tuple<std::error_code>>(r)
+          == std::make_tuple(std::make_error_code(std::errc::invalid_argument)));
+  }
+#  endif
+
+  // A receiver that can be connected to a task whose environment declares
+  // set_error_t(std::error_code):
+  struct task_connect_env
+  {
+    ex::run_loop *__loop_;
+
+    template <
+      ex::__one_of<ex::get_scheduler_t, ex::get_start_scheduler_t, ex::get_delegation_scheduler_t>
+        _Query>
+    [[nodiscard]]
+    constexpr auto query(_Query) const noexcept -> ex::run_loop::scheduler
+    {
+      return __loop_->get_scheduler();
+    }
+  };
+
+  struct error_code_task_receiver
+  {
+    using receiver_concept = ex::receiver_t;
+
+    struct completion
+    {
+      enum class kind
+      {
+        none,
+        value,
+        error_code,
+        exception_ptr,
+        stopped
+      };
+
+      kind            __kind_  = kind::none;
+      int             __value_ = 0;
+      std::error_code __error_ = {};
+    };
+
+    void set_value(int __value) noexcept
+    {
+      __completion_->__kind_  = completion::kind::value;
+      __completion_->__value_ = __value;
+    }
+
+    void set_error(std::error_code __error) noexcept
+    {
+      __completion_->__kind_  = completion::kind::error_code;
+      __completion_->__error_ = __error;
+    }
+
+    void set_error(std::exception_ptr) noexcept
+    {
+      __completion_->__kind_ = completion::kind::exception_ptr;
+    }
+
+    void set_stopped() noexcept
+    {
+      __completion_->__kind_ = completion::kind::stopped;
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> task_connect_env
+    {
+      return {__loop_};
+    }
+
+    completion   *__completion_;
+    ex::run_loop *__loop_;
+  };
+
+  auto test_task_connect_value() noexcept -> ex::task<int, error_code_env>
+  {
+    co_return 42;
+  }
+
+  auto test_task_connect_stopped() noexcept -> ex::task<int, error_code_env>
+  {
+    co_yield ex::with_stopped();
+    co_return 1;
+  }
+
+  TEST_CASE("connecting a task delivers its declared error types to the receiver", "[types][task]")
+  {
+    ex::run_loop loop;
+
+    {
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_connect_value(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::value);
+      CHECK(completion.__value_ == 42);
+    }
+    {
+      // The error must be delivered as std::error_code, not std::exception_ptr:
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_yields_error_code(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::error_code);
+      CHECK(completion.__error_ == std::make_error_code(std::errc::invalid_argument));
+    }
+    {
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_connect_stopped(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::stopped);
+    }
+  }
+
   struct error_as_value
   {
     constexpr error_as_value(ex::with_error<int> error) noexcept
@@ -425,7 +620,33 @@ namespace
     CHECK(i == 42);
   }
 
-  // Test affinity with a run_loop scheduler, which is infallible but not inline:
+  auto noop_task() -> ex::task<>
+  {
+    co_return;
+  }
+
+  auto test_task_awaits_starts_on_task() -> ex::task<>
+  {
+    auto sched = co_await ex::read_env(ex::get_start_scheduler);
+    co_await ex::starts_on(sched, noop_task());
+  }
+
+  TEST_CASE("test starts_on(task_scheduler, task) advertises task_scheduler_domain and can be "
+            "sync_wait'ed",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    ex::task_scheduler          sched{ctx.get_scheduler()};
+    auto                        snd = ex::starts_on(sched, test_task_awaits_starts_on_task());
+    using attrs_t                   = ex::env_of_t<decltype(snd)>;
+    using domain_t =
+      ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>, attrs_t, ex::env<>>;
+    STATIC_REQUIRE(std::same_as<domain_t, ex::task_scheduler_domain>);
+    CHECK(ex::sync_wait(std::move(snd)).has_value());
+  }
+
+  // Test affinity with a run_loop scheduler, which is infallible but not
+  // inline:
   struct test_env2
   {
     using scheduler_type = ex::run_loop::scheduler;
@@ -473,9 +694,15 @@ namespace
 
   // In debug GCC builds, this test can cause a stack overflow due to
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
-  // transfer failing to be a tail call.
+  // transfer failing to be a tail call. Likewise, when
+  // STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND is defined (MSVC prior to 14.50),
+  // task's final suspend resumes its continuation directly instead of
+  // performing a symmetric transfer, which grows the stack with each nested
+  // task completion.
 #  if !STDEXEC_GCC()                                                                               \
-    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
+    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__)   \
+        && !(defined(__powerpc64__) && !defined(__PCREL__)))
+#    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   auto sync() -> ex::task<int>
   {
     co_return 42;
@@ -509,6 +736,7 @@ namespace
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
+#    endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
 #  endif
 
   struct my_env
@@ -551,6 +779,81 @@ namespace
                                   return test_task_provides_additional_queries_with_a_custom_env(
                                     sync_wt_dlgtn_sch);
                                 }));
+  }
+
+  // Regression test for https://github.com/NVIDIA/stdexec/issues/2239: a task
+  // whose custom env type is built from the enclosing environment must observe
+  // queries written by write_env, even when a let_value sits between
+  // starts_on and the task.
+  struct query_2239_t
+  {
+    static constexpr bool query(ex::forwarding_query_t) noexcept
+    {
+      return true;
+    }
+
+    template <class Env>
+    auto operator()(Env const &env) const noexcept -> decltype(env.query(*this))
+    {
+      return env.query(*this);
+    }
+  };
+
+  inline constexpr query_2239_t query_2239{};
+
+  struct own_env_2239
+  {
+    template <class ParentEnv>
+      requires std::invocable<query_2239_t, ParentEnv const &>
+    explicit own_env_2239(ParentEnv const &parent)
+      : value(query_2239(parent))
+    {}
+
+    int value = -1;
+  };
+
+  struct task_env_2239
+  {
+    template <class ParentEnv>
+    using env_type = own_env_2239;
+
+    explicit task_env_2239(own_env_2239 const &own) noexcept
+      : value(own.value)
+    {}
+
+    [[nodiscard]]
+    auto query(query_2239_t) const noexcept -> int
+    {
+      return value;
+    }
+
+    int value;
+  };
+
+  auto task_with_env_2239() -> ex::task<void, task_env_2239>
+  {
+    int value = co_await ex::read_env(query_2239);
+    CHECK(value == 7);
+    co_return;
+  }
+
+  TEST_CASE("task env built from the enclosing environment observes write_env across let_value",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    auto                        q = ex::prop{query_2239, 7};
+    // The arrangement from issue #2239: write_env outside starts_on, with a
+    // let_value between starts_on and the task.
+    ex::sync_wait(ex::starts_on(ctx.get_scheduler(), ex::just() | ex::let_value(task_with_env_2239))
+                  | ex::write_env(q));
+  }
+
+  TEST_CASE("task env built from the enclosing environment observes write_env on a direct child",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    auto                        q = ex::prop{query_2239, 7};
+    ex::sync_wait(ex::starts_on(ctx.get_scheduler(), task_with_env_2239()) | ex::write_env(q));
   }
 
   constinit int global_int = 0;
@@ -652,6 +955,20 @@ namespace
         co_return 42;
       }());
     CHECK(!res.has_value());
+  }
+
+  TEST_CASE("test completion domain of task", "[types][task]")
+  {
+    // task is scheduler affine but not inline. Regardless, its completion
+    // domain is the same as the start scheduler's completion domain.
+    using attrs_t = ex::env_of_t<ex::task<int>>;
+    using env_t   = ex::prop<ex::get_start_scheduler_t, ex::parallel_scheduler>;
+    using sched_t =
+      std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>, attrs_t, env_t>;
+    using domain_t =
+      std::invoke_result_t<ex::get_completion_domain_t<ex::set_value_t>, attrs_t, env_t>;
+    STATIC_REQUIRE(std::same_as<sched_t, ex::parallel_scheduler>);
+    STATIC_REQUIRE(std::same_as<domain_t, ex::__parallel_scheduler_domain>);
   }
 
   TEST_CASE("repro for NVIDIA/stdexec#2041", "[types][task]")

@@ -19,6 +19,7 @@
 #include <stdexec/execution.hpp>
 
 #include <exec/static_thread_pool.hpp>
+#include <test_common/non_completion_query.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 
@@ -47,6 +48,12 @@ namespace
     (void) snd;
   }
 
+  TEST_CASE("STDEXEC::on forwards non-completion queries", "[adaptors][on]")
+  {
+    auto snd = ex::on(inline_scheduler{}, test_common::non_completion_query_sender{});
+    CHECK(test_common::non_completion_query(ex::get_env(snd), 41) == 42);
+  }
+
   TEST_CASE("STDEXEC::on with environment returns a sender", "[adaptors][on]")
   {
     auto snd = ex::on(inline_scheduler{}, ex::just(13));
@@ -71,7 +78,8 @@ namespace
     auto              snd = ex::on(sched, ex::just(13));
     auto              op  = ex::connect(std::move(snd), expect_value_receiver_ex{env, recv_value});
     ex::start(op);
-    // Up until this point, the scheduler didn't start any task; no effect expected
+    // Up until this point, the scheduler didn't start any task; no effect
+    // expected
     CHECK(recv_value == 0);
 
     // Tell the scheduler to start executing one task

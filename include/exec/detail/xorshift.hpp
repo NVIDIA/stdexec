@@ -21,9 +21,18 @@
 
 #pragma once
 
-#include <cstdint>
-#include <random>
+#include "../../stdexec/__detail/__config.hpp"
 
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#else
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstdint>
+#    include <random>
+#  endif
+
+STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
 
@@ -45,7 +54,7 @@ namespace experimental::execution
     friend auto operator==(xorshift const &, xorshift const &) -> bool = default;
 
     xorshift()
-      : m_seed(0xc1f651c67c62c6e0ull)
+      : m_seed(default_seed)
     {}
 
     explicit xorshift(std::random_device &rd)
@@ -54,12 +63,16 @@ namespace experimental::execution
     }
 
     explicit xorshift(std::uint64_t seed)
-      : m_seed(seed)
+      : m_seed(seed == 0 ? default_seed : seed)
     {}
 
     void seed(std::random_device &rd)
     {
       m_seed = std::uint64_t(rd()) << 31 | std::uint64_t(rd());
+      if (m_seed == 0)
+      {
+        m_seed = default_seed;
+      }
     }
 
     auto operator()() -> result_type
@@ -78,9 +91,11 @@ namespace experimental::execution
     }
 
    private:
-    std::uint64_t m_seed;
+    static constexpr std::uint64_t default_seed = 0xc1f651c67c62c6e0ull;
+    std::uint64_t                  m_seed;
   };
 
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+#endif

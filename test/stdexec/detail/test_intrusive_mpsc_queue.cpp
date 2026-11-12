@@ -65,8 +65,6 @@ namespace
 
     std::atomic<int> produced_count{0};
 
-    std::set<test_node*> consumed_addrs;
-
     std::thread producer1(
       [&]()
       {

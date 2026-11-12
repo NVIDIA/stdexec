@@ -43,9 +43,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.stopped.opt]
   namespace __sao
   {
@@ -86,7 +87,7 @@ namespace STDEXEC
             return STDEXEC::__throw_compile_time_error<
               _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
               _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-              _WITH_PRETTY_SENDER_<__cv_sndr_t>>();
+              _WITH_SENDER_<__cv_sndr_t>>();
           }
           else
           {
@@ -156,16 +157,19 @@ namespace STDEXEC
   //! predecessor produced a value, disengaged if the predecessor was
   //! stopped.
   //!
-  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //! Since it takes only one argument, @c stopped_as_optional is a sender
+  //! adaptor closure object ([exec.adapt.obj]/4), so it can be piped
+  //! directly:
   //!
   //! @code{.cpp}
   //! auto s1 = stdexec::stopped_as_optional(sndr);
-  //! auto s2 = sndr | stdexec::stopped_as_optional();
+  //! auto s2 = sndr | stdexec::stopped_as_optional;
+  //! auto s3 = sndr | stdexec::stopped_as_optional(); // also accepted
   //! @endcode
   //!
   //! Use this when downstream code prefers branching on a @c std::optional
   //! (a familiar idiom) over branching on an empty
-  //! <tt>std::optional<std::tuple<...>></tt> from @c sync_wait or
+  //! `std::optional<std::tuple<...>>` from @c sync_wait or
   //! handling the @c set_stopped channel via an adaptor.
   //!
   //! **Single value-completion requirement.**
@@ -188,7 +192,7 @@ namespace STDEXEC
   //! set_stopped_t()       // consumed
   //! @endcode
   //!
-  //! the sender produced by <tt>stopped_as_optional(sndr)</tt> has
+  //! the sender produced by `stopped_as_optional(sndr)` has
   //! completion signatures
   //!
   //! @code{.cpp}
@@ -213,7 +217,7 @@ namespace STDEXEC
   //! @code{.cpp}
   //! using namespace stdexec;
   //!
-  //! auto sndr = just(42) | stopped_as_optional();
+  //! auto sndr = just(42) | stopped_as_optional;
   //! auto [opt] = sync_wait(std::move(sndr)).value();
   //! // opt == std::optional<int>{42}
   //!
@@ -226,11 +230,13 @@ namespace STDEXEC
   //!   | stopped_as_optional();
   //! @endcode
   //!
-  //! @see stdexec::stopped_as_error    — convert stopped into an error
-  //! @see stdexec::upon_stopped         — handle stopped synchronously
-  //! @see stdexec::let_stopped          — handle stopped with a sender-returning callback
-  //! @see stdexec::sync_wait            — also uses an outer @c std::optional to signal stop
-  struct stopped_as_optional_t
+  //! @see stdexec::stopped_as_error — convert stopped into an error
+  //! @see stdexec::upon_stopped     — handle stopped synchronously
+  //! @see stdexec::let_stopped      — handle stopped with a sender-returning
+  //!                                  callback
+  //! @see stdexec::sync_wait        — also uses an outer @c std::optional to
+  //!                                  signal stop
+  struct stopped_as_optional_t : sender_adaptor_closure<stopped_as_optional_t>
   {
     //! @brief Construct a sender that wraps @c __sndr's value completion in
     //!        a @c std::optional and reroutes @c set_stopped to a disengaged
@@ -244,25 +250,24 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
+      return __sexpr{stopped_as_optional_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
-    //! @brief Construct a sender-adaptor closure for the pipe form.
+    //! @brief Returns @c *this, so that the older spelling
+    //!        `sndr | stopped_as_optional()` keeps working.
     //!
-    //! <tt>sndr | stopped_as_optional()</tt> is equivalent to
-    //! <tt>stopped_as_optional(sndr)</tt>. The empty parentheses are
-    //! required by the pipe-closure convention; there are no captured
-    //! arguments.
+    //! @returns A copy of this sender adaptor closure object.
     STDEXEC_ATTRIBUTE(always_inline)
-    auto operator()() const noexcept
+    constexpr auto operator()() const noexcept -> stopped_as_optional_t
     {
-      return __closure(*this);
+      return *this;
     }
   };
 
-  //! @brief The customization point object for the @c stopped_as_optional sender adaptor.
+  //! @brief The customization point object for the @c stopped_as_optional
+  //! sender adaptor.
   //!
-  //! @c stopped_as_optional is an instance of @ref stopped_as_optional_t.
+  //! @c stopped_as_optional is an instance of @c stopped_as_optional_t.
   //! See @ref stopped_as_optional_t for the full description and a usage
   //! example.
   //!

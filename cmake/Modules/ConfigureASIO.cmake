@@ -117,4 +117,25 @@ if(STDEXEC_ENABLE_ASIO)
   else()
     message(FATAL_ERROR "ASIO implementation is not configured")
   endif()
+
+  if(STDEXEC_BUILD_TESTS)
+    # Verify that every header in exec/asio/ is self-contained, the same way
+    # the root CMakeLists.txt does for stdexec's own FILE_SET. Doing it here
+    # instead of there matters because these headers need Boost.Asio's (or
+    # standalone Asio's) include directories to compile standalone, and
+    # asioexec - unlike stdexec - actually links them in (see
+    # target_link_libraries(asioexec INTERFACE STDEXEC::stdexec Boost::asio)
+    # / ... asio above). This is a real, automatically-checked per-header
+    # test, not a hand-written stand-in: CMake generates one standalone
+    # compilation per header in asioexec's FILE_SET and folds them into the
+    # same top-level all_verify_interface_header_sets target the root
+    # CMakeLists.txt's check uses, so both run from a single
+    # `cmake --build build --target all_verify_interface_header_sets`. It
+    # also means this scales automatically as exec/asio/ grows: no
+    # per-file wiring needed here or in the root CMakeLists.txt's
+    # exclusion list (see the corresponding SKIP_LINTING there, which is
+    # glob-based for the same reason).
+    set_target_properties(asioexec PROPERTIES VERIFY_INTERFACE_HEADER_SETS
+                                               TRUE)
+  endif()
 endif()

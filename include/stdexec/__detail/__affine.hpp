@@ -27,11 +27,13 @@ import stdexec;
 #  include "__completion_behavior.hpp"
 #  include "__finally.hpp"
 #  include "__schedulers.hpp"
+#  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 #  include "__unstoppable.hpp"
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct _CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_;
@@ -44,34 +46,37 @@ namespace STDEXEC
       { static_cast<_Sender &&>(__sndr).affine() } -> sender;
     };
 
-    // For a given completion tag, a sender is "already affine" if either it doesn't send
-    // that tag, or if its completion behavior for that tag is already "inline" or
-    // "__asynchronous_affine".
+    // For a given completion tag, a sender is "already affine" if either it
+    // doesn't send that tag, or if its completion behavior for that tag is
+    // already "inline" or "__asynchronous_affine".
     template <class _Tag, class _Sender, class _Env>
     concept __already_affine = __never_sends<_Tag, _Sender, _Env>
                             || __completion_behavior::__is_affine(
                                  __get_completion_behavior<_Tag, _Sender, _Env>());
 
-    // For the purpose of the affine algorithm, a sender that is "already affine" for
-    // all three of the standard completion tags does not need to be adapted to become
-    // affine.
+    // For the purpose of the affine algorithm, a sender that is "already
+    // affine" for all three of the standard completion tags does not need to be
+    // adapted to become affine.
     template <class _Sender, class _Env>
     concept __is_affine = __already_affine<set_value_t, _Sender, _Env>
                        && __already_affine<set_error_t, _Sender, _Env>
                        && __already_affine<set_stopped_t, _Sender, _Env>;
   }  // namespace __affine
 
-  struct affine_t
+  // affine takes only one argument, so it is a sender adaptor closure object
+  // ([exec.adapt.obj]/4) and `sndr | affine` works.
+  struct affine_t : sender_adaptor_closure<affine_t>
   {
     template <sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<affine_t>({}, static_cast<_Sender &&>(__sndr));
+      return __sexpr{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
-    constexpr auto operator()() const noexcept
+    // Keeps the older spelling `sndr | affine()` working.
+    constexpr auto operator()() const noexcept -> affine_t
     {
-      return __closure(*this);
+      return *this;
     }
 
     template <class _Sender, class _Env>
@@ -86,15 +91,16 @@ namespace STDEXEC
 
       if constexpr (!sender_in<__cv_child_t, _Env>)
       {  // NOLINT(bugprone-branch-clone)
-        // The child sender is not compatible with the environment, so we can't adapt
-        // it. Instead, just return the child as-is, which will result in an appropriate
-        // compile-time error when the child sender is used.
+        // The child sender is not compatible with the environment, so we can't
+        // adapt it. Instead, just return the child as-is, which will result in
+        // an appropriate compile-time error when the child sender is used.
         return STDEXEC::__forward_like<_Sender>(__child);
       }
       else if constexpr (__affine::__is_affine<__cv_child_t, _Env>)
       {
-        // Check the child's completion behavior. If it is "inline" or "async_affine", then
-        // we can just return the child sender. Otherwise, we need to wrap it.
+        // Check the child's completion behavior. If it is "inline" or
+        // "async_affine", then we can just return the child sender. Otherwise,
+        // we need to wrap it.
         return STDEXEC::__forward_like<_Sender>(__child);
       }
       else if constexpr (__affine::__has_affine_member<__cv_child_t>)
@@ -104,31 +110,33 @@ namespace STDEXEC
       }
       else if constexpr (__same_as<__sched_t, __not_a_scheduler<>>)
       {
-        // The environment doesn't have a scheduler, so we can't adapt the sender to be
-        // affine. Instead, return a type describing the problem.
+        // The environment doesn't have a scheduler, so we can't adapt the
+        // sender to be affine. Instead, return a type describing the problem.
         return __not_a_sender<  //
           _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_),
-          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
           _WHERE_(_IN_ALGORITHM_, affine_t),
-          _WITH_PRETTY_SENDER_<__cv_child_t>,
+          _WITH_SENDER_<__cv_child_t>,
           _WITH_ENVIRONMENT_(_Env)>{};
       }
       else if constexpr (!__infallible_scheduler<__sched_t, __unstoppable_env_t<_Env>>)
       {
-        // The scheduler in the environment isn't infallible, so we can't adapt the sender to be
-        // affine. Instead, return a type describing the problem.
+        // The scheduler in the environment isn't infallible, so we can't adapt
+        // the sender to be affine. Instead, return a type describing the
+        // problem.
         return __not_a_sender<
           _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_),
           _WHY_(_THE_SCHEDULER_IN_THE_CURRENT_EXECUTION_ENVIRONMENT_IS_NOT_INFALLIBLE_),
           _WHERE_(_IN_ALGORITHM_, affine_t),
-          _WITH_PRETTY_SENDER_<__cv_child_t>,
+          _WITH_SENDER_<__cv_child_t>,
           _WITH_SCHEDULER_(__sched_t)>{};
       }
       else
       {
-        // The child sender is compatible with the environment, but isn't already affine, and
-        // the environment has an infallible scheduler, so we can adapt the sender to run on
-        // that scheduler, which will make it affine.
+        // The child sender is compatible with the environment, but isn't
+        // already affine, and the environment has an infallible scheduler, so
+        // we can adapt the sender to run on that scheduler, which will make it
+        // affine.
         return STDEXEC::__finally_(STDEXEC::__forward_like<_Sender>(__child),
                                    unstoppable(schedule(get_start_scheduler(__env))));
       }
@@ -148,8 +156,8 @@ namespace STDEXEC
       {
         constexpr auto __behavior = __get_completion_behavior<_Tag, _Sender, _Env...>();
 
-        // When the child sender completes inline, we can return "inline" here instead of
-        // "__asynchronous_affine".
+        // When the child sender completes inline, we can return "inline" here
+        // instead of "__asynchronous_affine".
         if constexpr (__behavior == __completion_behavior::__inline_completion)
         {
           return __completion_behavior::__inline_completion;
@@ -160,13 +168,14 @@ namespace STDEXEC
         }
       }
 
-      template <__forwarding_query _Tag, class... _Args>
-        requires(!__completion_query<_Tag>)
-             && __queryable_with<env_of_t<_Sender>, _Tag, _Args const &...>
-      constexpr auto query(_Tag, _Args const &...) const noexcept
-        -> __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>
+      template <__forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>)
+             && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(_Query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>) -> decltype(auto)
       {
-        return __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>{};
+        return STDEXEC::get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       _Sender const &__sndr_;

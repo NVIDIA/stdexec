@@ -119,6 +119,7 @@ namespace
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver) -> oper
     {
       return {};
@@ -130,9 +131,10 @@ namespace
     using receiver_concept = STDEXEC::receiver_tag;
 
     template <class... As>
+    [[maybe_unused]]
     void set_value(As&&...) noexcept
     {
-      static_assert(sizeof...(As) == ~size_t(0));  // hard error always
+      static_assert(sizeof...(As) == ~static_cast<size_t>(0));  // hard error always
     }
   };
 
@@ -215,6 +217,11 @@ namespace
     check_err_types<ex::__mset<std::exception_ptr>>(my_sender_int{});
     check_sends_stopped<true>(my_sender_int{});
     STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
+  }
+
+  TEST_CASE("sender that has an exception_ptr error completion signature", "[concepts][sender]")
+  {
+    STATIC_REQUIRE(ex::__has_eptr_completion<my_sender0>);
   }
 
   struct multival_sender

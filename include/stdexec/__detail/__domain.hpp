@@ -37,6 +37,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __detail
@@ -70,7 +71,7 @@ namespace STDEXEC
     using __apply_sender_result_t = decltype(_Tag{}.apply_sender(__declval<_Args>()...));
   }  // namespace __detail
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   struct default_domain
   {
     template <class _OpTag, class _Sender, class _Env>
@@ -80,15 +81,21 @@ namespace STDEXEC
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     {
-      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender &&>(__sndr), __env);
+      // The tag is named rather than a temporary, and cast rather than passed
+      // to std::move, because GCC before 14 moves the result of a static
+      // member function called through either of those
+      // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=110441).
+      tag_of_t<_Sender> __tag{};
+      return static_cast<tag_of_t<_Sender> &&>(__tag)
+        .transform_sender(_OpTag(), static_cast<_Sender &&>(__sndr), __env);
     }
 
     template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &) const
-      noexcept(__nothrow_move_constructible<_Sender>) -> _Sender
+    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &) const noexcept
+      -> _Sender &&
     {
-      return static_cast<_Sender>(static_cast<_Sender &&>(__sndr));
+      return static_cast<_Sender &&>(__sndr);
     }
 
     template <class _Tag, class... _Args>
@@ -97,18 +104,22 @@ namespace STDEXEC
     constexpr auto apply_sender(_Tag, _Args &&...__args) const
       -> __detail::__apply_sender_result_t<_Tag, _Args...>
     {
-      return _Tag().apply_sender(static_cast<_Args &&>(__args)...);
+      // Named and cast, not a temporary, for GCC before 14, as in
+      // transform_sender above.
+      _Tag __tag{};
+      return static_cast<_Tag &&>(__tag).apply_sender(static_cast<_Args &&>(__args)...);
     }
   };
 
-  //! @brief Concept that checks whether a domain's sender transform behaves like that of
-  //! @c default_domain when passed the same arguments. The concept is modeled when either
-  //! of the following is
+  //! @brief Concept that checks whether a domain's sender transform behaves
+  //! like that of @c default_domain when passed the same arguments. The concept
+  //! is modeled when either of the following is
   template <class _Domain, class _OpTag, class _Sndr, class _Env>
   concept __default_domain_like =
     (!__detail::__has_transform_sender<_Domain, _OpTag, _Sndr, _Env>)
-    || __same_as<__detail::__transform_sender_result_t<_Domain, _OpTag, _Sndr, _Env>,
-                 __detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>;
+    || __same_as<
+      __decay_t<__detail::__transform_sender_result_t<_Domain, _OpTag, _Sndr, _Env>>,
+      __decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>>;
 
   template <class... _Domains>
   struct indeterminate_domain
@@ -126,9 +137,10 @@ namespace STDEXEC
     //! @param __sndr The sender to be transformed.
     //! @param __env The environment used for the transformation.
     //! @return `default_domain{}.transform_sender(_OpTag{}, std::forward<_Sndr>(__sndr), __env)`
-    //! @pre Every type in @c _Domains... must behave like @c default_domain when passed the
-    //! same arguments. If this check fails, the @c static_assert triggers with: "ERROR:
-    //! indeterminate domains: cannot pick an algorithm customization"
+    //! @pre Every type in @c _Domains... must behave like @c default_domain
+    //! when passed the same arguments. If this check fails, the
+    //! @c static_assert triggers with: "ERROR: indeterminate domains: cannot
+    //! pick an algorithm customization"
     template <class _OpTag, class _Sndr, class _Env>
     [[nodiscard]]
     static constexpr auto transform_sender(_OpTag, _Sndr &&__sndr, _Env const &__env)
@@ -166,8 +178,8 @@ namespace STDEXEC
       {
         return std::common_type_t<_Domains...>{};
       }
-      // NOT TO SPEC: If each domain in Domains... is convertible to default_domain, then
-      // the common domain is default_domain.
+      // NOT TO SPEC: If each domain in Domains... is convertible to
+      // default_domain, then the common domain is default_domain.
       else if constexpr (__minvocable_q<std::common_type_t, default_domain, _Domains...>)
       {
         return std::common_type_t<default_domain, _Domains...>{};
@@ -179,7 +191,7 @@ namespace STDEXEC
     }
   }  // namespace __detail
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
@@ -226,13 +238,13 @@ namespace STDEXEC
       : __env_{static_cast<_Env &&>(__env)}
     {}
 
-    template <__none_of<_Queries...> _Query, class... _As>
-      requires __queryable_with<_Env, _Query, _As...>
-    constexpr auto
-    operator()(_Query, _As &&...__as) const noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
-      -> __query_result_t<_Env, _Query, _As...>
+    template <class _Env2 = _Env, __none_of<_Queries...> _Query, class... _As>
+      requires __queryable_with<_Env2, _Query, _As...>
+    constexpr auto operator()(_Query, _As &&...__as) const
+      noexcept(__nothrow_queryable_with<_Env2, _Query, _As...>)
+        -> __query_result_t<_Env2, _Query, _As...>
     {
-      return __query<_Query>()(__env_, static_cast<_As &&>(__as)...);
+      return __env_.query(_Query(), static_cast<_As &&>(__as)...);
     }
 
    private:
@@ -243,8 +255,8 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __hide_query(_Env &&, _Queries...) -> __hide_query<_Env, _Queries...>;
 
-  //! @brief A wrapper around an environment that hides the get_start_scheduler and get_domain
-  //! queries.
+  //! @brief A wrapper around an environment that hides the get_start_scheduler
+  //! and get_domain queries.
   template <class _Env>
   struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t>
   {
@@ -256,10 +268,10 @@ namespace STDEXEC
   template <class _Env>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __hide_scheduler(_Env &&) -> __hide_scheduler<_Env>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
-  //! @brief A query type for asking a sender's attributes for the domain on which that
-  //! sender will complete. As with @c get_domain, it is used in tag dispatching to find a
-  //! custom implementation of a sender algorithm.
+  //////////////////////////////////////////////////////////////////////////////
+  //! @brief A query type for asking a sender's attributes for the domain on
+  //! which that sender will complete. As with @c get_domain, it is used in tag
+  //! dispatching to find a custom implementation of a sender algorithm.
   //!
   //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
   template <class _Tag>
@@ -268,9 +280,9 @@ namespace STDEXEC
     template <class Sig>
     inline static constexpr get_completion_domain_t<_Tag> (*signature)(Sig) = nullptr;
 
-    // This function object reads the completion domain from an attribute object or a
-    // scheduler, accounting for the fact that the query member function may or may not
-    // accept an environment.
+    // This function object reads the completion domain from an attribute object
+    // or a scheduler, accounting for the fact that the query member function
+    // may or may not accept an environment.
     struct __read_query_t
     {
       template <class _Attrs, class... _Env>
@@ -303,16 +315,18 @@ namespace STDEXEC
     template <class _Attrs, class... _Env, class _Domain>
     static consteval auto __check_domain(_Domain) noexcept -> _Domain
     {
-      // Sanity check: if a completion scheduler can be determined from the attributes
-      // (not the environment), then its domain must match the domain returned by the attributes.
+      // Sanity check: if a completion scheduler can be determined from the
+      // attributes (not the environment), then its domain must match the domain
+      // returned by the attributes.
       if constexpr (!__same_as<_Tag, void>)
       {
         if constexpr (__callable<get_completion_scheduler_t<_Tag>, _Attrs const &, _Env const &...>)
         {
           using __sch_t =
             __call_result_t<get_completion_scheduler_t<_Tag>, _Attrs const &, _Env const &...>;
-          // Skip check if the "scheduler" is the same as the domain or the attributes
-          // (this can happen with __prop_like which answers any query with the same type)
+          // Skip check if the "scheduler" is the same as the domain or the
+          // attributes (this can happen with __prop_like which answers any
+          // query with the same type)
           if constexpr (!__same_as<__sch_t, _Attrs>)
           {
             __check_domain_<__sch_t, _Env...>(_Domain{});
@@ -330,8 +344,9 @@ namespace STDEXEC
       {
         using __domain_t = __call_result_t<__read_query_t, _Attrs const &, _Env const &...>;
         return __check_domain<_Attrs, _Env...>(__domain_t{});
-        // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion domain:
       }
+      // Otherwise, if _Tag is void, fall back to querying for the set_value_t
+      // completion domain:
       else if constexpr (__same_as<_Tag, void>)
       {
         if constexpr (__callable<get_completion_domain_t<set_value_t>,
@@ -347,8 +362,8 @@ namespace STDEXEC
           return void();
         }
       }
-      // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
-      // completion domain.
+      // Otherwise, if __attrs has a completion scheduler, we can ask that
+      // scheduler for its completion domain.
       else if constexpr (__callable<get_completion_scheduler_t<_Tag>,
                                     _Attrs const &,
                                     _Env const &...>)
@@ -362,29 +377,32 @@ namespace STDEXEC
           using __domain_t = __call_result_t<__read_query_t, __sch_t, _Env const &...>;
           return __domain_t{};
         }
-        // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
-        // the environment for its domain.
-        else if constexpr (__completes_inline<_Tag,
-                                              env_of_t<__call_result_t<schedule_t, __sch_t>>,
-                                              _Env...>
+        // Otherwise, if the scheduler's sender indicates that it completes
+        // where it starts, we can ask the environment for its domain.
+        else if constexpr (__completes_where_it_starts<
+                             _Tag,
+                             env_of_t<__call_result_t<schedule_t, __sch_t>>,
+                             _Env...>
                            && __callable<get_domain_t, _Env const &...>)
         {
           return __call_result_t<get_domain_t, _Env const &...>{};
         }
-        // Otherwise, if we are asking "late" (with an environment), return the default_domain
+        // Otherwise, if we are asking "late" (with an environment), return the
+        // default_domain
         else if constexpr (sizeof...(_Env) != 0)
         {
           return default_domain{};
         }
       }
-      // Otherwise, if the attributes indicates that the sender completes inline, we can ask
-      // the environment for its domain.
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
+      // Otherwise, if the attributes indicates that the sender completes where
+      // it starts, we can ask the environment for its domain.
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && __callable<get_domain_t, _Env const &...>)
       {
         return __call_result_t<get_domain_t, _Env const &...>{};
       }
-      // Otherwise, if we are asking "late" (with an environment), return the default_domain
+      // Otherwise, if we are asking "late" (with an environment), return the
+      // default_domain
       else if constexpr (sizeof...(_Env) != 0)
       {
         return default_domain{};
@@ -425,9 +443,9 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Env const &) const noexcept -> auto
     {
-      if constexpr (__member_queryable_with<_Env const &, get_domain_t>)
+      if constexpr (__queryable_with<_Env const &, get_domain_t>)
       {
-        return __decay_t<__member_query_result_t<_Env, get_domain_t>>{};
+        return __decay_t<__query_result_t<_Env, get_domain_t>>{};
       }
       else if constexpr (__callable<get_start_scheduler_t, _Env const &>)
       {
@@ -441,16 +459,6 @@ namespace STDEXEC
       {
         return default_domain{};
       }
-    }
-
-    // Query with tag_invoke (legacy):
-    template <class _Env>
-      requires __tag_invocable<get_domain_t, _Env const &>
-    [[deprecated("use a query member function instead of tag_invoke for queries")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const &) const noexcept
-    {
-      return __decay_t<__tag_invoke_result_t<get_domain_t, _Env const &>>{};
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

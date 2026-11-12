@@ -30,9 +30,9 @@ namespace experimental::execution
 
   namespace detail
   {
-    auto _just_from(just_from_t*) -> STDEXEC::set_value_t;
-    auto _just_from(just_error_from_t*) -> STDEXEC::set_error_t;
-    auto _just_from(just_stopped_from_t*) -> STDEXEC::set_stopped_t;
+    auto _just_from(just_from_t *) -> STDEXEC::set_value_t;
+    auto _just_from(just_error_from_t *) -> STDEXEC::set_error_t;
+    auto _just_from(just_stopped_from_t *) -> STDEXEC::set_stopped_t;
   }  // namespace detail
 
   template <class JustTag>
@@ -40,7 +40,7 @@ namespace experimental::execution
   {  // NOLINT(bugprone-crtp-constructor-accessibility)
    private:
     friend JustTag;
-    using _set_tag_t = decltype(detail::_just_from(static_cast<JustTag*>(nullptr)));
+    using _set_tag_t = decltype(detail::_just_from(static_cast<JustTag *>(nullptr)));
 
     using _diag_t = STDEXEC::__if_c<STDEXEC_IS_SAME(_set_tag_t, STDEXEC::set_error_t),
                                     AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT,
@@ -54,11 +54,11 @@ namespace experimental::execution
     struct _probe_fn
     {
       template <class... Ts>
-      auto operator()(Ts&&... ts) const noexcept -> _error_t<Ts...>;
+      auto operator()(Ts &&...ts) const noexcept -> _error_t<Ts...>;
 
       template <class... Ts>
-        requires STDEXEC::__cmplsigs::__is_compl_sig<_set_tag_t(Ts...)>
-      auto operator()(Ts&&...) const noexcept -> STDEXEC::completion_signatures<_set_tag_t(Ts...)>
+        requires STDEXEC::__completion_signature<_set_tag_t(Ts...)>
+      auto operator()(Ts &&...) const noexcept -> STDEXEC::completion_signatures<_set_tag_t(Ts...)>
       {
         return {};
       }
@@ -67,13 +67,13 @@ namespace experimental::execution
     template <class Rcvr>
     struct _complete_fn
     {
-      Rcvr& _rcvr;
+      Rcvr &_rcvr;
 
       template <class... Ts>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void operator()(Ts&&... ts) const noexcept
+      void operator()(Ts &&...ts) const noexcept
       {
-        _set_tag_t()(static_cast<Rcvr&&>(_rcvr), static_cast<Ts&&>(ts)...);
+        _set_tag_t()(static_cast<Rcvr &&>(_rcvr), static_cast<Ts &&>(ts)...);
       }
     };
 
@@ -89,17 +89,17 @@ namespace experimental::execution
       {
         if constexpr (STDEXEC::__nothrow_callable<Fn, _complete_fn<Rcvr>>)
         {
-          static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
+          static_cast<Fn &&>(_fn)(_complete_fn<Rcvr>{_rcvr});
         }
         else
         {
           STDEXEC_TRY
           {
-            static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
+            static_cast<Fn &&>(_fn)(_complete_fn<Rcvr>{_rcvr});
           }
           STDEXEC_CATCH_ALL
           {
-            STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<Rcvr &&>(_rcvr), std::current_exception());
           }
         }
       }
@@ -149,7 +149,7 @@ namespace experimental::execution
       auto connect(Rcvr rcvr) && noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn>)
         -> _opstate<Rcvr, Fn>
       {
-        return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), static_cast<Fn&&>(_fn)};
+        return _opstate<Rcvr, Fn>{static_cast<Rcvr &&>(rcvr), static_cast<Fn &&>(_fn)};
       }
 
       template <class Rcvr>
@@ -157,13 +157,14 @@ namespace experimental::execution
       auto connect(Rcvr rcvr) const & noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn const &>)
         -> _opstate<Rcvr, Fn>
       {
-        return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
+        return _opstate<Rcvr, Fn>{static_cast<Rcvr &&>(rcvr), _fn};
       }
 
       [[nodiscard]]
       constexpr auto get_env() const noexcept
       {
-        // Extract the tags from the completion signatures and use them to construct the attributes.
+        // Extract the tags from the completion signatures and use them to
+        // construct the attributes.
         return STDEXEC::__mapply<
           STDEXEC::__mtransform<STDEXEC::__q1<STDEXEC::__signature_tag_t>,
                                 STDEXEC::__munique<STDEXEC::__qq<_just_from::_attrs>>>,
@@ -172,17 +173,17 @@ namespace experimental::execution
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto submit(Rcvr rcvr) && noexcept -> void
+      auto submit(Rcvr rcvr) && noexcept(STDEXEC::__nothrow_decay_copyable<Fn>) -> void
       {
-        auto op = static_cast<_sndr_base&&>(*this).connect(static_cast<Rcvr&&>(rcvr));
+        auto op = static_cast<_sndr_base &&>(*this).connect(static_cast<Rcvr &&>(rcvr));
         STDEXEC::start(op);
       }
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto submit(Rcvr rcvr) const & noexcept -> void
+      auto submit(Rcvr rcvr) const & noexcept(STDEXEC::__nothrow_decay_copyable<Fn const &>) -> void
       {
-        auto op = this->connect(static_cast<Rcvr&&>(rcvr));
+        auto op = this->connect(static_cast<Rcvr &&>(rcvr));
         STDEXEC::start(op);
       }
     };
@@ -197,13 +198,13 @@ namespace experimental::execution
     {
       if constexpr (STDEXEC::__callable<Fn, _probe_fn>)
       {
-        using _completions = STDEXEC::__call_result_t<Fn, _probe_fn>;
-        static_assert(STDEXEC::__is_instance_of<_completions, STDEXEC::completion_signatures>,
+        using _completions_t = STDEXEC::__call_result_t<Fn, _probe_fn>;
+        static_assert(STDEXEC::__is_instance_of<_completions_t, STDEXEC::completion_signatures>,
                       "The function passed to just_from, just_error_from, and just_stopped_from "
                       "must return an instance of a specialization of " STDEXEC_PP_STRINGIZE(
                         STDEXEC) "::completion_signatures<>.");
         return _sndr<Fn>{
-          {{}, static_cast<Fn&&>(fn)}
+          {{}, static_cast<Fn &&>(fn)}
         };
       }
       else
@@ -216,19 +217,21 @@ namespace experimental::execution
     }
   };
 
-  //! @brief `just_from(fn)` creates a sender that completes inline by passing a "sink" function to
-  //! `fn`. Calling the sink function with arguments sends the arguments as values to the receiver.
+  //! @brief `just_from(fn)` creates a sender that completes inline by passing a
+  //! "sink" function to `fn`. Calling the sink function with arguments sends
+  //! the arguments as values to the receiver.
   //!
   //! @post The sink function passed to `fn` must be called exactly once.
   //!
   //! @param fn The callable to be invoked when the sender is started.
   //!
   //! @par
-  //! The function passed to `just_from` must return an instance of a specialization of
-  //! `STDEXEC::completion_signatures<>` that describes the ways the sink function might be
-  //! invoked. The sink function returns such a specialization of `STDEXEC::completion_signatures<>`
-  //! corresponding to the arguments passed to it, but if your function uses the sink function
-  //! in several different ways, you must specify the return type explicitly.
+  //! The function passed to `just_from` must return an instance of a
+  //! specialization of `STDEXEC::completion_signatures<>` that describes the
+  //! ways the sink function might be invoked. The sink function returns such a
+  //! specialization of `STDEXEC::completion_signatures<>` corresponding to the
+  //! arguments passed to it, but if your function uses the sink function in
+  //! several different ways, you must specify the return type explicitly.
   //!
   //! @par Example:
   //! @code
@@ -257,9 +260,9 @@ namespace experimental::execution
     {};
   };
 
-  //! @brief `just_error_from(fn)` creates a sender that completes inline by passing a "sink"
-  //! function to `fn`. Calling the sink function with an argument sends that argument as an error
-  //! to the receiver.
+  //! @brief `just_error_from(fn)` creates a sender that completes inline by
+  //! passing a "sink" function to `fn`. Calling the sink function with an
+  //! argument sends that argument as an error to the receiver.
   //!
   //! @sa just_from
   struct just_error_from_t : _just_from<just_error_from_t>
@@ -269,9 +272,9 @@ namespace experimental::execution
     {};
   };
 
-  //! @brief `just_stopped_from(fn)` creates a sender that completes inline by passing a "sink"
-  //! function to `fn`. Calling the sink function with no arguments sends a stopped signal to the
-  //! receiver.
+  //! @brief `just_stopped_from(fn)` creates a sender that completes inline by
+  //! passing a "sink" function to `fn`. Calling the sink function with no
+  //! arguments sends a stopped signal to the receiver.
   //!
   //! @sa just_from
   struct just_stopped_from_t : _just_from<just_stopped_from_t>

@@ -99,7 +99,7 @@
 #define STDEXEC_PP_FOR_EACH(_MACRO, ...)                                                           \
   __VA_OPT__(STDEXEC_PP_EXPAND_R(STDEXEC_PP_FOR_EACH_HELPER(_MACRO, __VA_ARGS__)))
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 #define STDEXEC_PP_BACK_AGAIN()      STDEXEC_PP_BACK_I
 #define STDEXEC_PP_BACK_I(_A1, ...)                                                                \

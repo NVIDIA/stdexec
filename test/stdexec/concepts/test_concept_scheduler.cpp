@@ -25,7 +25,6 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
 namespace
 {
-
   template <class Scheduler>
   struct default_env
   {
@@ -39,6 +38,8 @@ namespace
 
   struct my_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct my_sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -54,7 +55,7 @@ namespace
     };
 
     template <typename CPO>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto
     query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler
     {
@@ -80,8 +81,8 @@ namespace
 
   TEST_CASE("type with schedule CPO models scheduler", "[concepts][scheduler]")
   {
-    REQUIRE(ex::scheduler<my_scheduler>);
-    REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
+    STATIC_REQUIRE(ex::scheduler<my_scheduler>);
+    STATIC_REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
   }
 
   struct no_schedule_cpo
@@ -94,6 +95,8 @@ namespace
 
   struct my_scheduler_except
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct my_sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -128,7 +131,7 @@ namespace
 
   TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler]")
   {
-    REQUIRE(ex::scheduler<my_scheduler_except>);
+    STATIC_REQUIRE(ex::scheduler<my_scheduler_except>);
   }
 
   struct noeq_sched
@@ -157,6 +160,94 @@ namespace
   TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][scheduler]")
   {
     REQUIRE(!ex::scheduler<noeq_sched>);
+  }
+
+  // A scheduler from a foreign execution framework: it has a .schedule()
+  // member, but that member does not return a stdexec sender. Evaluating
+  // ex::scheduler<S> for such a type must simply be false — it must not be
+  // a hard error, and it must not be a false positive.
+  // See NVIDIA/stdexec#1406.
+  struct my_foreign_sender
+  {};
+
+  struct my_foreign_scheduler
+  {
+    [[nodiscard]]
+    auto schedule() const noexcept -> my_foreign_sender
+    {
+      return {};
+    }
+
+    friend auto operator==(my_foreign_scheduler, my_foreign_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_foreign_scheduler, my_foreign_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("type whose schedule() returns a non-stdexec sender doesn't model scheduler",
+            "[concepts][scheduler]")
+  {
+    REQUIRE(!ex::scheduler<my_foreign_scheduler>);
+    REQUIRE(!ex::scheduler<my_foreign_scheduler &>);
+    REQUIRE(!ex::scheduler<my_foreign_scheduler const &>);
+  }
+
+  struct my_void_schedule_scheduler
+  {
+    auto schedule() const noexcept -> void {}
+
+    friend auto operator==(my_void_schedule_scheduler, my_void_schedule_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_void_schedule_scheduler, my_void_schedule_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("type whose schedule() returns void doesn't model scheduler", "[concepts][scheduler]")
+  {
+    REQUIRE(!ex::scheduler<my_void_schedule_scheduler>);
+  }
+
+  // A type from a foreign framework that is not declared as a stdexec
+  // scheduler in any way (notably, no scheduler_concept alias) but whose
+  // .schedule() returns a genuine stdexec sender: it should model
+  // ex::scheduler based on its behavior alone.
+  struct my_behavioral_scheduler
+  {
+    [[nodiscard]]
+    auto schedule() const -> decltype(ex::just())
+    {
+      return ex::just();
+    }
+
+    friend auto operator==(my_behavioral_scheduler, my_behavioral_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_behavioral_scheduler, my_behavioral_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("foreign type returning a stdexec sender from schedule() models scheduler",
+            "[concepts][scheduler]")
+  {
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+    STATIC_REQUIRE(ex::scheduler<my_behavioral_scheduler>);
+    STATIC_REQUIRE(ex::sender<decltype(ex::schedule(my_behavioral_scheduler{}))>);
+    STDEXEC_PRAGMA_POP()
   }
 }  // namespace
 

@@ -31,6 +31,8 @@ namespace nv::execution
   {
     struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler>
     {
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       multi_gpu_stream_scheduler(int num_devices, context ctx)
         : num_devices_(num_devices)
         , ctx_(ctx)
@@ -38,7 +40,7 @@ namespace nv::execution
 
       auto operator==(multi_gpu_stream_scheduler const & other) const noexcept -> bool
       {
-        return ctx_.hub_ == other.ctx_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_ && ctx_.priority_ == other.ctx_.priority_;
       }
 
       [[nodiscard]]

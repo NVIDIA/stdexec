@@ -21,13 +21,14 @@
 #include "../../stdexec/execution.hpp"
 
 // include these after execution.hpp
+#include "../../exec/completion_signatures.hpp"
 #include "../../exec/ensure_started.hpp"
 #include "../../exec/env.hpp"
+#include "../../exec/stoppable_base.hpp"
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
 #include <atomic>
-#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -78,12 +79,17 @@ namespace nv::execution::_strm
 
         if constexpr (stream_sender<Sender, env_t>)
         {
-          cudaStream_t stream   = shared_state_->stream_provider_.own_stream_.value();
-          shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
-          copy_kernel<Tag, Args&&...>
-            <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<Args&&>(args)...);
-          shared_state_->stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
-            cudaEventRecord(shared_state_->event_, stream));
+          if (shared_state_->stream_provider_.status_ == cudaSuccess)
+          {
+            cudaStream_t stream   = shared_state_->stream_provider_.own_stream_.value();
+            shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
+            copy_kernel<Tag, Args&&...>
+              <<<1, 1, 0, stream>>>(shared_state_->data_.get(), static_cast<Args&&>(args)...);
+            shared_state_->completion_copy_started_ = true;
+            shared_state_->stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
+              cudaEventRecord(shared_state_->event_, stream));
+            shared_state_->event_recorded_ = shared_state_->stream_provider_.status_ == cudaSuccess;
+          }
         }
         else
         {
@@ -127,24 +133,6 @@ namespace nv::execution::_strm
       notify_fn_t* notify_{};
     };
 
-    template <class Type>
-    auto malloc_managed(cudaError_t& status) -> Type*
-    {
-      Type* ptr{};
-
-      if (status == cudaSuccess)
-      {
-        status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ptr, sizeof(Type)));
-        if (status == cudaSuccess)
-        {
-          new (ptr) Type();
-          return ptr;
-        }
-      }
-
-      return nullptr;
-    }
-
     template <class Sender>
     struct sh_state : __enable_intrusive_from_this<sh_state<Sender>>
     {
@@ -166,7 +154,10 @@ namespace nv::execution::_strm
         requires(stream_sender<Sender, env_t>)
         : ctx_(ctx)
         , stream_provider_(false, ctx)
-        , data_(malloc_managed<variant_t>(stream_provider_.status_))
+        // Pinned rather than managed: the continuation task reads it on the host
+        // while kernels may be running, which managed memory only allows on
+        // devices with concurrent managed access.
+        , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
         , opstate1_{nullptr}
         , opstate2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this}))
       {
@@ -174,6 +165,7 @@ namespace nv::execution::_strm
         {
           stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
             cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+          event_created_ = stream_provider_.status_ == cudaSuccess;
         }
 
         STDEXEC::start(opstate2_);
@@ -182,34 +174,42 @@ namespace nv::execution::_strm
       explicit sh_state(Sender& sndr, context ctx)
         : ctx_(ctx)
         , stream_provider_(false, ctx)
-        , data_(malloc_managed<variant_t>(stream_provider_.status_))
+        , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
         , task_(host_allocate<task_t>(stream_provider_.status_,
                                       ctx.pinned_resource_,
                                       inner_receiver_t{*this},
-                                      data_,
+                                      data_.get(),
                                       stream_provider_.own_stream_.value(),
                                       ctx.pinned_resource_)
                   .release())
         , env_(host_allocate(this->stream_provider_.status_, ctx_.pinned_resource_, make_env()))
-        , opstate2_(connect(static_cast<Sender&&>(sndr),
-                            enqueue_receiver_t{env_.get(), data_, task_, ctx.hub_->producer()}))
+        , opstate2_(
+            connect(static_cast<Sender&&>(sndr),
+                    enqueue_receiver_t{env_.get(), data_.get(), task_, ctx.hub_->producer()}))
       {
         STDEXEC::start(opstate2_);
       }
 
       ~sh_state()
       {
-        if (stream_provider_.status_ == cudaSuccess)
+        if constexpr (stream_sender<Sender, env_t>)
         {
-          if constexpr (stream_sender<Sender, env_t>)
+          if (completion_copy_started_)
+          {
+            if (event_recorded_)
+            {
+              STDEXEC_ASSERT_CUDA_API(cudaEventSynchronize(event_));
+            }
+            else
+            {
+              STDEXEC_ASSERT_CUDA_API(cudaStreamSynchronize(stream_provider_.own_stream_.value()));
+            }
+          }
+
+          if (event_created_)
           {
             STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event_));
           }
-        }
-
-        if (data_)
-        {
-          STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
 
@@ -232,8 +232,11 @@ namespace nv::execution::_strm
       context                      ctx_;
       stream_provider              stream_provider_;
       cudaEvent_t                  event_{};
+      bool                         event_created_{false};
+      bool                         event_recorded_{false};
+      bool                         completion_copy_started_{false};
       unsigned int                 index_{0};
-      variant_t*                   data_{nullptr};
+      host_ptr_t<variant_t>        data_{};
       task_t*                      task_{nullptr};
       inplace_stop_source          stop_source_{};
       host_ptr_t<__decay_t<env_t>> env_{};
@@ -245,12 +248,15 @@ namespace nv::execution::_strm
     struct opstate
       : public opstate_base
       , public _strm::opstate_base<Receiver>
+      , public exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>,
+                                          opstate<Sender, Receiver>>
     {
-      using on_stop_t = std::optional<
-        stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>>, __forward_stop_request<>>>;
-
-      on_stop_t                         on_stop_{};
       __intrusive_ptr<sh_state<Sender>> shared_state_;
+
+      void on_stop_requested() noexcept
+      {
+        shared_state_->stop_source_.request_stop();
+      }
 
      public:
       opstate(Receiver rcvr, __intrusive_ptr<sh_state<Sender>> shared_state) noexcept
@@ -261,6 +267,10 @@ namespace nv::execution::_strm
 
       ~opstate()
       {
+        // The stopped path in start() completes without deregistering, and the
+        // base outlives shared_state_, which on_stop_requested() uses.
+        this->deregister_stoppable();
+
         // Check to see if this operation was ever started. If not,
         // detach the (potentially still running) operation:
         if (nullptr == shared_state_->opstate1_.load(std::memory_order_acquire))
@@ -274,7 +284,7 @@ namespace nv::execution::_strm
       static void notify(opstate_base* self) noexcept
       {
         auto* op = static_cast<opstate*>(self);
-        op->on_stop_.reset();
+        op->deregister_stoppable();
 
         cudaError_t& status = op->shared_state_->stream_provider_.status_;
 
@@ -315,8 +325,7 @@ namespace nv::execution::_strm
         else
         {
           // register stop callback:
-          on_stop_.emplace(get_stop_token(STDEXEC::get_env(this->rcvr_)),
-                           __forward_stop_request{shared_state->stop_source_});
+          this->register_stoppable(get_stop_token(STDEXEC::get_env(this->rcvr_)));
           // Check if the stop_source has requested cancellation
           if (shared_state->stop_source_.stop_requested())
           {
@@ -382,21 +391,15 @@ namespace nv::execution::_strm
       return {&sndr_};
     }
 
-    template <class... Tys>
-    using _set_value_t = completion_signatures<set_value_t(__decay_t<Tys>...)>;
-
-    template <class Ty>
-    using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
-
     template <class Self, class... Env>
-    static consteval auto get_completion_signatures() -> __transform_completion_signatures_of_t<
-      Sender,
-      _ensure_started::env_t,
-      completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-      _set_value_t,
-      _set_error_t>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<Sender, _ensure_started::env_t>(),
+        exec::decay_arguments<set_value_t, ensure_started_t>(),
+        exec::decay_arguments<set_error_t, ensure_started_t>(),
+        {},
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>());
     }
 
     Sender                      sndr_;
@@ -426,12 +429,5 @@ namespace nv::execution::_strm
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender>
-  extern __mtype<nvexec::_strm::ensure_started_sender<__demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::ensure_started_sender<Sender>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

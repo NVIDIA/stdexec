@@ -1,6 +1,5 @@
 #include <stdexec/__detail/__config.hpp>
 
-#include <bit>
 #include <cstddef>
 
 // Exercise the fallback even when the standard library provides std::bit_ceil.

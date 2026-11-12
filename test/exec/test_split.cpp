@@ -246,8 +246,8 @@ namespace
     REQUIRE(counter == 2);
     REQUIRE(!called);
     sched.start_next();  // Impulse scheduler notices stop has been requested
-                         // and completes the underlying operation (just | then(...))
-                         // with "stopped".
+                         // and completes the underlying operation
+                         // (just | then(...)) with "stopped".
     REQUIRE(counter == 2);
     REQUIRE(!called);
   }
@@ -578,5 +578,63 @@ namespace
     (void) snd1;
     (void) snd2;
   }
+
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  struct std_stop_token_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value(int value) && noexcept
+    {
+      *value_ = value;
+    }
+
+    void set_error(std::exception_ptr) && noexcept
+    {
+      FAIL("unexpected error");
+    }
+
+    void set_stopped() && noexcept
+    {
+      *stopped_ = true;
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return ex::prop{ex::get_stop_token, token_};
+    }
+
+    int            *value_;
+    bool           *stopped_;
+    std::stop_token token_;
+  };
+
+  TEST_CASE("split works with a std::stop_token receiver", "[adaptors][split]")
+  {
+    std::stop_source source;
+    int              value   = 0;
+    bool             stopped = false;
+    auto             op      = ex::connect(exec::split(ex::just(42)),
+                          std_stop_token_receiver{&value, &stopped, source.get_token()});
+    ex::start(op);
+    REQUIRE(value == 42);
+    REQUIRE(!stopped);
+  }
+
+  TEST_CASE("split with a std::stop_token receiver stops if stop was requested",
+            "[adaptors][split]")
+  {
+    std::stop_source source;
+    source.request_stop();
+    int  value   = 0;
+    bool stopped = false;
+    auto op      = ex::connect(exec::split(ex::just(42)),
+                          std_stop_token_receiver{&value, &stopped, source.get_token()});
+    ex::start(op);
+    REQUIRE(value == 0);
+    REQUIRE(stopped);
+  }
+#endif
 
 }  // namespace

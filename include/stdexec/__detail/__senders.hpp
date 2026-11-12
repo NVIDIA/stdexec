@@ -26,15 +26,17 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__completion_signatures.hpp"  // IWYU pragma: export
-#  include "__connect.hpp"                // IWYU pragma: export
-#  include "__sender_concepts.hpp"        // IWYU pragma: export
+#  include "__completion_signatures.hpp"         // IWYU pragma: export
+#  include "__connect.hpp"                       // IWYU pragma: export
+#  include "__gather_completion_signatures.hpp"  //
+#  include "__sender_concepts.hpp"               // IWYU pragma: export
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   namespace __detail
   {
@@ -59,16 +61,17 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT template <class _Sender, class _SetSig, class... _Env>
   concept sender_of =
     sender_in<_Sender, _Env...>
-    && __same_as<__mlist<_SetSig>,
-                 __gather_completions_t<__signature_tag_t<_SetSig>,
-                                        __completion_signatures_of_t<_Sender, _Env...>,
-                                        __mcompose<__qq<__mlist>, __qf<__signature_tag_t<_SetSig>>>,
-                                        __mconcat<__qq<__mlist>>>>;
+    && __same_as<
+      __mlist<_SetSig>,
+      __gather_completion_signatures_t<__signature_tag_t<_SetSig>,
+                                       __completion_signatures_of_t<_Sender, _Env...>,
+                                       __mcompose<__qq<__mlist>, __qf<__signature_tag_t<_SetSig>>>,
+                                       __mconcat<__qq<__mlist>>>>;
 
   template <class _Sender, class... _Env>
   concept __nofail_sender = __never_sends<set_error_t, _Sender, _Env...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>

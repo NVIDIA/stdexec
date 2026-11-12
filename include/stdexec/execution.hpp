@@ -23,10 +23,10 @@ import stdexec;
 
 #else
 
+// IWYU pragma: begin_exports
 #  include "__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-// IWYU pragma: begin_exports
 #  include "__detail/__as_awaitable.hpp"
 #  include "__detail/__associate.hpp"
 #  include "__detail/__basic_sender.hpp"
@@ -42,7 +42,6 @@ import stdexec;
 #  include "__detail/__inline_scheduler.hpp"
 #  include "__detail/__into_variant.hpp"
 #  include "__detail/__intrusive_ptr.hpp"
-#  include "__detail/__intrusive_slist.hpp"
 #  include "__detail/__just.hpp"
 #  include "__detail/__let.hpp"
 #  include "__detail/__meta.hpp"

@@ -19,6 +19,8 @@
 #include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
+#include "completion_signatures.hpp"
+#include "stoppable_base.hpp"
 
 #include <exception>
 
@@ -27,6 +29,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace experimental::execution
 {
+  struct when_any_t;
+
   namespace __when_any
   {
     using namespace STDEXEC;
@@ -34,77 +38,92 @@ namespace experimental::execution
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
-    template <class... _Ts>
-    using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
-      (__nothrow_decay_copyable<_Ts> && __nothrow_move_constructible<__decay_t<_Ts>>) && ...)>;
-
-    template <class... Args>
-    using __as_rvalues = set_value_t (*)(__decay_t<Args>...);
-
-    template <class... E>
-    using __as_error = set_error_t (*)(E...);
-
-    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...). Note, we keep all
-    // error types as they are and unconditionally add set_stopped(). The indirection through the
-    // __completions_fn is to avoid a pack expansion bug in nvc++.
-    template <class... _Env>
-    struct __completions_fn
+    template <class... _Env, class... _CvSenders>
+    consteval auto __mk_completions(__mlist_ptr<_CvSenders...>)
     {
-      template <class... _CvSenders>
-      using __all_value_args_nothrow_decay_copyable =
-        __minvoke_q<__mand_t,
-                    __value_types_t<__completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
-                                    __qq<__nothrow_decay_copyable_and_move_constructible_t>,
-                                    __qq<__mand_t>>...>;
-
-      template <class... _CvSenders>
-      using __f = __mtry_q<__concat_completion_signatures_t>::__f<
-        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvSenders...>>,
-        completion_signatures<set_stopped_t()>,
-        __transform_reduce_completion_signatures_t<
-          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
-          __as_rvalues,
-          __as_error,
-          set_stopped_t (*)(),
-          __completion_signature_ptrs_t>...>;
-    };
+      return exec::concat_completion_signatures(
+        STDEXEC::completion_signatures<set_stopped_t()>(),
+        exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_CvSenders, __env_t<_Env>...>(),
+          exec::decay_arguments<set_value_t, when_any_t>(),
+          exec::decay_arguments<set_error_t, when_any_t>())...);
+    }
 
     template <class _Env, class... _CvSenders>
     using __results_storage_t =
-      __mapply_q<__results_storage, __minvoke<__completions_fn<_Env>, _CvSenders...>>;
+      __mapply_q<__results_storage,
+                 decltype(__when_any::__mk_completions<_Env>(__mlist_ptr<_CvSenders...>()))>;
 
+    // Forwards stop requests on the receiver's token to __stop_source_.
     template <class _Receiver, class _ResultVariant>
     struct __opstate_base
+      : stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>&>,
+                             __opstate_base<_Receiver, _ResultVariant>>
     {
-      __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
+      explicit __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders) noexcept
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
 
       STDEXEC_IMMOVABLE(__opstate_base);
 
-      struct __forward_stop_request
+      void on_stop_requested() noexcept
       {
-        constexpr void operator()() const noexcept
+        __stop_source_.request_stop();
+      }
+
+      template <class _Tag, class... _Args>
+      void notify(_Tag, _Args&&... __args) noexcept
+      {
+        using __error_t  = __tuple<set_error_t, std::exception_ptr>;
+        using __result_t = __decayed_tuple<_Tag, _Args...>;
+        bool __expect    = false;
+        if (__emplaced_.compare_exchange_strong(__expect,
+                                                true,
+                                                __std::memory_order_relaxed,
+                                                __std::memory_order_relaxed))
         {
-          // Temporarily increment the count to avoid concurrent/recursive arrivals to
-          // pull the rug under our feet. Relaxed memory order is fine here.
-          __op_->__count_.fetch_add(1, __std::memory_order_relaxed);
+          STDEXEC_TRY
+          {
+            // This emplacement can happen only once
+            __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
+          }
+          STDEXEC_CATCH_ALL
+          {
+            if constexpr (__nothrow_decay_copyable<_Args...>)
+              __std::unreachable();
+            else
+              __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
+          }
 
-          __op_->__stop_source_.request_stop();
-
-          // Arrive in order to decrement the count again and complete if needed.
-          __op_->__arrive();
+          // stop pending operations
+          __stop_source_.request_stop();
         }
 
-        __opstate_base* __op_;
-      };
+        __arrive();
+      }
 
-      using __on_stop =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request>;
+      constexpr void __arrive() noexcept
+      {
+        // make __result_ emplacement visible when __count_ goes from one to
+        // zero This relies on the fact that each sender will call notify() at
+        // most once
+        if (__count_.fetch_sub(1, __std::memory_order_acq_rel) == 1)
+        {
+          this->deregister_stoppable();
+          auto stop_token = get_stop_token(get_env(__rcvr_));
 
-      inplace_stop_source      __stop_source_{};
-      std::optional<__on_stop> __on_stop_{};
+          if (stop_token.stop_requested())
+          {
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+            return;
+          }
+
+          std::move(__result_).__complete(__rcvr_);
+        }
+      }
+
+      inplace_stop_source __stop_source_{};
 
       // If this hits true, we store the result
       __std::atomic<bool> __emplaced_{false};
@@ -113,56 +132,6 @@ namespace experimental::execution
 
       _Receiver      __rcvr_;
       _ResultVariant __result_;
-
-      template <class _Tag, class... _Args>
-      void notify(_Tag, _Args&&... __args) noexcept
-      {
-        using __result_t = __decayed_tuple<_Tag, _Args...>;
-        bool __expect    = false;
-        if (__emplaced_.compare_exchange_strong(__expect,
-                                                true,
-                                                __std::memory_order_relaxed,
-                                                __std::memory_order_relaxed))
-        {
-          // This emplacement can happen only once
-          if constexpr ((__nothrow_decay_copyable<_Args> && ...))
-          {
-            __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
-          }
-          else
-          {
-            STDEXEC_TRY
-            {
-              __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
-            }
-            STDEXEC_CATCH_ALL
-            {
-              using __error_t = __tuple<set_error_t, std::exception_ptr>;
-              __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
-            }
-          }
-          // stop pending operations
-          __stop_source_.request_stop();
-        }
-        __arrive();
-      }
-
-      constexpr void __arrive() noexcept
-      {
-        // make __result_ emplacement visible when __count_ goes from one to zero
-        // This relies on the fact that each sender will call notify() at most once
-        if (__count_.fetch_sub(1, __std::memory_order_acq_rel) == 1)
-        {
-          __on_stop_.reset();
-          auto stop_token = get_stop_token(get_env(__rcvr_));
-          if (stop_token.stop_requested())
-          {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-            return;
-          }
-          std::move(__result_).__complete(__rcvr_);
-        }
-      }
     };
 
     template <class _Receiver, class _ResultVariant>
@@ -224,8 +193,10 @@ namespace experimental::execution
 
       void start() & noexcept
       {
-        this->__on_stop_.emplace(get_stop_token(get_env(this->__rcvr_)),
-                                 typename __op_base_t::__forward_stop_request{this});
+        // Only forward the request to the children. The callback can still be
+        // running on another thread after the last child has arrived, so it
+        // must not arrive itself.
+        this->register_stoppable(get_stop_token(get_env(this->__rcvr_)));
         if (this->__stop_source_.stop_requested())
         {
           STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
@@ -246,9 +217,6 @@ namespace experimental::execution
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<_Receiver, __copy_cvref_t<_Self, _Senders>...>;
 
-      template <class _Self, class... _Env>
-      using __completions_t =
-        __minvoke<__completions_fn<_Env...>, __copy_cvref_t<_Self, _Senders>...>;
      public:
       using sender_concept = STDEXEC::sender_tag;
 
@@ -274,39 +242,38 @@ namespace experimental::execution
       template <__decay_copyable _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
-        return __completions_t<_Self, _Env...>{};
+        return __when_any::__mk_completions<_Env...>(
+          __mlist_ptr<__copy_cvref_t<_Self, _Senders>...>());
       }
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
         return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                   _WITH_PRETTY_SENDERS_<_Senders>...>();
+                                                   _WITH_SENDERS_<_Senders>...>();
       }
 
      private:
       __tuple<_Senders...> __sndrs_;
     };
-
-    struct __when_any_t
-    {
-      template <class... _CvSenders>
-      using __sender_t = __sender<__decay_t<_CvSenders>...>;
-
-      auto operator()() const noexcept = delete;
-
-      template <sender... _CvSenders>
-      constexpr auto operator()(_CvSenders&&... __sndrs) const
-        noexcept((__nothrow_decay_copyable<_CvSenders> && ...)) -> __sender_t<_CvSenders...>
-      {
-        return __sender_t<_CvSenders...>(static_cast<_CvSenders&&>(__sndrs)...);
-      }
-    };
-
-    inline constexpr __when_any_t when_any{};
   }  // namespace __when_any
 
-  using __when_any::when_any;
+  struct when_any_t
+  {
+    template <class... _CvSenders>
+    using __sender_t = __when_any::__sender<STDEXEC::__decay_t<_CvSenders>...>;
+
+    auto operator()() const noexcept = delete;
+
+    template <STDEXEC::sender... _CvSenders>
+    constexpr auto operator()(_CvSenders&&... __sndrs) const
+      noexcept(STDEXEC::__nothrow_decay_copyable<_CvSenders...>) -> __sender_t<_CvSenders...>
+    {
+      return __sender_t<_CvSenders...>(static_cast<_CvSenders&&>(__sndrs)...);
+    }
+  };
+
+  inline constexpr auto when_any = when_any_t();
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

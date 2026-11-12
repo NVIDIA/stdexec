@@ -24,4 +24,3 @@
 - [x] Tests
 - [x] NVHPC
 - [ ] Executing unknown senders on GPU
-

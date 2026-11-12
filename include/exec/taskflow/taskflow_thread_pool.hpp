@@ -38,19 +38,17 @@ namespace experimental::execution::taskflow
     {
       return static_cast<std::uint32_t>(executor_.num_workers());
     }
+
    private:
+    friend thread_pool_access;
+
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
     {
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    friend struct ::exec::thread_pool_base<taskflow_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct exec::_pool_::opstate;
-
-    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool::_task_base* task, std::uint32_t tid = 0) noexcept
     {
       executor_.silent_async([task, tid] { task->execute_(task, /*tid=*/tid); });
     }

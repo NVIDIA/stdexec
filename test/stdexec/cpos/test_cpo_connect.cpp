@@ -64,7 +64,7 @@ namespace
     int value_{0};
 
     template <class R>  // accept any type here
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto connect(R r) const -> op_state<R>
     {
       return {{}, value_, std::move(r)};

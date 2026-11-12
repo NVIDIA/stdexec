@@ -106,7 +106,12 @@ endif()
 # * Dependencies -------------------------------------------------------------
 
 # Initialize CPM
-rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
+if(STDEXEC_BUILD_TESTS
+   OR STDEXEC_ENABLE_ASIO
+   OR STDEXEC_ENABLE_TASKFLOW
+   OR STDEXEC_ENABLE_CUDA)
+  rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
+endif()
 
 if(STDEXEC_BUILD_TESTS)
   # Add Catch2
@@ -123,34 +128,12 @@ if(STDEXEC_BUILD_TESTS)
     CPM_ARGS
     URL
     https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
+    SYSTEM
+    TRUE
     OPTIONS
     "CMAKE_CXX_STANDARD 20"
     "CATCH_CONFIG_NO_POSIX_SIGNALS ON")
 endif()
-
-# Add ICM
-set(icm_VERSION 1.5.0)
-# Always download it, don't attempt to do `find_package(ICM)` first
-set(CPM_DOWNLOAD_icm TRUE)
-rapids_cpm_find(
-  icm
-  ${icm_VERSION}
-  CPM_ARGS
-  GITHUB_REPOSITORY
-  iboB/icm
-  GIT_TAG
-  v${icm_VERSION}
-  VERSION
-  ${icm_VERSION}
-  PATCH_COMMAND
-  git
-  restore
-  --
-  .
-  &&
-  git
-  apply
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
 
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -193,22 +176,35 @@ set(stdexec_export_targets)
 # Define the main library
 option(STDEXEC_BUILD_MODULES "Build stdexec C++20 modules" OFF)
 if(STDEXEC_BUILD_MODULES)
-    set(stdexec_scope PUBLIC)
-    set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+  set(stdexec_scope PUBLIC)
+  set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 else()
-    set(stdexec_scope INTERFACE)
+  set(stdexec_scope INTERFACE)
 endif()
 
 if(STDEXEC_BUILD_MODULES)
-    add_library(stdexec OBJECT)
-    target_compile_definitions(stdexec PUBLIC STDEXEC_BUILD_MODULES=1)
+  add_library(stdexec OBJECT)
+  target_compile_definitions(stdexec PUBLIC STDEXEC_BUILD_MODULES=1)
 else()
-    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-    add_library(stdexec INTERFACE)
+  set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+  add_library(stdexec INTERFACE)
 endif()
 
 file(GLOB_RECURSE exec_headers CONFIGURE_DEPENDS include/exec/*.hpp)
 file(GLOB_RECURSE stdexec_headers CONFIGURE_DEPENDS include/stdexec/*.hpp)
+
+# exec/asio/*.hpp isn't really part of stdexec's own interface: it requires
+# Boost.Asio (or standalone Asio), and that dependency is only ever wired onto
+# the separate asioexec INTERFACE library (see
+# cmake/Modules/ConfigureASIO.cmake), never onto stdexec itself. Leaving these
+# files in stdexec's FILE_SET would make VERIFY_INTERFACE_HEADER_SETS try to
+# compile them without the include paths they need - and since SKIP_LINTING is a
+# per-file property, not a per-target one, excluding them there would also
+# suppress the real, correctly-scoped verification that ConfigureASIO.cmake sets
+# up on the asioexec target itself. asioexec's own install() rule already covers
+# these files, so dropping them from stdexec's FILE_SET here doesn't remove them
+# from anywhere a consumer would look.
+list(FILTER exec_headers EXCLUDE REGEX "/exec/asio/")
 
 target_sources(
   stdexec
@@ -246,12 +242,15 @@ if(STDEXEC_BUILD_MODULES)
   set_target_properties(stdexec PROPERTIES CXX_MODULE_STD ON)
 endif()
 
-# Mark include directories as SYSTEM so consumers don't get warnings from stdexec internals
-target_include_directories(stdexec SYSTEM ${stdexec_scope}
+# Mark include directories as SYSTEM so consumers don't get warnings from
+# stdexec internals
+target_include_directories(
+  stdexec
+  SYSTEM
+  ${stdexec_scope}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 list(APPEND stdexec_export_targets stdexec)
 
@@ -262,6 +261,51 @@ set_target_properties(stdexec PROPERTIES VERSION "${STDEXEC_VERSION}"
 if(STDEXEC_BUILD_TESTS)
   # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES VERIFY_INTERFACE_HEADER_SETS TRUE)
+
+  # A handful of headers are not self-contained by design; exclude them from
+  # verification rather than treating that as a bug.
+
+  # These headers bracket a translation unit's warning/pragma state.
+  # __epilogue.hpp pops state that __prologue.hpp is documented to push, so it
+  # cannot compile on its own.
+  set_source_files_properties(include/stdexec/__detail/__epilogue.hpp
+                              PROPERTIES SKIP_LINTING ON)
+
+  # This header has a documented precondition that includers define
+  # STDEXEC_PARALLEL_SCHEDULER_INLINE before including it.
+  set_source_files_properties(
+    include/stdexec/__detail/__parallel_scheduler_default_impl_entry.hpp
+    PROPERTIES SKIP_LINTING ON)
+
+  # These headers require an optional external dependency that isn't present in
+  # every configuration; only verify them when the corresponding feature is
+  # actually enabled.
+  if(NOT STDEXEC_ENABLE_TBB)
+    set_source_files_properties(include/exec/tbb/tbb_thread_pool.hpp
+                                PROPERTIES SKIP_LINTING ON)
+  endif()
+  if(NOT STDEXEC_ENABLE_TASKFLOW)
+    set_source_files_properties(include/exec/taskflow/taskflow_thread_pool.hpp
+                                PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are Windows-only.
+  if(NOT WIN32)
+    set_source_files_properties(
+      include/exec/windows/filetime_clock.hpp
+      include/exec/windows/windows_thread_pool.hpp PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are Linux-only.
+  if(WIN32)
+    set_source_files_properties(
+      include/exec/linux/io_uring_context.hpp
+      include/exec/linux/memory_mapped_region.hpp
+      include/exec/linux/detail/memory_mapped_region.hpp
+      include/exec/linux/safe_file_descriptor.hpp
+      include/exec/linux/detail/safe_file_descriptor.hpp
+      PROPERTIES SKIP_LINTING ON)
+  endif()
 endif()
 
 # Declare the public include directories
@@ -270,12 +314,12 @@ include(GNUInstallDirs)
 target_link_libraries(stdexec ${stdexec_scope} Threads::Threads)
 
 if(STDEXEC_BUILD_MODULES)
-    # Use C++23 standard; modules were introduced in 20 so this feels
-    # like it ought to be unnecessary, but it makes `import std` work
-    target_compile_features(stdexec ${stdexec_scope} cxx_std_23)
+  # Use C++23 standard; modules were introduced in 20 so this feels like it
+  # ought to be unnecessary, but it makes `import std` work
+  target_compile_features(stdexec ${stdexec_scope} cxx_std_23)
 else()
-    # Use C++20 standard
-    target_compile_features(stdexec ${stdexec_scope} cxx_std_20)
+  # Use C++20 standard
+  target_compile_features(stdexec ${stdexec_scope} cxx_std_20)
 endif()
 
 # # Enable GPU compilation when using NVHPC compiler
@@ -284,32 +328,32 @@ endif()
 # INTERFACE $<$<LINK_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu> )
 
 # Enable coroutines for GCC
-target_compile_options(stdexec
-                       ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>)
+target_compile_options(stdexec ${stdexec_scope}
+                       $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>)
 
 # Increase the concepts diagnostics depth for GCC
 target_compile_options(
-  stdexec
-  ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>)
+  stdexec ${stdexec_scope}
+  $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>)
 
 # Do you want a preprocessor that works? Picky, picky.
 target_compile_options(
   stdexec ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus
-                    /Zc:preprocessor /Zc:externConstexpr /bigobj>)
+  /Zc:preprocessor /Zc:externConstexpr /bigobj>)
 
 set(STDEXEC_NAMESPACE
     "stdexec"
     CACHE STRING "The name of the top-level namespace for stdexec")
 if(NOT STDEXEC_NAMESPACE STREQUAL "stdexec")
-  target_compile_definitions(stdexec
-                             ${stdexec_scope} STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
+  target_compile_definitions(stdexec ${stdexec_scope}
+                                     STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
 endif()
 
 option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
        "Enable extra type checking that is costly at compile-time" OFF)
 if(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
-  target_compile_definitions(stdexec
-                             ${stdexec_scope} STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+  target_compile_definitions(stdexec ${stdexec_scope}
+                                     STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
 endif()
 
 add_library(STDEXEC::stdexec ALIAS stdexec)
@@ -592,14 +636,30 @@ endif()
 if(STDEXEC_IS_TOP_LEVEL)
   # Integrate with LLVM/clang tooling
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
-  add_executable(_clangd_helper_file include/._clangd_helper_file.cpp)
-  target_link_libraries(
-    _clangd_helper_file
-    PRIVATE STDEXEC::stdexec
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::nvexec>)
+
+  # The helper translation unit only exists to give clangd a compile command for
+  # the headers (see the comment at the top of the file). It is not needed when
+  # stdexec is configured for packaging, and a source tree that went through an
+  # archive step may not even have it: the leading "._" looks like AppleDouble
+  # metadata, which macOS tar and friends can strip.
+  option(STDEXEC_BUILD_CLANGD_HELPER
+         "Build the helper translation unit that gives clangd compile commands"
+         ON)
+  set(stdexec_clangd_helper_file
+      "${CMAKE_CURRENT_SOURCE_DIR}/include/._clangd_helper_file.cpp")
+  if(STDEXEC_BUILD_CLANGD_HELPER AND EXISTS "${stdexec_clangd_helper_file}")
+    add_executable(_clangd_helper_file "${stdexec_clangd_helper_file}")
+    target_link_libraries(
+      _clangd_helper_file
+      PRIVATE STDEXEC::stdexec
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::nvexec>)
+  elseif(STDEXEC_BUILD_CLANGD_HELPER)
+    message(STATUS "stdexec: ${stdexec_clangd_helper_file} is missing, "
+                   "skipping the clangd helper target")
+  endif()
 endif()
 
 # ##############################################################################
@@ -620,10 +680,11 @@ if(STDEXEC_INSTALL)
       FILE_SET headers FILE_SET version_config
       # I cargo-culted this modules-handling stuff from Beman
       FILE_SET CXX_MODULES
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/stdexec/modules"
+      DESTINATION "${CMAKE_INSTALL_DATADIR}/stdexec/modules"
       CXX_MODULES_BMI
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/stdexec/bmi-${CMAKE_CXX_COMPILER_ID}_$<CONFIG>
-        COMPONENT stdexec_Development)
+      DESTINATION
+        ${CMAKE_INSTALL_DATADIR}/stdexec/bmi-${CMAKE_CXX_COMPILER_ID}_$<CONFIG>
+      COMPONENT stdexec_Development)
   else()
     install(
       TARGETS ${stdexec_install_targets}

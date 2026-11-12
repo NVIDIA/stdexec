@@ -235,6 +235,7 @@ namespace _repeat_n
   };
 }  // namespace _repeat_n
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class Sender, class Closure>
@@ -292,14 +293,12 @@ namespace nv::execution::_strm
     struct opstate : _strm::opstate_base<Receiver>
     {
       explicit opstate(CvSender&& sndr, Closure closure, Receiver&& rcvr, std::size_t count)
-        : _strm::opstate_base<Receiver>(std::move(rcvr), _get_scheduler(sndr).ctx_)
-        , count_(count)
-        , closure_(std::move(closure))
-        , sched_(_get_scheduler(sndr))
-      {
-        pred_opstate_.emplace(ex::__emplace_from{
-          [&]() noexcept { return ex::connect(static_cast<CvSender&&>(sndr), receiver{*this}); }});
-      }
+        : opstate(static_cast<CvSender&&>(sndr),
+                  std::move(closure),
+                  static_cast<Receiver&&>(rcvr),
+                  count,
+                  _get_scheduler(sndr, rcvr))
+      {}
 
       void start() & noexcept
       {
@@ -329,6 +328,21 @@ namespace nv::execution::_strm
       using pred_opstate_t  = ex::connect_result_t<CvSender, receiver<opstate>>;
       using inner_opstate_t = ex::connect_result_t<inner_sender_t, receiver<opstate>>;
 
+      // The scheduler is computed before the base class takes ownership of the receiver.
+      opstate(CvSender&&  sndr,
+              Closure     closure,
+              Receiver&&  rcvr,
+              std::size_t count,
+              scheduler_t sched)
+        : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), sched.ctx_)
+        , count_(count)
+        , closure_(std::move(closure))
+        , sched_(std::move(sched))
+      {
+        pred_opstate_.emplace(ex::__emplace_from{
+          [&]() noexcept { return ex::connect(static_cast<CvSender&&>(sndr), receiver{*this}); }});
+      }
+
       auto& _connect()
       {
         return inner_opstate_.emplace(ex::__emplace_from{
@@ -336,10 +350,10 @@ namespace nv::execution::_strm
           { return ex::connect(closure_(ex::schedule(sched_)), receiver<opstate>{*this}); }});
       }
 
-      scheduler_t _get_scheduler(CvSender const & sndr) noexcept
+      static auto
+      _get_scheduler(CvSender const & sndr, Receiver const & rcvr) noexcept -> scheduler_t
       {
-        return ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr),
-                                                             ex::get_env(this->rcvr_));
+        return ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), ex::get_env(rcvr));
       }
 
       std::size_t                    count_;

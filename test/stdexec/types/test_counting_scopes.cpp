@@ -113,7 +113,8 @@ namespace
                                   | ex::let_value(
                                     [&]() noexcept
                                     {
-                                      // note that we've started evaluating this branch of the when_all
+                                      // note that we've started evaluating this
+                                      // branch of the when_all
                                       joinStarted = true;
                                       return scope.join();
                                     })
@@ -127,16 +128,19 @@ namespace
                                   | ex::then(
                                     [&]() noexcept
                                     {
-                                      // the whole point is to confirm that join() will suspend if
-                                      // started with outstanding operation
+                                      // the whole point is to confirm that
+                                      // join() will suspend if started with
+                                      // outstanding operation
                                       REQUIRE(joinStarted);
                                       REQUIRE(!joinFinished);
                                       // trigger a disassociation
                                       assoc = decltype(assoc){};
-                                      // resuming the suspended join operation involves scheduling the
-                                      // resumption on the environment's scheduler, which is a
-                                      // truly-async process on a run_loop so joinFinished should not
-                                      // have been updated yet
+                                      // resuming the suspended join operation
+                                      // involves scheduling the resumption on
+                                      // the environment's scheduler, which is a
+                                      // truly-async process on a run_loop so
+                                      // joinFinished should not have been
+                                      // updated yet
                                       REQUIRE(!joinFinished);
                                     })));
 

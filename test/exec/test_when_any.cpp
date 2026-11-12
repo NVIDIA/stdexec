@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <exec/async_scope.hpp>
 #include <exec/single_thread_context.hpp>
 #include <exec/when_any.hpp>
 #include <numbers>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
+#include <test_common/stop_tokens.hpp>
 #include <test_common/type_helpers.hpp>
+#include <thread>
 
 #include <test_common/catch2.hpp>
 
@@ -30,6 +34,216 @@ using namespace STDEXEC;
 
 namespace
 {
+
+  struct error_ref_sender
+  {
+    struct error
+    {};
+
+    using sender_concept = ex::sender_tag;
+
+    template <class...>
+    static consteval auto
+    get_completion_signatures() noexcept -> ex::completion_signatures<ex::set_error_t(error&)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+      error    error_;
+
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(rcvr_), error_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(rcvr), {}};
+    }
+  };
+
+  struct error_ref_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    bool* lvalue_error_;
+
+    void set_value() noexcept {}
+    void set_stopped() noexcept {}
+
+    void set_error(error_ref_sender::error&) noexcept
+    {
+      *lvalue_error_ = true;
+    }
+
+    void set_error(error_ref_sender::error&&) noexcept
+    {
+      *lvalue_error_ = false;
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct copy_noexcept_move_throws
+  {
+    copy_noexcept_move_throws() = default;
+
+    copy_noexcept_move_throws(copy_noexcept_move_throws const &) noexcept = default;
+
+    copy_noexcept_move_throws(copy_noexcept_move_throws&&) noexcept(false) {}
+  };
+
+  struct throwing_move_error_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class...>
+    static consteval auto get_completion_signatures() noexcept
+      -> ex::completion_signatures<ex::set_error_t(copy_noexcept_move_throws&)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver                  rcvr_;
+      copy_noexcept_move_throws error_;
+
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(rcvr_), error_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(rcvr), {}};
+    }
+  };
+
+  template <class Type>
+  struct throwing_move_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    bool* got_value_;
+    bool* got_error_;
+    bool* got_exception_;
+
+    void set_value(Type&&) noexcept
+    {
+      *got_value_ = true;
+    }
+
+    void set_error(Type&&) noexcept
+    {
+      *got_error_ = true;
+    }
+
+    void set_error(std::exception_ptr) noexcept
+    {
+      *got_exception_ = true;
+    }
+
+    void set_stopped() noexcept {}
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+
+  struct error_copy_error
+  {};
+
+  struct throwing_error
+  {
+    explicit throwing_error(bool* throw_on_copy) noexcept
+      : throw_on_copy_{throw_on_copy}
+    {}
+
+    throwing_error(throwing_error const & other)
+      : throw_on_copy_{other.throw_on_copy_}
+    {
+      if (*throw_on_copy_)
+      {
+        throw error_copy_error{};
+      }
+    }
+
+    throwing_error(throwing_error&&) noexcept = default;
+
+    bool* throw_on_copy_;
+  };
+
+  struct throwing_error_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    bool* throw_on_copy_;
+
+    template <class...>
+    static consteval auto get_completion_signatures() noexcept
+      -> ex::completion_signatures<ex::set_error_t(throwing_error&)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver       rcvr_;
+      throwing_error error_;
+
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(rcvr_), error_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(rcvr), throwing_error{throw_on_copy_}};
+    }
+  };
+
+  struct throwing_error_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    bool* got_exception_;
+
+    void set_error(throwing_error) noexcept {}
+
+    void set_error(std::exception_ptr) noexcept
+    {
+      *got_exception_ = true;
+    }
+
+    void set_stopped() noexcept {}
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("when_ny returns a sender", "[adaptors][when_any]")
   {
@@ -125,6 +339,40 @@ namespace
     REQUIRE(result == 42);
   }
 
+  TEST_CASE("when_any handles stop requests from the environment correctly", "[adaptors][when_any]")
+  {
+    // Both children complete inside the stop request, and async_scope destroys
+    // when_any's operation state before the request returns.
+    auto snd = exec::when_any(completes_if(false), completes_if(false));
+
+    exec::async_scope scope;
+    scope.spawn(snd);
+    scope.request_stop();
+    ex::sync_wait(scope.on_empty());
+  }
+
+  TEST_CASE("when_any completes once when a stop request races with its last child",
+            "[adaptors][when_any]")
+  {
+    impulse_scheduler  sched;
+    racing_stop_source source;
+    std::atomic<int>   values{0};
+    std::atomic<int>   stopped{0};
+
+    auto op = ex::connect(exec::when_any(ex::schedule(sched)),
+                          racing_stop_receiver{&values, &stopped, source.get_token()});
+    ex::start(op);
+
+    std::thread requester{[&] { source.request_stop(); }};
+    source.wait_for_request();  // the requester has taken when_any's stop callback
+    sched.start_next();         // the only child completes on this thread
+    requester.join();
+
+    CHECK(source.destructor_waited());
+    CHECK(values == 0);
+    CHECK(stopped == 1);
+  }
+
   TEST_CASE("when_any completion signatures", "[adaptors][when_any]")
   {
     struct move_throws
@@ -188,6 +436,80 @@ namespace
     // wait_for_value(std::move(snd), movable(42));
   }
 
+  TEST_CASE("when_any decays error completion arguments", "[adaptors][when_any]")
+  {
+    auto snd = exec::when_any(error_ref_sender{});
+    static_assert(
+      set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                     completion_signatures<set_error_t(error_ref_sender::error), set_stopped_t()>>);
+
+    bool lvalue_error = false;
+    auto op           = ex::connect(std::move(snd), error_ref_receiver{&lvalue_error});
+    ex::start(op);
+    CHECK_FALSE(lvalue_error);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("when_any reports errors from throwing error decay", "[adaptors][when_any]")
+  {
+    bool throw_on_copy = false;
+    auto snd           = exec::when_any(throwing_error_sender{&throw_on_copy});
+    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                                 completion_signatures<set_error_t(throwing_error),
+                                                       set_error_t(std::exception_ptr),
+                                                       set_stopped_t()>>);
+
+    bool got_exception = false;
+    auto op            = ex::connect(std::move(snd), throwing_error_receiver{&got_exception});
+    throw_on_copy      = true;
+    ex::start(op);
+    CHECK(got_exception);
+  }
+
+  TEST_CASE("when_any is not fooled by value types with potentially throwing move ctors",
+            "[adaptors][when_any]")
+  {
+    copy_noexcept_move_throws value;
+    auto                      snd = exec::when_any(just_ref{value});
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(snd)>,
+                  completion_signatures<set_value_t(copy_noexcept_move_throws), set_stopped_t()>>);
+
+    bool got_value     = false;
+    bool got_error     = false;
+    bool got_exception = false;
+    auto op            = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{&got_value,
+                                                                                       &got_error,
+                                                                                       &got_exception});
+    ex::start(op);
+    CHECK(got_value);
+    CHECK_FALSE(got_error);
+    CHECK_FALSE(got_exception);
+  }
+
+  TEST_CASE("when_any is not fooled by types with potentially throwing move ctors",
+            "[adaptors][when_any]")
+  {
+    auto snd = exec::when_any(throwing_move_error_sender{});
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(snd)>,
+                  completion_signatures<set_error_t(copy_noexcept_move_throws), set_stopped_t()>>);
+
+    bool got_value     = false;
+    bool got_error     = false;
+    bool got_exception = false;
+    auto op            = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{&got_value,
+                                                                                       &got_error,
+                                                                                       &got_exception});
+    ex::start(op);
+    CHECK_FALSE(got_value);
+    CHECK(got_error);
+    CHECK_FALSE(got_exception);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <class Receiver>
   struct dup_op
@@ -209,6 +531,7 @@ namespace
                                                                  set_error_t(std::exception_ptr&&)>;
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rec) const noexcept -> dup_op<Receiver>
     {
       return {static_cast<Receiver&&>(rec)};

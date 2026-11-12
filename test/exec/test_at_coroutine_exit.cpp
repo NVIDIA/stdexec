@@ -25,6 +25,10 @@
 #  include "../test_common/require_terminate.hpp"
 #  include "../test_common/schedulers.hpp"
 
+#  include <memory>
+#  include <type_traits>
+#  include <utility>
+
 using namespace exec;
 using STDEXEC::sync_wait;
 
@@ -271,6 +275,46 @@ namespace
     i *= i;
   }
 
+  template <class Cleanup>
+  auto test_cleanup_action_with_lvalue_arguments(Cleanup          cleanup,
+                                                 int&             result,
+                                                 task_disposition disposition) -> task<void>
+  {
+    int       argument       = 3;
+    int const const_argument = 4;
+    auto      action         = [&result](int&& i, int&& j, std::unique_ptr<int>&& p) -> task<void>
+    {
+      result = i + j + *p;
+      co_return;
+    };
+
+    auto payload     = std::make_unique<int>(5);
+    auto&& [i, j, p] = co_await cleanup(action, argument, const_argument, std::move(payload));
+    CHECK_FALSE(payload);
+    STATIC_REQUIRE(std::is_same_v<decltype(i), int&>);
+    STATIC_REQUIRE(std::is_same_v<decltype(j), int&>);
+    STATIC_REQUIRE(std::is_same_v<decltype(p), std::unique_ptr<int>&>);
+    CHECK(i == 3);
+    CHECK(j == 4);
+    CHECK(*p == 5);
+    CHECK(result == 0);
+
+    argument = 100;
+    CHECK(i == 3);
+    i  = 6;
+    j  = 7;
+    *p = 8;
+
+    if (disposition == task_disposition::stopped)
+    {
+      co_await stop();
+    }
+    else if (disposition == task_disposition::failed)
+    {
+      throw 42;
+    }
+  }
+
   auto with_continuation(int& result, task<void> next) -> task<void>
   {
     co_await std::move(next);
@@ -496,6 +540,45 @@ namespace
     int result = 0;
     STDEXEC::sync_wait(test_on_succeeded_mutable_stateful_cleanup_action(result));
     REQUIRE(result == 10);
+  }
+
+  TEMPLATE_TEST_CASE("CoroutineCleanupWithLvalueArguments",
+                     "[task][at_coroutine_exit]",
+                     decltype(at_coroutine_exit),
+                     decltype(on_coroutine_succeeded),
+                     decltype(on_coroutine_stopped),
+                     decltype(on_coroutine_failed))
+  {
+    int            result      = 0;
+    constexpr bool always_runs = std::is_same_v<TestType, decltype(at_coroutine_exit)>;
+
+    SECTION("success")
+    {
+      REQUIRE(sync_wait(test_cleanup_action_with_lvalue_arguments(TestType{},
+                                                                  result,
+                                                                  task_disposition::succeeded)));
+      constexpr bool runs = always_runs
+                         || std::is_same_v<TestType, decltype(on_coroutine_succeeded)>;
+      CHECK(result == (runs ? 21 : 0));
+    }
+
+    SECTION("stop")
+    {
+      CHECK_FALSE(sync_wait(
+        test_cleanup_action_with_lvalue_arguments(TestType{}, result, task_disposition::stopped)));
+      constexpr bool runs = always_runs || std::is_same_v<TestType, decltype(on_coroutine_stopped)>;
+      CHECK(result == (runs ? 21 : 0));
+    }
+
+    SECTION("error")
+    {
+      CHECK_THROWS_AS(
+        sync_wait(
+          test_cleanup_action_with_lvalue_arguments(TestType{}, result, task_disposition::failed)),
+        int);
+      constexpr bool runs = always_runs || std::is_same_v<TestType, decltype(on_coroutine_failed)>;
+      CHECK(result == (runs ? 21 : 0));
+    }
   }
 
 #  ifdef REQUIRE_TERMINATE

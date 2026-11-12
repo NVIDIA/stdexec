@@ -37,9 +37,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __get_completion_behavior
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __completion_behavior
@@ -57,16 +58,16 @@ namespace STDEXEC
 
     enum class __behavior : std::uint8_t
     {
-      // The operation will complete asynchronously, and may complete on a different
-      // context than the one that started it.
+      // The operation will complete asynchronously, and may complete on a
+      // different context than the one that started it.
       __asynchronous = __async_ | __not_affine_,
 
-      // The operation will complete asynchronously, but will complete on the same
-      // context that started it.
+      // The operation will complete asynchronously, but will complete on the
+      // same context that started it.
       __asynchronous_affine = __async_,
 
-      // The operation will complete synchronously (before 'start()' returns) on the same
-      // thread that started it.
+      // The operation will complete synchronously (before 'start()' returns) on
+      // the same thread that started it.
       __inline_completion = __inline_,
 
       // The operation's completion behavior is unknown.
@@ -144,9 +145,9 @@ namespace STDEXEC
     static constexpr __common_t __common{};
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
-  // __get_completion_behavior: A sender can define this attribute to describe the sender's
-  // completion behavior
+  //////////////////////////////////////////////////////////////////////////////
+  // __get_completion_behavior: A sender can define this attribute to describe
+  // the sender's completion behavior
   template <__completion_tag _Tag>
   struct __get_completion_behavior_t
   {
@@ -155,8 +156,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     static constexpr auto __validate() noexcept
     {
-      using __result_t = __member_query_result_t<_Attrs, __get_completion_behavior_t, _Env...>;
-      static_assert(__nothrow_member_queryable_with<_Attrs, __get_completion_behavior_t, _Env...>,
+      using __result_t = __query_result_t<_Attrs, __get_completion_behavior_t, _Env...>;
+      static_assert(__nothrow_queryable_with<_Attrs, __get_completion_behavior_t, _Env...>,
                     "The __get_completion_behavior query must be noexcept.");
       static_assert(__std::convertible_to<__result_t, __completion_behavior::__behavior>,
                     "The __get_completion_behavior query must return one of the static member "
@@ -172,7 +173,7 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Attrs const &) const noexcept
     {
-      if constexpr (__member_queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
+      if constexpr (__queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
       {
         return __validate<_Attrs>();
       }
@@ -186,9 +187,9 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()([[maybe_unused]] _Attrs const &__attrs, _Env const &) const noexcept
     {
-      if constexpr (__member_queryable_with<_Attrs const &,
-                                            __get_completion_behavior_t<_Tag>,
-                                            _Env const &>)
+      if constexpr (__queryable_with<_Attrs const &,
+                                     __get_completion_behavior_t<_Tag>,
+                                     _Env const &>)
       {
         return __validate<_Attrs, _Env>();
       }

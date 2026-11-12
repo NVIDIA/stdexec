@@ -20,6 +20,8 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include <concepts>
 #include <cstddef>
 #include <type_traits>
@@ -45,12 +47,13 @@ namespace nv::execution::_strm
       ::cuda::std::move(fn)(static_cast<Args&&>(args)...);
     }
 
-    template <class... Args, class Fun, class ResultT>
+    template <class ResultT, class... Args, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _then_kernel_with_result(Fun fn, ResultT* result, Args... args)
+    __global__
+      void _then_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result, Args... args)
     {
       static_assert(trivially_copyable<Fun, Args...>);
-      new (result) ResultT(::cuda::std::move(fn)(static_cast<Args&&>(args)...));
+      _store_result<ResultT>(result, ::cuda::std::move(fn), static_cast<Args&&>(args)...);
     }
 
     template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
@@ -68,10 +71,10 @@ namespace nv::execution::_strm
       {}
 
       template <class... Args>
-        requires std::invocable<Fun, __decay_t<Args>...>
+        requires std::invocable<Fun, Args...>
       void set_value(Args&&... args) noexcept
       {
-        using result_t                         = std::invoke_result_t<Fun, __decay_t<Args>...>;
+        using result_t                         = std::invoke_result_t<Fun, Args...>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
         cudaStream_t   stream                  = opstate_.get_stream();
 
@@ -91,16 +94,20 @@ namespace nv::execution::_strm
         }
         else
         {
-          using decayed_result_t = __decay_t<result_t>;
-          auto* d_result         = static_cast<decayed_result_t*>(opstate_.temp_storage_);
-          _then_kernel_with_result<Args&&...>
+          auto* d_result = static_cast<_stored_result_t<result_t>*>(opstate_.temp_storage_);
+          _then_kernel_with_result<result_t, Args&&...>
             <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Args&&>(args)...);
           opstate_.defer_temp_storage_destruction(d_result);
 
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
+          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+          if (status == cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
+            status = _wait_for_result<result_t>(stream);
+          }
+          if (status == cudaSuccess)
+          {
+            opstate_.propagate_completion_signal(STDEXEC::set_value,
+                                                 _load_result<result_t>(d_result));
           }
           else
           {
@@ -147,36 +154,12 @@ namespace nv::execution::_strm
     template <class Receiver>
     using receiver_t = _then::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
 
-    template <class Error>
-    using _set_error_t = completion_signatures<set_error_t(Error)>;
-
-    template <class Self, class... Env>
-    using __error_completions_t =
-      __minvoke_q<__concat_completion_signatures_t,
-                  __with_error_invoke_t<__mbind_front_q<__callable_error_t, then_t>,
-                                        set_value_t,
-                                        Fun,
-                                        __copy_cvref_t<Self, Sender>,
-                                        Env...>,
-                  completion_signatures<set_error_t(cudaError_t)>>;
-
-    template <class... Args>
-    using _set_value_t = __set_value_from_t<Fun, Args...>;
-
-    template <class Self, class... Env>
-    using _completions_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      __error_completions_t<Self, Env...>,
-      _set_value_t,
-      _set_error_t>;
-
     explicit then_sender(Sender sndr, Fun fun) noexcept(__nothrow_move_constructible<Sender, Fun>)
       : sndr_(static_cast<Sender&&>(sndr))
       , fun_(static_cast<Fun&&>(fun))
     {}
 
     template <__decays_to<then_sender> Self, STDEXEC::receiver Receiver>
-      requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
@@ -189,9 +172,14 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<then_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> _completions_t<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        STDEXEC::__upon::__transform_completion<Fun, then_t>(),
+        {},
+        {},
+        _cuda_error_completion_t());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>
@@ -224,12 +212,5 @@ namespace nv::execution::_strm
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Fun>
-  extern __mtype<nvexec::_strm::then_sender<__demangle_t<Sender>, Fun>>
-    __demangle_v<nvexec::_strm::then_sender<Sender, Fun>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

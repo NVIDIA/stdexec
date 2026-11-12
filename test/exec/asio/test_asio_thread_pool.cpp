@@ -19,12 +19,12 @@
 
 #include <stdexec/execution.hpp>
 
-#include <exec/inline_scheduler.hpp>
-#include <test_common/schedulers.hpp>
-
 #include <exec/asio/asio_thread_pool.hpp>
-
 #include <exec/asio/use_sender.hpp>
+#include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
+
+#include <test_common/schedulers.hpp>
 
 #if STDEXEC_USE_MODULES()
 import std;

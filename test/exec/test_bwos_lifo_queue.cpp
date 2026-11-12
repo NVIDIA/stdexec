@@ -20,6 +20,7 @@
 #include <atomic>
 #include <ranges>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <test_common/catch2.hpp>
@@ -143,7 +144,7 @@ TEST_CASE("exec::bwos::lifo_queue - round counter wraparound", "[bwos]")
   exec::bwos::lifo_queue<int> queue(numBlocks, blockSize);
   std::vector<int>            stolenItems;
 
-  for (int val = 1; val <= static_cast<int>(numItems); ++val)
+  for (int val = 1; std::cmp_less_equal(val, numItems); ++val)
   {
     if (!queue.push_back(val))
     {
@@ -384,6 +385,10 @@ TEST_CASE("exec::bwos::lifo_queue - high contention stress", "[bwos]")
           {
             break;
           }
+          else
+          {
+            std::this_thread::yield();
+          }
         }
         thiefCounts[t] = localCount;
       });
@@ -496,4 +501,51 @@ TEST_CASE("exec::bwos::lifo_queue - takeover grant synchronization", "[bwos]")
 
   owner.join();
   thief.join();
+}
+
+TEST_CASE("exec::bwos::lifo_queue - keeps all items across wraps of the block ring", "[bwos]")
+{
+  // 8 blocks of 4. Rounds drained by steal_front() leave the owner's position
+  // where it is, so it keeps moving forward and laps the ring a few hundred
+  // times. Every third round is drained by pop_back() instead, which walks the
+  // owner back across the wrap point as well. A round pushes at most 12 items
+  // on top of at most one block (4) left over by the previous round, so the
+  // queue never holds more than 16 of its 32 slots and no push may be refused.
+  // Catches block counters that lose the round, e.g. because they are only
+  // 32 bits wide.
+  exec::bwos::lifo_queue<int*> queue(8, 4);
+  std::vector<int>             items(12);
+  long                         pushed = 0;
+  long                         taken  = 0;
+  for (int round = 0; round < 2000; ++round)
+  {
+    int const n = 1 + round % 12;
+    for (int i = 0; i < n; ++i)
+    {
+      REQUIRE(queue.push_back(&items[i]));
+      ++pushed;
+    }
+    if (round % 3 == 2)
+    {
+      while (queue.pop_back() != nullptr)
+      {
+        ++taken;
+      }
+    }
+    else
+    {
+      // Thieves cannot reach the owner's current block, so this may leave a
+      // few items behind for a later pop_back() round.
+      while (queue.steal_front() != nullptr)
+      {
+        ++taken;
+      }
+    }
+  }
+  while (queue.pop_back() != nullptr)
+  {
+    ++taken;
+  }
+  CHECK(queue.steal_front() == nullptr);
+  CHECK(pushed == taken);
 }

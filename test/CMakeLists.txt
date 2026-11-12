@@ -16,31 +16,39 @@
 include(CheckCompilerFlag)
 check_compiler_flag(CXX -Wno-c2y-extensions HAVE_C2Y_EXTENSIONS_WARNING)
 
+option(STDEXEC_BUILD_TESTS_WITH_WERROR "Build stdexec tests with -Werror" ON)
+
 function(add_compile_diagnostics TARGET)
   if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     target_compile_options(
       ${TARGET}
-      PRIVATE -Wall -Wextra -Wpedantic -Werror
+      PRIVATE -Wall -Wextra -Wpedantic
+              $<$<BOOL:${STDEXEC_BUILD_TESTS_WITH_WERROR}>:-Werror>
               $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>)
   endif()
 endfunction()
 
 set(stdexec_test_sources
     test_main.cpp
+    stdexec/algos/adaptors/test_affine.cpp
     stdexec/algos/adaptors/test_associate.cpp
+    stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
-    stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_sequence.cpp
+    stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
     stdexec/algos/adaptors/test_stop_when.cpp
+    stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
     stdexec/algos/adaptors/test_then.cpp
+    stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
     stdexec/algos/adaptors/test_upon_stopped.cpp
     stdexec/algos/adaptors/test_write_env.cpp
     stdexec/algos/consumers/test_spawn.cpp
+    stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/factories/test_just.cpp
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
@@ -54,45 +62,46 @@ set(stdexec_test_sources
     stdexec/concepts/test_concepts_scope_token.cpp
     stdexec/concepts/test_concepts_sender.cpp
     stdexec/concepts/test_concepts_stop_tokens.cpp
-    stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_connect.cpp
     stdexec/cpos/test_cpo_connect_awaitable.cpp
     stdexec/cpos/test_cpo_receiver.cpp
     stdexec/cpos/test_cpo_schedule.cpp
     stdexec/cpos/test_cpo_start.cpp
-    stdexec/cpos/test_cpo_upon_error.cpp
+    stdexec/cpos/test_cpo_transform_sender.cpp
     stdexec/cpos/test_cpo_upon_stopped.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_common_domain.cpp
     stdexec/detail/test_completion_signatures.cpp
-    stdexec/detail/test_demangle.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
+    stdexec/detail/test_intrusive_queue.cpp
+    stdexec/detail/test_tuple.cpp
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
-    )
+    stdexec/queries/test_get_start_scheduler.cpp
+    stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/types/test_counting_scopes.cpp
+    stdexec/types/test_task.cpp)
+
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
-  list(APPEND stdexec_test_sources
-    stdexec/algos/adaptors/test_bulk.cpp
+  list(
+    APPEND
+    stdexec_test_sources
+    stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_let_stopped.cpp
     stdexec/algos/adaptors/test_let_value.cpp
     stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
-    stdexec/algos/adaptors/test_spawn_future.cpp
-    stdexec/algos/adaptors/test_stopped_as_error.cpp
-    stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/factories/test_just_error.cpp
-    stdexec/algos/consumers/test_sync_wait.cpp
+    stdexec/cpos/test_cpo_bulk.cpp
+    stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
-    stdexec/schedulers/test_parallel_scheduler.cpp
-    stdexec/schedulers/test_task_scheduler.cpp
-    stdexec/types/test_counting_scopes.cpp
-    stdexec/types/test_task.cpp)
+    stdexec/schedulers/test_parallel_scheduler.cpp)
 endif()
 
 add_library(common_test_settings INTERFACE)
@@ -115,19 +124,43 @@ target_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted
                                                        # from stdlib headers,
                                                        # why?
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-unknown-warning-option
+    -Wno-gnu-line-marker
+    -Wno-unused-function
+    -Wno-unused-template
+    -Wno-c2y-extensions>)
 target_link_libraries(common_test_settings
                       INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+
+add_executable(test.run_loop_finish_repro EXCLUDE_FROM_ALL
+               run_loop_finish_repro.cpp)
+add_compile_diagnostics(test.run_loop_finish_repro)
+target_link_libraries(
+  test.run_loop_finish_repro
+  PUBLIC STDEXEC::stdexec stdexec_executable_flags
+  PRIVATE common_test_settings)
+
 # target_compile_definitions( common_test_settings INTERFACE
 # $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 add_executable(test.stdexec ${stdexec_test_sources})
 
 if(STDEXEC_BUILD_MODULES)
-    set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
+  set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
 endif()
 
 add_compile_diagnostics(test.stdexec)
+
+# libstdc++'s allocator_traits::destroy calls the deprecated
+# pmr::polymorphic_allocator::destroy, and clang does not suppress that warning
+# even though it originates in a system header. Keep -Werror, but don't let this
+# one diagnostic be fatal.
+if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+  set_source_files_properties(
+    stdexec/algos/adaptors/test_spawn_future.cpp
+    stdexec/algos/consumers/test_spawn.cpp TARGET_DIRECTORY test.stdexec
+    PROPERTIES COMPILE_OPTIONS -Wno-error=deprecated-declarations)
+endif()
 target_link_libraries(
   test.stdexec
   PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
@@ -154,14 +187,14 @@ target_link_libraries(
   PRIVATE common_test_settings)
 
 if(STDEXEC_BUILD_MODULES)
-    set_target_properties(test.scratch PROPERTIES CXX_MODULE_STD ON)
+  set_target_properties(test.scratch PROPERTIES CXX_MODULE_STD ON)
 endif()
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
 
 # For testing that builds fail as expected
-include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
+include(BuildFailureTests)
 
 catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
@@ -171,6 +204,31 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
   catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT
                        30)
 endif()
+
+# __detail/__parallel_scheduler_default_impl_entry.hpp is excluded from
+# VERIFY_INTERFACE_HEADER_SETS because it has a documented precondition
+# (includers must define STDEXEC_PARALLEL_SCHEDULER_INLINE first) that the
+# automatic verification can't express. Compile it here instead, with that
+# precondition satisfied.
+#
+# This is a plain (non-EXCLUDE_FROM_ALL) OBJECT library rather than a dependency
+# hooked onto all_verify_interface_header_sets: CMake creates that aggregate
+# target itself only once the whole build has been configured (confirmed
+# directly - `if(TARGET all_verify_interface_header_sets)` is still false at
+# this point in test/CMakeLists.txt, even though the property enabling it was
+# set earlier in the root CMakeLists.txt), so there's no handle to attach a
+# dependency to from here. Building it unconditionally is simpler and just as
+# effective: it's one small translation unit, so the added cost per build is
+# negligible.
+add_library(verify_parallel_scheduler_default_impl_entry OBJECT
+            stdexec/detail/verify_parallel_scheduler_default_impl_entry.cpp)
+target_link_libraries(verify_parallel_scheduler_default_impl_entry
+                      PRIVATE STDEXEC::stdexec)
+set_target_properties(
+  verify_parallel_scheduler_default_impl_entry
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
 
 add_subdirectory(exec)
 
@@ -183,37 +241,23 @@ if(NOT STDEXEC_BUILD_MODULES)
 
   # build failure tests: tests which parse a source file for an expected error
   # message
-  icm_add_build_failure_test(
-    NAME
-    test_let_fail1
-    TARGET
-    test_let_fail1
-    SOURCES
-    PARSE
-    stdexec/algos/adaptors/test_let_fail1.cpp
-    LIBRARIES
-    stdexec
-    FOLDER
-    test)
+  stdexec_add_build_failure_test(
+    NAME test_let_fail1 SOURCE stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES stdexec)
 
-  icm_add_build_failure_test(
-    NAME
-    test_then_fail1
-    TARGET
-    test_then_fail1
-    SOURCES
-    PARSE
-    stdexec/algos/adaptors/test_then_fail1.cpp
-    LIBRARIES
-    stdexec
-    FOLDER
-    test)
+  stdexec_add_build_failure_test(
+    NAME test_then_fail1 SOURCE stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_on_fail1 SOURCE stdexec/algos/adaptors/test_on_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_when_all_fail1 SOURCE
+    stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
 
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)
   endif()
 endif()
-
-# # Adding multiple tests with a glob icm_glob_build_failure_tests( PATTERN
-# *_fail*.cpp LIBRARIES stdexec PREFIX stdexec FOLDER
-# test/stdexec/algos/adaptors )

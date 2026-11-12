@@ -33,6 +33,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 
@@ -55,16 +56,16 @@ namespace STDEXEC
       }
       while (!__head_.compare_exchange_weak(__old_head, __node, __std::memory_order_acq_rel));
 
-      // If the queue was empty before, we notify the consumer thread that there is now an
-      // item available. If the queue was not empty, we do not notify, because the consumer
-      // thread has already been notified.
+      // If the queue was empty before, we notify the consumer thread that there
+      // is now an item available. If the queue was not empty, we do not notify,
+      // because the consumer thread has already been notified.
       if (__old_head != nullptr)
       {
         return false;
       }
 
-      // There can be only one consumer thread, so we can use notify_one here instead of
-      // notify_all:
+      // There can be only one consumer thread, so we can use notify_one here
+      // instead of notify_all:
       __head_.notify_one();
       return true;
     }

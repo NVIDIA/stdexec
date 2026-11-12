@@ -18,18 +18,30 @@
 #include "__config.hpp"
 
 #if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
-#  include <execution>  // IWYU pragma: keep
+// NVHPC's <execution> re-includes <stdexec/execution.hpp>. Including that from here, while
+// headers such as __bulk.hpp are only partially parsed, creates an include cycle that leaves
+// those headers' contents undefined for the headers pulled in by the cycle. Suppress NVHPC's
+// stdexec include; it is still honored the next time <execution> is included.
+#  if STDEXEC_NVHPC() && !defined(_NVHPC_STDEXEC_INCLUDE_IN_PROGRESS)
+#    define _NVHPC_STDEXEC_INCLUDE_IN_PROGRESS
+#    include <execution>  // IWYU pragma: keep
+#    undef _NVHPC_STDEXEC_INCLUDE_IN_PROGRESS
+#  else
+#    include <execution>  // IWYU pragma: keep
+#  endif
 #endif
 
 #include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 
 #if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
 
-  // Import the execution policies from std::execution. The __policy namespace is used to
-  // avoid name clashes if the macro STDEXEC expands to std::execution.
+  // Import the execution policies from std::execution. The __policy namespace
+  // is used to avoid name clashes if the macro STDEXEC expands to
+  // std::execution.
   namespace __policy
   {
     using std::execution::sequenced_policy;

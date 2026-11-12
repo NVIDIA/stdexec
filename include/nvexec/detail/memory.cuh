@@ -60,6 +60,8 @@ namespace nv::execution::_strm
       if (status = STDEXEC_LOG_CUDA_API(::cudaMalloc(reinterpret_cast<void**>(&ptr), sizeof(Type)));
           status == cudaSuccess)
       {
+        device_ptr_t<Type> result{ptr};
+
         STDEXEC_TRY
         {
           Type h(static_cast<Args&&>(args)...);
@@ -67,13 +69,12 @@ namespace nv::execution::_strm
             ::cudaMemcpy(ptr, &h, sizeof(Type), cudaMemcpyHostToDevice));
           if (status == cudaSuccess)
           {
-            return device_ptr_t<Type>(ptr);
+            return result;
           }
         }
         STDEXEC_CATCH_ALL
         {
           status = cudaErrorUnknown;
-          STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
         }
       }
     }

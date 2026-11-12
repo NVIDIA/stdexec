@@ -33,6 +33,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 namespace
 {
 
@@ -164,6 +166,7 @@ namespace
       return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;
@@ -183,8 +186,8 @@ namespace
       bool     condition_;
       Receiver rcvr_;
 
-      // without this synchronization, the thread sanitzier shows a race for construction and
-      // destruction of on_stop_
+      // without this synchronization, the thread sanitzier shows a race for
+      // construction and destruction of on_stop_
       enum class state_t
       {
         construction,
@@ -292,6 +295,7 @@ namespace
     };
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
       return {args_, counter_, std::forward<Receiver>(rcvr)};
@@ -319,6 +323,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const noexcept
     {
       return opstate<Receiver>{value_, static_cast<Receiver&&>(rcvr)};
@@ -363,3 +368,5 @@ namespace
   };
 
 }  // namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

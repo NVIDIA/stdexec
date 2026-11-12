@@ -57,7 +57,8 @@ namespace
     STATIC_REQUIRE(noexcept(ex::just() | ex::associate(null_token{})));
 
     // conversely, trafficking in senders with potentially-throwing copy
-    // constructors should lead to the whole expression becoming potentially-throwing
+    // constructors should lead to the whole expression becoming
+    // potentially-throwing
     auto const justString = ex::just(std::string{"Copying strings is potentially-throwing"});
     STATIC_REQUIRE(!noexcept(ex::associate(justString, null_token{})));
     STATIC_REQUIRE(!noexcept(justString | ex::associate(null_token{})));
@@ -191,6 +192,7 @@ namespace
         return false;
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return {};
@@ -203,6 +205,7 @@ namespace
       return std::forward<Sender>(sndr);
     }
 
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept
     {
       return {};
@@ -212,6 +215,11 @@ namespace
   TEST_CASE("associate is just_stopped with expired_token", "[adaptors][associate]")
   {
     wait_for_value(ex::just(true) | ex::associate(expired_token{})
+                     | ex::upon_stopped([]() noexcept { return false; }),
+                   false);
+
+    expired_token lvalue_token{};
+    wait_for_value(ex::just(true) | ex::associate(lvalue_token)
                      | ex::upon_stopped([]() noexcept { return false; }),
                    false);
   }
@@ -227,6 +235,7 @@ namespace
         return !!scope_;
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return assoc{scope_ && scope_->open ? scope_ : nullptr};
@@ -243,6 +252,7 @@ namespace
         return std::forward<Sender>(sndr);
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return assoc{scope_->open ? scope_ : nullptr};
@@ -251,6 +261,7 @@ namespace
       scope const *scope_;
     };
 
+    [[nodiscard]]
     constexpr token get_token() const noexcept
     {
       return token{this};
@@ -296,6 +307,7 @@ namespace
 
   // TODO: check the pass-through nature of __sync_attrs
   // TODO: check the pass-through stop request behaviour
-  // TODO: confirm timing of destruction of opstate relative to release of association
+  // TODO: confirm timing of destruction of opstate relative to release of
+  // association
   // TODO: confirm that the TODO list is exhaustive
 }  // namespace

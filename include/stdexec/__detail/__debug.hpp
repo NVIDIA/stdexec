@@ -25,10 +25,10 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"  // IWYU pragma: keep for env<>
 #  include "__meta.hpp"
+#  include "__normalize_completion_signature.hpp"
 #  include "__query.hpp"
 #  include "__sender_concepts.hpp"
 
@@ -38,9 +38,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
   struct __debug_env_t : __query<__debug_env_t>
   {
@@ -78,7 +79,7 @@ namespace STDEXEC
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
-    using __env_t = env<prop<__debug_env_t, bool>, _Env>;
+    using __env_t = env<prop<__debug_env_t, bool>, __root_env, _Env>;
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _CvSender, class _Env, class... _Sigs>
@@ -95,7 +96,7 @@ namespace STDEXEC
           using __what_t = _WARNING_<_COMPLETION_SIGNATURES_MISMATCH_,
                                      _COMPLETION_SIGNATURE_<_Which>,
                                      _IS_NOT_ONE_OF_<_Sigs...>,
-                                     _SIGNAL_SENT_BY_SENDER_<__demangle_t<_CvSender>>>;
+                                     _SIGNAL_SENT_BY_SENDER_<_CvSender>>;
           __debug::_ATTENTION_<__what_t>();
         }
         STDEXEC_TERMINATE();
@@ -130,7 +131,7 @@ namespace STDEXEC
 
     template <class _CvSender, class _Env, class _Sigs>
     using __receiver_t = __mapply<
-      __mtransform<__mcompose<__q1<std::remove_pointer_t>, __q1<__cmplsigs::__normalize_sig_t>>,
+      __mtransform<__mcompose<__q1<std::remove_pointer_t>, __q1<__cmplsigs::__normalize_t>>,
                    __mbind_front_q<__receiver, _CvSender, _Env>>,
       _Sigs>;
 
@@ -141,50 +142,12 @@ namespace STDEXEC
     };
   }  // namespace __debug
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // `__debug_sender`
-  // ===============
+  // ================
 
-  // Understanding why a particular sender doesn't connect to a particular
-  // receiver is nigh impossible in the current design due to limitations in
-  // how the compiler reports overload resolution failure in the presence of
-  // constraints. `__debug_sender` is a utility to assist with the process. It
-  // gives you the deep template instantiation backtrace that you need to
-  // understand where in a chain of senders the problem is occurring.
-
-  // ```c++
-  // template <class _Sigs, class _Env = env<>, class _Sender>
-  //   void __debug_sender(_Sender&& __sndr, _Env = {});
-
-  // template <class _Env = env<>, class _Sender>
-  //   void __debug_sender(_Sender&& __sndr, _Env = {});
-  // ```
-
-  // **Usage:**
-
-  // To find out where in a chain of senders a sender is failing to connect
-  // to a receiver, pass it to `__debug_sender`, optionally with an
-  // environment argument; e.g. `__debug_sender(sndr [, env])`
-
-  // To find out why a sender will not connect to a receiver of a particular
-  // signature, specify the set of completion signatures as an explicit template
-  // argument that names an instantiation of `completion_signatures`; e.g.:
-  // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
-
-  // **How it works:**
-
-  // The `__debug_sender` function `connect`'s the sender to a
-  // `__debug_receiver`, whose environment is augmented with a special
-  // `__is_debug_env_t` query. An additional fall-back overload is added to
-  // the `connect` CPO that recognizes receivers whose environments respond to
-  // that query and lets them through. Then in a non-immediate context, it
-  // looks for a `tag_invoke(connect_t...)` overload for the input sender and
-  // receiver. This will recurse until it hits the `tag_invoke` call that is
-  // causing the failure.
-
-  // At least with clang, this gives me a nice backtrace, at the bottom of
-  // which is the faulty `tag_invoke` overload with a mention of the
-  // constraint that failed.
+  // Utility to check whether a sender's actual completions match its declared
+  // completion signatures.
   template <class _Sigs, class _CvSender, class _Env = env<>>
   constexpr void __debug_sender(_CvSender&& __sndr, _Env const & = {})
   {

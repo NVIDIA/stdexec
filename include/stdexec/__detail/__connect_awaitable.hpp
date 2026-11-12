@@ -41,10 +41,11 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __connect_await
   namespace __connect_await
   {
@@ -56,7 +57,8 @@ namespace STDEXEC
     };
     // clang-format on
 
-    // A partial duplicate of with_awaitable_senders to avoid circular type dependencies
+    // A partial duplicate of with_awaitable_senders to avoid circular type
+    // dependencies
     template <class _Promise>
     struct __with_await_transform
     {
@@ -106,7 +108,7 @@ namespace STDEXEC
       using __opstate_t = __opstate<_Awaiter, _Receiver>;
       friend __opstate_t;
 
-      static void __resume(void* __frame) noexcept
+      static void STDEXEC_CORO_FRAME_CALLCONV __resume(void* __frame) noexcept
       {
         auto* __op = static_cast<__opstate_t*>(__frame);
         __op->__on_resume();
@@ -175,11 +177,12 @@ namespace STDEXEC
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
           noexcept(__is_nothrow)
         {
-          // GCC doesn't like initializing __awaitable_ or __awaiter_ in the member initializer
-          // clause when the result of __get_awaitable or __get_awaiter is immovable; it *seems*
-          // like direct initialization of a member with the result of a function ought to trigger
-          // C++17's mandatory copy elision, and both Clang and MSVC accept that code, but using
-          // __manual_lifetime works around the issue.
+          // GCC doesn't like initializing __awaitable_ or __awaiter_ in the
+          // member initializer clause when the result of __get_awaitable or
+          // __get_awaiter is immovable; it *seems* like direct initialization
+          // of a member with the result of a function ought to trigger C++17's
+          // mandatory copy elision, and both Clang and MSVC accept that code,
+          // but using __manual_lifetime works around the issue.
           __awaitable_.__construct_from(__get_awaitable,
                                         static_cast<_Awaitable&&>(__source),
                                         __coro.promise());
@@ -244,11 +247,12 @@ namespace STDEXEC
       {
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise>) noexcept(__is_nothrow)
         {
-          // GCC doesn't like initializing __awaiter_ in the member initializer clause when the
-          // result of __get_awaiter is immovable; it *seems* like direct initialization of a
-          // member with the result of a function ought to trigger C++17's mandatory copy elision,
-          // and both Clang and MSVC accept that code, but using a union with in-place new works
-          // around the issue.
+          // GCC doesn't like initializing __awaiter_ in the member initializer
+          // clause when the result of __get_awaiter is immovable; it *seems*
+          // like direct initialization of a member with the result of a
+          // function ought to trigger C++17's mandatory copy elision, and both
+          // Clang and MSVC accept that code, but using a union with in-place
+          // new works around the issue.
           __awaiter_.__construct_from(__get_awaiter, static_cast<_Awaitable&&>(__source));
         }
 
@@ -302,11 +306,12 @@ namespace STDEXEC
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
           noexcept(__is_nothrow)
         {
-          // GCC doesn't like initializing __awaiter_ in the member initializer clause when the
-          // result of __get_awaitable is immovable; it *seems* like direct initialization of a
-          // member with the result of a function ought to trigger C++17's mandatory copy elision,
-          // and both Clang and MSVC accept that code, but using a union with in-place new works
-          // around the issue.
+          // GCC doesn't like initializing __awaiter_ in the member initializer
+          // clause when the result of __get_awaitable is immovable; it *seems*
+          // like direct initialization of a member with the result of a
+          // function ought to trigger C++17's mandatory copy elision, and both
+          // Clang and MSVC accept that code, but using a union with in-place
+          // new works around the issue.
           __awaiter_.__construct_from(__get_awaitable,
                                       static_cast<_Awaitable&&>(__source),
                                       __coro.promise());
@@ -356,8 +361,8 @@ namespace STDEXEC
     struct __awaitable_state<_Awaitable, _Promise>
       : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
     {
-      // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
-      // so we don't need separate storage for either
+      // _Awaitable has neither a distinct awaiter, nor a distinct awaitable so
+      // we don't need separate storage for either
       STDEXEC_ATTRIBUTE(no_unique_address)
       __manual_lifetime<_Awaitable> __awaiter_;
 
@@ -427,7 +432,8 @@ namespace STDEXEC
             {
               if (__awaiter_.await_suspend(__coro))
               {
-                // returning true from a bool-returning await_suspend means suspend
+                // returning true from a bool-returning await_suspend means
+                // suspend
                 return;
               }
               else

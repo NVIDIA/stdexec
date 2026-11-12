@@ -39,6 +39,21 @@ import stdexec;
 #      define STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
 #    endif
 
+// Before LLVM 23, Clang calls a coroutine's resume and destroy functions with
+// LLVM's fastcc calling convention. On 32-bit x86 that passes the frame address
+// in ECX, as fastcall does, instead of on the stack. Functions stored in a
+// __synthetic_coro_frame must use the same convention. LLVM 23 uses the C
+// convention instead (https://github.com/llvm/llvm-project/pull/198943); define
+// STDEXEC_CORO_FRAME_CALLCONV as empty for an older Clang with that backported.
+#    if !defined(STDEXEC_CORO_FRAME_CALLCONV)
+#      if STDEXEC_CLANG() && defined(__i386__) && STDEXEC_CLANG_VERSION < 2300
+#        define STDEXEC_CORO_FRAME_CALLCONV __attribute__((__fastcall__))
+#      else
+#        define STDEXEC_CORO_FRAME_CALLCONV
+#      endif
+#    endif
+
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Tp, __one_of<_Tp, void> _Up>
@@ -86,8 +101,8 @@ namespace STDEXEC
     STDEXEC::__coroutine_destroy_nothrow(__h.address());
   }
 
-  // A coroutine handle that also supports unhandled_stopped() for propagating stop
-  // signals through co_awaits of senders.
+  // A coroutine handle that also supports unhandled_stopped() for propagating
+  // stop signals through co_awaits of senders.
   template <class _Promise = void>
   class __coroutine_handle;
 
@@ -120,9 +135,9 @@ namespace STDEXEC
       {
         __stopped_callback_ = &__stopped_callback<_Promise>;
       }
-      // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
-      // reaches this point, it's considered an unhandled exception and terminate()
-      // is called.
+      // If _Promise doesn't implement unhandled_stopped(), then if a "stopped"
+      // unwind reaches this point, it's considered an unhandled exception and
+      // terminate() is called.
     }
 
     [[nodiscard]]
@@ -169,6 +184,7 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
+    // NOLINT(bugprone-derived-method-shadowing-base-method)
     constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise>
     {
       return STDEXEC::__coroutine_handle_cast<_Promise>(*this);
@@ -185,12 +201,12 @@ namespace STDEXEC
   {
     struct __synthetic_coro_frame
     {
-      using __callback_fn_t = void(void*) noexcept;
+      using __callback_fn_t = void STDEXEC_CORO_FRAME_CALLCONV(void*) noexcept;
 
       __callback_fn_t* __resume_  = &__noop_fn;
       __callback_fn_t* __destroy_ = &__noop_fn;
 
-      static void __noop_fn(void*) noexcept {}
+      static void STDEXEC_CORO_FRAME_CALLCONV __noop_fn(void*) noexcept {}
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(
@@ -200,25 +216,26 @@ namespace STDEXEC
 #    if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
-  // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates
-  // the return buffer for await_suspend calls within the suspended coroutine frame. When
-  // the suspended coroutine is destroyed within await_suspend, the continuation coroutine
-  // handle is not only used after free, but also overwritten by the debug malloc
-  // implementation when NRVO is in play.
+  // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly
+  // allocates the return buffer for await_suspend calls within the suspended
+  // coroutine frame. When the suspended coroutine is destroyed within
+  // await_suspend, the continuation coroutine handle is not only used after
+  // free, but also overwritten by the debug malloc implementation when NRVO is
+  // in play.
 
-  // This workaround delays the destruction of the suspended coroutine by wrapping the
-  // continuation in another "synthetic" coroutine that resumes the continuation and
-  // *then* destroys the suspended coroutine.
+  // This workaround delays the destruction of the suspended coroutine by
+  // wrapping the continuation in another "synthetic" coroutine that resumes the
+  // continuation and *then* destroys the suspended coroutine.
 
-  // The wrapping coroutine frame is thread-local and reused within the thread for each
-  // destroy-and-continue sequence.
+  // The wrapping coroutine frame is thread-local and reused within the thread
+  // for each destroy-and-continue sequence.
 
   struct __destroy_and_continue_frame : __detail::__synthetic_coro_frame
   {
     static void __resume(void* __address) noexcept
     {
-      // Make a local copy of the promise to ensure we can safely destroy the suspended
-      // coroutine after resuming the continuation.
+      // Make a local copy of the promise to ensure we can safely destroy the
+      // suspended coroutine after resuming the continuation.
       auto& __self    = *static_cast<__destroy_and_continue_frame*>(__address);
       auto  __destroy = __self.__promise_.__destroy_;
       STDEXEC::__coroutine_resume_nothrow(__self.__promise_.__continue_);

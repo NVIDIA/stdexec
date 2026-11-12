@@ -37,9 +37,10 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
 
   //! @brief Tag type used to opt a class into the @c stdexec::sender concept.
@@ -124,9 +125,12 @@ namespace STDEXEC
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!
-  //! @see stdexec::sender_in    — sender plus a specific environment, with computable signatures
-  //! @see stdexec::sender_to    — sender plus a specific receiver, with compatible signatures
-  //! @see stdexec::sender_tag   — the tag type that opts a class into this concept
+  //! @see stdexec::sender_in    — sender plus a specific environment, with
+  //!                              computable signatures
+  //! @see stdexec::sender_to    — sender plus a specific receiver, with
+  //!                              compatible signatures
+  //! @see stdexec::sender_tag   — the tag type that opts a class into this
+  //!                              concept
   //! @see stdexec::enable_sender — alternative opt-in path
   STDEXEC_MODULE_EXPORT template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>          //
@@ -134,7 +138,7 @@ namespace STDEXEC
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
-#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1303
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<std::remove_const_t<decltype(_Completions)>>;
@@ -173,7 +177,8 @@ namespace STDEXEC
   //!
   //! @see stdexec::sender                    — the base concept
   //! @see stdexec::sender_to                 — adds a specific receiver
-  //! @see stdexec::get_completion_signatures — the customization point this concept depends on
+  //! @see stdexec::get_completion_signatures — the customization point this
+  //!                                           concept depends on
   STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
@@ -185,7 +190,7 @@ namespace STDEXEC
   concept __receiver_from =
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
   concept __sender_to = receiver<_Receiver>                      //
@@ -237,9 +242,12 @@ namespace STDEXEC
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!
-  //! @see stdexec::sender                    — the base concept (no environment required)
-  //! @see stdexec::sender_in                 — sender with a concrete environment
-  //! @see stdexec::get_completion_signatures — the CPO that throws @c dependent_sender_error
+  //! @see stdexec::sender                    — the base concept (no environment
+  //!                                           required)
+  //! @see stdexec::sender_in                 — sender with a concrete
+  //!                                           environment
+  //! @see stdexec::get_completion_signatures — the CPO that throws
+  //!                                           @c dependent_sender_error
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
@@ -252,7 +260,8 @@ namespace STDEXEC
       __mcall<__if_c<(sizeof...(_Ts) == 1), __q<__decay_t>, __qq<__decayed_std_tuple>>, _Ts...>;
   };
 
-  //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26 working draft.
+  //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26
+  //! working draft.
   template <class _Sender, class... _Env>
   using __single_sender_value_t =  //
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
@@ -273,11 +282,12 @@ namespace STDEXEC
   template <class _Error>
   using __is_eptr_t = __mbool<__decays_to<_Error, std::exception_ptr>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
   concept __has_eptr_completion = sender_in<_Sender, _Env...>  //
                                && __error_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                                  __q1<__is_eptr_t>,
-                                                  __qq<__mor_t>>::value;
+                                                  __qq<__mor_t>,
+                                                  __q1<__is_eptr_t>>::value;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...>  //
@@ -285,58 +295,64 @@ namespace STDEXEC
 
   namespace __detail
   {
-    template <class _SenderName, class _Sender, class... _Env>
-    constexpr auto __diagnose_sender_concept_failure() noexcept
-    {
-      if constexpr (!enable_sender<__decay_t<_Sender>>)
-      {
-        static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-      }
-      else if constexpr (!__std::move_constructible<__decay_t<_Sender>>)
-      {
-        static_assert(__std::move_constructible<__decay_t<_Sender>>,
-                      "The sender type is not move-constructible.");
-      }
-      else if constexpr (!__decay_copyable<_Sender>)
-      {
-        static_assert(__decay_copyable<_Sender>,
-                      "The sender cannot be decay-copied. Did you forget a std::move?");
-      }
-      else
-      {
-        using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
-        if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_Sender, _Env...>>)
-        {
-          static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
-        }
-        else if constexpr (__merror<_Completions>)
-        {
-          static_assert(!__merror<_Completions>,
-                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
-        }
-        else
-        {
-          static_assert(__valid_completion_signatures<_Completions>,
-                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
-        }
-#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
-        // MSVC and NVHPC need more encouragement to print the type of the
-        // error.
-        _Completions __what = 0;
-#  endif
-      }
-    }
+    // sender_adaptor_closure only accepts class types. In a concept, a type it
+    // rejects (e.g. int) makes the check false instead of a hard error.
+    template <class _Sender>
+    concept __is_sender_adaptor_closure =
+      __std::derived_from<__decay_t<_Sender>, sender_adaptor_closure<__decay_t<_Sender>>>;
   }  // namespace __detail
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class... _Env>
+  template <class _CvSender, class... _Env>
   constexpr auto __diagnose_sender_concept_failure() noexcept
   {
-    return __detail::__diagnose_sender_concept_failure<_WITH_PRETTY_SENDER_<_Sender>,
-                                                       _Sender,
-                                                       _Env...>();
+    using __decayed_sender = __decay_t<_CvSender>;
+    if constexpr (!enable_sender<__decayed_sender>)
+    {
+      if constexpr (__detail::__is_sender_adaptor_closure<__decayed_sender>)
+        static_assert(enable_sender<__decayed_sender>,
+                      STDEXEC_ERROR_SENDER_ADAPTOR_CLOSURE_IS_NOT_A_SENDER);
+      else
+        static_assert(enable_sender<__decayed_sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
+    }
+    else if constexpr (!__std::move_constructible<__decayed_sender>)
+    {
+      static_assert(__std::move_constructible<__decayed_sender>,
+                    "The sender type is not move-constructible.");
+    }
+    else if constexpr (!__decay_copyable<_CvSender>)
+    {
+      static_assert(__decay_copyable<_CvSender>,
+                    "The sender cannot be decay-copied. Did you forget a std::move?");
+    }
+    else
+    {
+      // This is a hard error if get_completion_signatures throws:
+      constexpr auto __completions = STDEXEC::get_completion_signatures<_CvSender, _Env...>();
+      using _Completions           = __decay_t<decltype(__completions)>;
+
+      if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_CvSender, _Env...>>)
+      {
+        static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
+      }
+      else if constexpr (__merror<_Completions>)
+      {
+        static_assert(!__merror<_Completions>,
+                      STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
+      }
+      else
+      {
+        static_assert(__valid_completion_signatures<_Completions>,
+                      STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
+      }
+#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
+      // MSVC and NVHPC need more encouragement to print the type of the
+      // error.
+      _Completions __what = 0;
+#  endif
+    }
   }
 }  // namespace STDEXEC
 

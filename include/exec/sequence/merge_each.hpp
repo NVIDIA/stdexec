@@ -20,17 +20,19 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
+#include "../completion_signatures.hpp"
 #include "../sequence_senders.hpp"
+#include "../stoppable_base.hpp"
 
 #include "../../stdexec/__detail/__completion_signatures_of.hpp"
 #include "../../stdexec/__detail/__concepts.hpp"
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__diagnostics.hpp"
 #include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__gather_completion_signatures.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__sender_introspection.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
-#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
 #include "../detail/basic_sequence.hpp"
 #include "../sender_for.hpp"
@@ -74,44 +76,29 @@ namespace experimental::execution
 
     template <class _Receiver>
     struct __nested_stop
+      : stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, __nested_stop<_Receiver>>
     {
-      struct __on_stop_request
-      {
-        inplace_stop_source& __stop_source_;
+      using __env_t        = env_of_t<_Receiver>;
+      using __env_result_t = __env_with_inplace_stop_token_result_t<__env_t>;
+      using __stop_token_t = stop_token_of_t<__env_t>;
 
-        void operator()() noexcept
-        {
-          __stop_source_.request_stop();
-        }
-      };
-      using __env_t           = env_of_t<_Receiver>;
-      using __env_result_t    = __env_with_inplace_stop_token_result_t<__env_t>;
-      using __stop_token_t    = stop_token_of_t<__env_t>;
-      using __stop_callback_t = stop_callback_for_t<__stop_token_t, __on_stop_request>;
-      struct no_callback
-      {};
-      using __callback_t =
-        __if_c<unstoppable_token<__stop_token_t>, no_callback, __optional<__stop_callback_t>>;
+      __nested_stop() = default;
 
       inplace_stop_source __stop_source_{};
-      __callback_t        __on_stop_{};
 
       void register_token(_Receiver& __receiver) noexcept
       {
-        if constexpr (!unstoppable_token<__stop_token_t>)
-        {
-          // register stop callback:
-          __on_stop_.emplace(get_stop_token(STDEXEC::get_env(__receiver)),
-                             __on_stop_request{__stop_source_});
-        }
+        this->register_stoppable(get_stop_token(STDEXEC::get_env(__receiver)));
       }
 
       void unregister_token() noexcept
       {
-        if constexpr (!unstoppable_token<__stop_token_t>)
-        {
-          __on_stop_.reset();
-        }
+        this->deregister_stoppable();
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
       }
 
       bool stop_requested() const noexcept
@@ -153,9 +140,6 @@ namespace experimental::execution
       using env_t = decltype(__env_from(std::declval<__nested_stop*>(), __declval<__env_t>()));
     };
 
-    template <class... _Args>
-    using drop = __mlist<>;
-
     enum class __completion_t
     {
       __started,
@@ -164,11 +148,13 @@ namespace experimental::execution
     };
 
     //
-    // __operation.. coordinates all the nested operation completions, creates
-    // a nested inplace_stop_source and stores the first error to arrive and
-    // delays the error to be emmitted after all nested operations have completed
+    // __operation.. coordinates all the nested operation completions, creates a
+    // nested inplace_stop_source and stores the first error to arrive and
+    // delays the error to be emmitted after all nested operations have
+    // completed
     //
-    // The first error to arrive will request_stop on the nested inplace_stop_source
+    // The first error to arrive will request_stop on the nested
+    // inplace_stop_source
     //
 
     template <class _ErrorStorage>
@@ -199,8 +185,8 @@ namespace experimental::execution
       {
         if (this->nested_value_fail())
         {
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           if constexpr (noexcept(__error_storage_->template emplace<_Error>(
                           static_cast<_Error&&>(__error))))
           {
@@ -251,24 +237,15 @@ namespace experimental::execution
       template <class _ErrorReceiver>
       using __error_op_t = __error_op<_ErrorReceiver, _ErrorStorage>;
 
-      template <class _Error>
-      using __error_signature_t = STDEXEC::set_error_t(_Error);
-
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
         using __result_t =
-          STDEXEC::__mapply<STDEXEC::__mtransform<STDEXEC::__q<__error_signature_t>,
+          STDEXEC::__mapply<STDEXEC::__mtransform<STDEXEC::__qf<STDEXEC::set_error_t>,
                                                   STDEXEC::__qq<STDEXEC::completion_signatures>>,
                             _ErrorStorage>;
-        if constexpr (__ok<__result_t>)
-        {
-          return __result_t();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(__result_t());
-        }
+        static_assert(__ok<__result_t>);
+        return __result_t();
       }
 
       template <class _Self, receiver _ErrorReceiver>
@@ -383,16 +360,12 @@ namespace experimental::execution
       }
       void set_break() noexcept
       {
-        switch (__completion_.exchange(__completion_t::__stopped))
+        auto __expected = __completion_t::__started;
+        if (__completion_.compare_exchange_strong(__expected, __completion_t::__stopped))
         {
-        case __completion_t::__started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We transitioned from started to stopped, so we must request stop. When the state is
+          // already error or stopped, stop has already been requested.
           __nested_stop_.request_stop();
-          break;
-        case __completion_t::__stopped:
-          [[fallthrough]];              // We're already in the "stopped" state. Ignore the break.
-        case __completion_t::__error:;  // We're already in the "error" state. Ignore the break.
         }
       }
 
@@ -435,16 +408,17 @@ namespace experimental::execution
         switch (__completion_.exchange(__completion_t::__error))
         {
         case __completion_t::__started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We must request stop. When the previous state is __error or
+          // __stopped, then stop has already been requested.
           __nested_stop_.request_stop();
           [[fallthrough]];
         case __completion_t::__stopped:
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           return true;
           break;
-        case __completion_t::__error:;  // We're already in the "error" state. Ignore the error.
+        case __completion_t::__error:;  // We're already in the "error" state,
+                                        // so ignore the error.
         }
         return false;
       }
@@ -455,8 +429,10 @@ namespace experimental::execution
       }
       void error_complete() noexcept override
       {
-        // do not double report error
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        // The error has been delivered as an item. Complete the sequence so the
+        // consumer can publish it, unless the operation was independently
+        // stopped.
+        exec::__set_value_unless_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
       void complete_if_none_active() noexcept
@@ -539,12 +515,12 @@ namespace experimental::execution
     };
 
     //
-    // __nested_value.. exists to store the an error signal from a
-    // value if it is the first error. All error completions are
-    // removed from the completion_signatures. when an error occurs
-    // the stopped signal will be emitted here and the error will
-    // be emitted as a separate item after all active operations
-    // have completed. otherwise __nested_value.. is transparent.
+    // __nested_value.. exists to store the an error signal from a value if it
+    // is the first error. All error completions are removed from the
+    // completion_signatures. when an error occurs the stopped signal will be
+    // emitted here and the error will be emitted as a separate item after all
+    // active operations have completed. otherwise __nested_value.. is
+    // transparent.
     //
 
     template <class _NestedValueReceiver>
@@ -648,21 +624,14 @@ namespace experimental::execution
         __nested_value_op_t<_NestedValueSender, _NestedValueReceiver, _ErrorStorage>;
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() noexcept
+      static consteval auto get_completion_signatures()
       {
-        using __result_t = STDEXEC::__transform_completion_signatures_t<
-          STDEXEC::__completion_signatures_of_t<_NestedValueSender, _Env...>,
-          STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>,
-          STDEXEC::__cmplsigs::__default_set_value,
-          drop>;
-        if constexpr (__ok<__result_t>)
-        {
-          return __result_t();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(__result_t());
-        }
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_NestedValueSender, _Env...>(),
+          {},
+          exec::ignore_completion(),
+          {},
+          STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>());
       }
 
       template <class _Self, receiver _NestedValueReceiver>
@@ -698,11 +667,10 @@ namespace experimental::execution
     // receivers here, the completion signals to the next receiver
     // travel to the producer.
     // Only set_value() and set_stopped() are allowed.
-    // - set_value() will signal the producer to emit the next
-    //     sequence and cleanup the storage for the previous
-    //     sequence.
-    // - set_stopped() will signal the producer to break out and
-    //     send no more sequences.
+    // - set_value() will signal the producer to emit the next sequence and
+    //   cleanup the storage for the previous sequence.
+    // - set_stopped() will signal the producer to break out and send no more
+    //   sequences.
     //
 
     struct __next_operation_interface
@@ -742,13 +710,12 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_values is subscribed to each nested sequence
-    // This forwards all the nested value senders to the output sequence.
-    // This wraps the nested value senders to capture and delay any
-    // error signals emitted by the nested value sender.
-    // This captures and delays any error signals received directly.
-    // set_stopped is ignored. This allows nested sequences to be
-    // stopped individually without stopping all the other nested
+    // __receive_nested_values is subscribed to each nested sequence This
+    // forwards all the nested value senders to the output sequence. This wraps
+    // the nested value senders to capture and delay any error signals emitted
+    // by the nested value sender. This captures and delays any error signals
+    // received directly. set_stopped is ignored. This allows nested sequences
+    // to be stopped individually without stopping all the other nested
     // sequences or the merge_each operation.
     //
 
@@ -813,12 +780,12 @@ namespace experimental::execution
       template <class... _Args>
       using __f = std::conditional_t<
         sizeof...(_Env) == 0 && sizeof...(_Args) == 1 && (dependent_sender<_Args> && ...),
-        STDEXEC::__mexception<dependent_sender_error, _WITH_PRETTY_SENDER_<_Args>...>,
+        STDEXEC::__mexception<dependent_sender_error, _WITH_SENDER_<_Args>...>,
         STDEXEC::__mexception<_WHAT_(_INVALID_ARGUMENT_),
                               _WHERE_(_IN_ALGORITHM_, merge_each_t),
                               _WHY_(_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_),
-                              _WITH_PRETTY_SEQUENCE_<_Sequence>,
-                              _WITH_PRETTY_SENDER_<_Sender>,
+                              _WITH_SEQUENCE_<_Sequence>,
+                              _WITH_SENDER_<_Sender>,
                               __fn_t<_WITH_ENVIRONMENT_, _Env>...,
                               _WITH_ARGUMENTS_(_Args...)>>;
     };
@@ -853,7 +820,7 @@ namespace experimental::execution
       struct __gather_sequences_t
       {
         template <class _Completions>
-        using __f = STDEXEC::__gather_completions_t<
+        using __f = STDEXEC::__gather_completion_signatures_t<
           STDEXEC::set_value_t,
           _Completions,
           __arg_of_t<_Sequence, _Sender, _Env...>,
@@ -863,7 +830,7 @@ namespace experimental::execution
       template <class _Sequence, class _Sender, class... _Env>
       using __nested_sequences_from_item_type_t =
         STDEXEC::__minvoke<__gather_sequences_t<_Sequence, _Sender, _Env...>,
-                           STDEXEC::__completion_signatures_of_t<_Sender, _Env...>>;
+                           __sequence_aware_completion_signatures_of_t<_Sender, _Env...>>;
 
       template <class _Sequence, class... _Env>
       struct __nested_sequences_fn
@@ -897,15 +864,17 @@ namespace experimental::execution
         __mapply<__all_nested_values_fn<_Env...>, __nested_sequences_t<_Sequence, _Env...>>;
 
       //
-      // __error_types extracts the types of all the errors emitted by all the senders in the list.
+      // __error_types extracts the types of all the errors emitted by all the
+      // senders in the list.
       //
 
       template <class... _Env>
       struct __error_types_fn
       {
         template <class _Sender>
-        using __f = STDEXEC::__error_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                             STDEXEC::__qq<STDEXEC::__mlist>>;
+        using __f =
+          STDEXEC::__error_types_t<__sequence_aware_completion_signatures_of_t<_Sender, _Env...>,
+                                   STDEXEC::__qq<STDEXEC::__mlist>>;
       };
 
       template <class _Senders, class... _Env>
@@ -966,8 +935,8 @@ namespace experimental::execution
                  __all_nested_values_t<_Sequence, _Env...>>;
 
       //
-      // __nested_sequence_ops_variant makes a variant that contains the
-      // types of all the nested sequence operations.
+      // __nested_sequence_ops_variant makes a variant that contains the types
+      // of all the nested sequence operations.
       //
 
       template <class _OperationBase>
@@ -996,9 +965,9 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_sequence is connected to each sender of a nested sequence.
-    // The nested sequence is then subscribed and the operation is stored in a
-    // variant of all possible nested sequence operations.
+    // __receive_nested_sequence is connected to each sender of a nested
+    // sequence. The nested sequence is then subscribed and the operation is
+    // stored in a variant of all possible nested sequence operations.
     //
 
     template <class _NextReceiver, class _OperationBase, class _NestedSeqOp>
@@ -1032,21 +1001,34 @@ namespace experimental::execution
           if constexpr (!__is_nothrow)
           {
             __op_->store_error(std::current_exception());
-            __op_->nested_sequence_break();
+            __next_seq_op_->nested_sequence_break();
           }
         }
       }
 
+      // The sender of a nested sequence completed without producing a nested
+      // sequence. The next receiver must still be completed, or else the input
+      // sequence would never learn that this item is finished.
       template <class _Error>
       void set_error(_Error&& __error) noexcept
       {
         __op_->store_error(static_cast<_Error&&>(__error));
-        __op_->nested_sequence_break();
+        __next_seq_op_->nested_sequence_break();
       }
 
       void set_stopped() noexcept
       {
-        __op_->nested_sequence_complete();
+        if (__op_->__nested_stop_.stop_requested())
+        {
+          // Stop has been requested, so ask the input sequence to stop
+          // producing nested sequences.
+          __next_seq_op_->nested_sequence_break();
+        }
+        else
+        {
+          // Only this sender was stopped; skip it and keep merging the rest.
+          __next_seq_op_->nested_sequence_complete();
+        }
       }
 
       using __env_t = typename _OperationBase::__nested_stop_env_t;
@@ -1094,8 +1076,10 @@ namespace experimental::execution
       using sender_concept = STDEXEC::sender_tag;
 
       template <class _NextReceiver>
-      using __next_sequence_op_t =
-        __next_sequence_op<_NestedSequenceSender, _NextReceiver, _OperationBase, _NestedSeqOp>;
+      using __next_sequence_op_t = __next_sequence_op<_NestedSequenceSender,
+                                                      __decay_t<_NextReceiver>,
+                                                      _OperationBase,
+                                                      _NestedSeqOp>;
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() noexcept
@@ -1122,9 +1106,9 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_sequences is subscribed to the input sequence of sequences
-    // each new sender of a nested sequence is placed in a __next_sequence_sender
-    // that is returned from set_next()
+    // __receive_nested_sequences is subscribed to the input sequence of
+    // sequences each new sender of a nested sequence is placed in a
+    // __next_sequence_sender that is returned from set_next()
     //
 
     template <class _OperationBase, class _NestedSeqOp>
@@ -1145,7 +1129,7 @@ namespace experimental::execution
                                               _NestedSequenceSender>) -> next_sender auto
       {
         return __next_sequence_sender_t<_NestedSequenceSender>{__op_,
-                                                               static_cast<_NestedSequenceSender>(
+                                                               static_cast<_NestedSequenceSender&&>(
                                                                  __nested_sequence)};
       }
 
@@ -1241,19 +1225,18 @@ namespace experimental::execution
 
     //
     // merge_each is a sequence adaptor that takes a sequence of nested
-    // sequences and merges all the nested values from all the nested
-    // sequences into a single output sequence.
+    // sequences and merges all the nested values from all the nested sequences
+    // into a single output sequence.
     //
-    // the first error encountered will trigger a stop request for all
-    // active operations. The error is stored and is emitted only after
-    // all the active operations have completed.
-    // If the error was emitted from an item, a new item is emitted
-    // at the end to deliver the stored error.
+    // the first error encountered will trigger a stop request for all active
+    // operations. The error is stored and is emitted only after all the active
+    // operations have completed. If the error was emitted from an item, a new
+    // item is emitted at the end to deliver the stored error.
     //
-    // any nested sequence or nested value that completes with
-    // set_stopped will not cause any other operations to be stopped.
-    // This allows individual nested sequences to be stopped without
-    // breaking the merge of the remaining sequences.
+    // any nested sequence or nested value that completes with set_stopped will
+    // not cause any other operations to be stopped. This allows individual
+    // nested sequences to be stopped without breaking the merge of the
+    // remaining sequences.
     //
 
     struct merge_each_t
@@ -1286,10 +1269,11 @@ namespace experimental::execution
       struct __completions_fn
       {
         template <class... _Sequences>
-        using __f = __minvoke_q<__concat_completion_signatures_t,
-                                completion_signatures<set_stopped_t()>,
-                                __completion_signatures_of_t<__child_of<_Self>, _Env...>,
-                                __completion_signatures_of_t<_Sequences, _Env...>...>;
+        using __f =
+          __minvoke_q<__concat_completion_signatures_t,
+                      completion_signatures<set_stopped_t()>,
+                      __sequence_aware_completion_signatures_of_t<__child_of<_Self>, _Env...>,
+                      __sequence_aware_completion_signatures_of_t<_Sequences, _Env...>...>;
       };
 
       template <class _Self, class... _Env>

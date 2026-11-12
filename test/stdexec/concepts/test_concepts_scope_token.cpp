@@ -50,18 +50,21 @@ namespace
       }
 
       // this may throw, although it need not
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return {};
       }
     };
 
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept
     {
       return {};
     }
 
     template <ex::sender Sender>
+    [[maybe_unused]]
     Sender&& wrap(Sender&& snd) const noexcept
     {
       return std::forward<Sender>(snd);
@@ -70,6 +73,7 @@ namespace
 
   struct throwing_try_associate : null_token
   {
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept(false)
     {
       return {};
@@ -79,6 +83,7 @@ namespace
   struct throwing_wrap : null_token
   {
     template <ex::sender Sender>
+    [[maybe_unused]]
     constexpr Sender&& wrap(Sender&& snd) const noexcept(false)
     {
       return std::forward<Sender>(snd);
@@ -141,6 +146,7 @@ namespace
   struct non_const_wrap : null_token
   {
     template <ex::sender Sender>
+    [[maybe_unused]]
     Sender&& wrap(Sender&& snd) noexcept
     {
       return std::forward<Sender>(snd);

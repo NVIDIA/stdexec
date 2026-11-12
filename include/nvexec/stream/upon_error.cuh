@@ -20,6 +20,8 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include "common.cuh"
 
 #include <concepts>
@@ -44,12 +46,13 @@ namespace nv::execution::_strm
       ::cuda::std::move(fn)(static_cast<Args&&>(args)...);
     }
 
-    template <class... Args, class Fun, class ResultT>
+    template <class ResultT, class... Args, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _upon_error_kernel_with_result(Fun fn, ResultT* result, Args... args)
+    __global__
+      void _upon_error_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result, Args... args)
     {
       static_assert(trivially_copyable<Fun, Args...>);
-      new (result) ResultT(::cuda::std::move(fn)(static_cast<Args&&>(args)...));
+      _store_result<ResultT>(result, ::cuda::std::move(fn), static_cast<Args&&>(args)...);
     }
 
     template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
@@ -98,15 +101,19 @@ namespace nv::execution::_strm
         }
         else
         {
-          using decayed_result_t = __decay_t<result_t>;
-          auto* d_result         = static_cast<decayed_result_t*>(opstate_.temp_storage_);
-          _upon_error_kernel_with_result<Error&&>
+          auto* d_result = static_cast<_stored_result_t<result_t>*>(opstate_.temp_storage_);
+          _upon_error_kernel_with_result<result_t, Error&&>
             <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
+          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+          if (status == cudaSuccess)
+          {
+            status = _wait_for_result<result_t>(stream);
+          }
+          if (status == cudaSuccess)
           {
             opstate_.defer_temp_storage_destruction(d_result);
-            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
+            opstate_.propagate_completion_signal(STDEXEC::set_value,
+                                                 _load_result<result_t>(d_result));
           }
           else
           {
@@ -147,16 +154,6 @@ namespace nv::execution::_strm
     template <class Receiver>
     using receiver_t = _upon_error::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
 
-    template <class Error>
-    using _set_error_t = __set_value_from_t<Fun, Error>;
-
-    template <class Self, class... Env>
-    using completion_signatures = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      completion_signatures<set_error_t(cudaError_t)>,
-      __cmplsigs::__default_set_value,
-      _set_error_t>;
-
     explicit upon_error_sender(Sender sndr, Fun fun)
       noexcept(__nothrow_move_constructible<Sender, Fun>)
       : sndr_(static_cast<Sender&&>(sndr))
@@ -164,7 +161,6 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<upon_error_sender> Self, receiver Receiver>
-      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
@@ -172,14 +168,19 @@ namespace nv::execution::_strm
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr),
         [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-        { return receiver_t<Receiver>(self.fun_, stream_provider); });
+        { return receiver_t<Receiver>(static_cast<Self&&>(self).fun_, stream_provider); });
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<upon_error_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        {},
+        STDEXEC::__upon::__transform_completion<Fun, upon_error_t>(),
+        {},
+        _cuda_error_completion_t());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>
@@ -212,12 +213,5 @@ namespace nv::execution::_strm
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Fun>
-  extern __mtype<nvexec::_strm::upon_error_sender<__demangle_t<Sender>, Fun>>
-    __demangle_v<nvexec::_strm::upon_error_sender<Sender, Fun>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

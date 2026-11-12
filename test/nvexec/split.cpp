@@ -36,6 +36,28 @@ namespace
     REQUIRE(v2 == 42);
   }
 
+  TEST_CASE("nvexec split handles pre-cancellation", "[cuda][stream][adaptors][split]")
+  {
+    nvexec::stream_context  stream_ctx{};
+    ex::inplace_stop_source stop_source;
+    flags_storage_t         flags_storage{};
+    auto                    flags = flags_storage.get();
+
+    stop_source.request_stop();
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler())                              //
+             | ex::then([flags] { flags.set(); })                                    //
+             | exec::split()                                                         //
+             | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})  //
+             | ex::then([] { return 0; })                                            //
+             | ex::upon_stopped([] { return 42; });
+
+    auto [value] = STDEXEC::sync_wait(std::move(snd)).value();
+
+    REQUIRE(value == 42);
+    REQUIRE(flags_storage.all_unset());
+  }
+
   TEST_CASE("nvexec split can preceed a sender without values", "[cuda][stream][adaptors][split]")
   {
     nvexec::stream_context stream_ctx{};

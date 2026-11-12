@@ -371,4 +371,38 @@ namespace
 
     REQUIRE(handle.alive() == 0);
   }
+
+  TEST_CASE("nvexec then can return a reference", "[cuda][stream][adaptors][then]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    int *data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, sizeof(int)));
+    *data = 0;
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler())
+             | ex::then([data]() -> int & { return *data; }) | ex::then([](int &ref) { ref = 7; });
+    STDEXEC::sync_wait(std::move(snd));
+
+    int const result = *data;
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    REQUIRE(result == 7);
+  }
+
+  TEST_CASE("nvexec then can return a const reference", "[cuda][stream][adaptors][then]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    int *data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, sizeof(int)));
+    *data = 5;
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler())
+             | ex::then([data]() -> int const & { return *data; })
+             | ex::then([](int const &ref) { return ref * 2; });
+    auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
+
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    REQUIRE(result == 10);
+  }
 }  // namespace

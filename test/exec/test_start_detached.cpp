@@ -57,8 +57,8 @@ namespace
     exec::start_detached(ex::just(3, 0.1415));
   }
 
-  // Trying to test `start_detached` with error flows will result in calling `std::terminate()`.
-  // We don't want that
+  // Trying to test `start_detached` with error flows will result in calling
+  // `std::terminate()`. We don't want that
 
   TEST_CASE("start_detached works with sender ending with `set_stopped`",
             "[consumers][start_detached]")
@@ -90,9 +90,9 @@ namespace
                           | ex::then([&] { called.store(true); });
       exec::start_detached(std::move(snd));
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(); i++)
       std::this_thread::sleep_for(1ms);
     // the work should be executed
@@ -126,6 +126,7 @@ namespace
     }
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver&&) const -> noop
     {
       static_assert(sizeof(Receiver) == 0);
@@ -136,6 +137,8 @@ namespace
 
   struct custom_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct sender
     {
       using sender_concept        = ex::sender_tag;
@@ -143,6 +146,7 @@ namespace
 
       [[nodiscard]]
       auto get_env() const noexcept
+        -> ex::prop<ex::get_completion_scheduler_t<ex::set_value_t>, custom_scheduler>
       {
         return ex::prop{ex::get_completion_scheduler<ex::set_value_t>, custom_scheduler{called}};
       }
@@ -153,6 +157,7 @@ namespace
       };
 
       template <class Receiver>
+      [[maybe_unused]]
       auto connect(Receiver&&) const
       {
         FAIL("this should not be called");
@@ -187,7 +192,7 @@ namespace
     }
 
     template <ex::__completion_tag Tag>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>, ex::__ignore = {}) const noexcept -> domain
     {
       return {};
@@ -292,6 +297,18 @@ namespace
 
   struct env
   {};
+
+  struct move_only_env
+  {
+    move_only_env()                         = default;
+    move_only_env(move_only_env&&) noexcept = default;
+    move_only_env(move_only_env const &)    = delete;
+  };
+
+  TEST_CASE("start_detached works with a move-only environment", "[consumers][start_detached]")
+  {
+    exec::start_detached(ex::just(), move_only_env{});
+  }
 
   TEST_CASE("ex::on can be passed to start_detached with env", "[adaptors][ex::on]")
   {

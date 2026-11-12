@@ -41,7 +41,7 @@ struct RunThread
       {
         break;
       }
-      auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
+      auto [start, end] = exec::_pool::_even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t     scheds = end - start;
       tbb::task_group tg{};
       stdexec::sync_wait(stdexec::schedule(scheduler)

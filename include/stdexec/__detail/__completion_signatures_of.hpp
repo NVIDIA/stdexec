@@ -32,12 +32,14 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-  // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
-  // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
-  // completion signatures wrapper enforces that at compile time.
+  // __checked_completion_signatures is for catching logic bugs in a sender's
+  // metadata. If sender<S> and sender_in<S, Ctx> are both true, then they had
+  // better report the same metadata. This completion signatures wrapper
+  // enforces that at compile time.
   template <class _CvSender, class... _Env>
   auto __checked_completion_signatures(_CvSender &&__sndr, _Env &&...__env) noexcept
   {

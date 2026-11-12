@@ -301,7 +301,7 @@ namespace experimental::execution
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const
       {
-        return __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr));
+        return __sexpr{ignore_all_values_t(), __(), static_cast<_Sender&&>(__sndr)};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -337,6 +337,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

@@ -21,12 +21,16 @@
 #  include <exec/async_scope.hpp>
 #  include <exec/sender_for.hpp>
 #  include <exec/single_thread_context.hpp>
+#  include <exec/static_thread_pool.hpp>
 #  include <exec/task.hpp>
+#  include <exec/timed_thread_scheduler.hpp>
 
 #  include <test_common/schedulers.hpp>
 
 #  include <test_common/catch2.hpp>
 
+#  include <coroutine>
+#  include <exception>
 #  include <string>
 
 namespace ex = STDEXEC;
@@ -370,6 +374,141 @@ namespace
     CHECK(count == 3);
   }
 #  endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // Regression tests for https://github.com/NVIDIA/stdexec/issues/2134: the
+  // schedulers of exec::static_thread_pool and exec::timed_thread_context used
+  // to be missing the `scheduler_concept` nested alias required by the
+  // scheduler concept, which made exec::task's internal __any_scheduler
+  // conversion fail to compile when such a task was co_started on them.
+  TEST_CASE("task - can be started on a static_thread_pool scheduler", "[types][task]")
+  {
+    exec::static_thread_pool pool{2};
+    bool                     ran = false;
+    // Keep the closure a temporary inside the full expression: the task is
+    // lazy, so the closure (and its by-reference capture) must outlive the
+    // point at which the pool thread resumes the coroutine.
+    auto op_state = STDEXEC::sync_wait(STDEXEC::starts_on(pool.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
+    REQUIRE(op_state);
+    CHECK(ran);
+  }
+
+  TEST_CASE("task - can be started on a timed_thread_context scheduler", "[types][task]")
+  {
+    exec::timed_thread_context ctx;
+    bool                       ran      = false;
+    auto                       op_state = STDEXEC::sync_wait(STDEXEC::starts_on(ctx.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
+    REQUIRE(op_state);
+    CHECK(ran);
+  }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  // A minimal coroutine whose environment provides a std::stop_token, for
+  // awaiting a task from a parent whose token is not inplace_stop_token.
+  struct std_stop_token_parent
+  {
+    struct env
+    {
+      [[nodiscard]]
+      auto query(ex::get_stop_token_t) const noexcept -> std::stop_token
+      {
+        return token_;
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_start_scheduler_t) const noexcept -> ex::inline_scheduler
+      {
+        return ex::inline_scheduler{};
+      }
+
+      std::stop_token token_;
+    };
+
+    struct promise_type
+    {
+      auto get_return_object() noexcept -> std_stop_token_parent
+      {
+        return {std::coroutine_handle<promise_type>::from_promise(*this)};
+      }
+
+      auto initial_suspend() noexcept -> std::suspend_always
+      {
+        return {};
+      }
+
+      auto final_suspend() noexcept -> std::suspend_always
+      {
+        return {};
+      }
+
+      void return_void() noexcept {}
+
+      void unhandled_exception() noexcept
+      {
+        std::terminate();
+      }
+
+      auto unhandled_stopped() noexcept -> std::coroutine_handle<>
+      {
+        std::terminate();
+      }
+
+      template <class Awaitable>
+      auto await_transform(Awaitable&& awaitable)
+      {
+        return ex::as_awaitable(static_cast<Awaitable&&>(awaitable), *this);
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> env
+      {
+        return env{token_};
+      }
+
+      std::stop_token token_;
+    };
+
+    std::coroutine_handle<promise_type> handle_;
+  };
+
+  auto record_stop_requested(bool& stop_requested) -> exec::task<void>
+  {
+    auto token     = co_await ex::get_stop_token();
+    stop_requested = token.stop_requested();
+  }
+
+  auto await_task(bool& stop_requested) -> std_stop_token_parent
+  {
+    co_await record_stop_requested(stop_requested);
+  }
+
+  TEST_CASE("task - stop token is forwarded from a std::stop_token parent", "[types][task]")
+  {
+    for (bool request_stop: {false, true})
+    {
+      std::stop_source source;
+      bool             stop_requested = !request_stop;
+      auto             parent         = await_task(stop_requested);
+      parent.handle_.promise().token_ = source.get_token();
+      if (request_stop)
+        source.request_stop();
+
+      parent.handle_.resume();
+      CHECK(parent.handle_.done());
+      CHECK(stop_requested == request_stop);
+      parent.handle_.destroy();
+    }
+  }
+#  endif
 }  // namespace
 
 #endif

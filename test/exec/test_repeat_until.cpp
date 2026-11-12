@@ -17,7 +17,6 @@
 
 #include "exec/repeat_until.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "exec/trampoline_scheduler.hpp"
 #include "stdexec/execution.hpp"
 
 #include <test_common/receivers.hpp>
@@ -26,6 +25,8 @@
 #include <test_common/type_helpers.hpp>
 
 #include <test_common/catch2.hpp>
+
+#include "test_repeat_receiver_lifetime.hpp"
 
 #include <concepts>
 #include <cstddef>
@@ -39,6 +40,40 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  namespace lifetime_test = repeat_receiver_lifetime_test;
+
+  struct send_true
+  {
+    using signature = ex::set_value_t(std::true_type);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_value(static_cast<Receiver &&>(rcvr), std::true_type{});
+    }
+  };
+
+  struct send_error
+  {
+    using signature = ex::set_error_t(int);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_error(static_cast<Receiver &&>(rcvr), 42);
+    }
+  };
+
+  struct send_stopped
+  {
+    using signature = ex::set_stopped_t();
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_stopped(static_cast<Receiver &&>(rcvr));
+    }
+  };
 
   struct boolean_sender
   {
@@ -56,19 +91,20 @@ namespace
       {
         if (counter_ == 0)
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), true);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), true);
         }
         else
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), false);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), false);
         }
       }
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
-      return {static_cast<Receiver&&>(rcvr), --*counter_};
+      return {static_cast<Receiver &&>(rcvr), --*counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
@@ -153,6 +189,40 @@ namespace
     auto snd = ex::just_stopped() | exec::repeat_until();
     auto op  = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
+  }
+
+  TEST_CASE("repeat_until does not access its child receiver after cleanup",
+            "[adaptors][repeat_until]")
+  {
+    SECTION("set_value")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_true{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_void_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_error")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_error{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_error_receiver{42});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_stopped")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_stopped{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
   }
 
   TEST_CASE("running deeply recursing algo on repeat_until doesn't blow the stack",
@@ -256,10 +326,10 @@ namespace
   {
     struct error_type
     {
-      explicit error_type(unsigned& throw_after) noexcept
+      explicit error_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      error_type(error_type const & other)
+      error_type(error_type const &other)
         : throw_after_(other.throw_after_)
       {
         if (!throw_after_)
@@ -268,7 +338,7 @@ namespace
         }
         --throw_after_;
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
     };
     struct receiver
     {
@@ -290,12 +360,12 @@ namespace
         CHECK(!done_);
         done_ = true;
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;
-    do
-    {  // NOLINT(bugprone-infinite-loop)
+    do  // NOLINT(bugprone-infinite-loop)
+    {
       auto const tmp = throw_after;
       throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
@@ -334,13 +404,14 @@ namespace
       static_assert(std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
                     "Unexpected added set_error_t(std::exception_ptr)");
 
-      // set_stopped_t is added when the receiver's stop token is stoppable, as a
-      // consequence of the internal trampoline_scheduler
+      // set_stopped_t is added when the receiver's stop token is stoppable, as
+      // a consequence of the internal trampoline_scheduler
       using stoppable_env_t = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
       static_assert(ex::sender_of<decltype(only_error), ex::set_stopped_t(), stoppable_env_t>,
                     "Missing added set_stopped_t()");
 
-      // set_stopped_t is *not* added when the receiver's stop token is unstoppable.
+      // set_stopped_t is *not* added when the receiver's stop token is
+      // unstoppable.
       static_assert(!ex::sender_of<decltype(only_error), ex::set_stopped_t(), ex::env<>>,
                     "set_stopped_t() should not be added when the receiver's stop token is "
                     "unstoppable");
@@ -366,15 +437,15 @@ namespace
         --throw_after_;
       }
      public:
-      explicit value_type(unsigned& throw_after) noexcept
+      explicit value_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      value_type(value_type const & other)
+      value_type(value_type const &other)
         : throw_after_(other.throw_after_)
       {
         maybe_throw_();
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
                 operator bool() &&
       {
         maybe_throw_();
@@ -396,12 +467,12 @@ namespace
       {
         CHECK(!done_);
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;
-    do
-    {  // NOLINT(bugprone-infinite-loop)
+    do  // NOLINT(bugprone-infinite-loop)
+    {
       auto const tmp = throw_after;
       throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
@@ -423,7 +494,8 @@ namespace
         "Expected no errors ");
     }
 
-    // There are three main cases that will contribute set_error_t(std::exception_ptr)
+    // There are three main cases that will contribute
+    // set_error_t(std::exception_ptr)
     // 1. value's conversion to bool could throw
     // 2. error's copy constructor could throw
     // 3. connect() could throw
@@ -450,11 +522,12 @@ namespace
       struct Error_with_throw_copy
       {
         Error_with_throw_copy() noexcept = default;
-        Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {};
+        // NOLINTNEXTLINE(modernize-use-equals-default)
+        Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {}
       };
-      ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
-      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>,
-                                 std::variant<Error_with_throw_copy, std::exception_ptr>>,
+      ex::sender auto snd     = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
+      using expected_errors_t = ex::__std_variant<Error_with_throw_copy, std::exception_ptr>;
+      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>, expected_errors_t>,
                     "Missing added set_error_t(std::exception_ptr)");
     }
 

@@ -102,6 +102,7 @@ namespace
       : awaitable_(&awaitable)
     {}
 
+    [[nodiscard]]
     constexpr auto await_ready() const noexcept(noexcept(awaitable_->await_ready()))
       requires requires(Awaitable& a) {
         { a.await_ready() };
@@ -111,6 +112,7 @@ namespace
     }
 
     template <class Promise>
+    [[nodiscard]]
     constexpr auto await_suspend(std::coroutine_handle<Promise> coro) const
       noexcept(noexcept(awaitable_->await_suspend(coro)))
       requires requires(Awaitable& a) {
@@ -120,6 +122,7 @@ namespace
       return awaitable_->await_suspend(coro);
     }
 
+    [[nodiscard]]
     constexpr decltype(auto) await_resume() const noexcept(noexcept(awaitable_->await_resume()))
       requires requires(Awaitable& a) {
         { a.await_resume() };
@@ -755,8 +758,8 @@ namespace
       op.start();
     }
     {
-      // both .as_awaitable(promise) and .as_awaitable(promise).operator co_await() return
-      // immovable values
+      // both .as_awaitable(promise) and .as_awaitable(promise).operator
+      // co_await() return immovable values
       auto op =
         ex::connect(with_as_awaitable<with_member_co_await<ready_awaitable<void>, as_immovable>,
                                       as_immovable>{},
@@ -764,8 +767,8 @@ namespace
       op.start();
     }
     {
-      // both .as_awaitable(promise) and operator co_await(as_awaitable(promise)) return
-      // immovable values
+      // both .as_awaitable(promise) and operator
+      // co_await(as_awaitable(promise)) return immovable values
       auto op =
         ex::connect(with_as_awaitable<with_friend_co_await<ready_awaitable<void>, as_immovable>,
                                       as_immovable>{},

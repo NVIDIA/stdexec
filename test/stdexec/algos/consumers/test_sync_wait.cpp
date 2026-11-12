@@ -235,8 +235,8 @@ namespace
     CHECK(std::get<2>(res.value()) == 25);
   }
 
-  // This domain is used to customize the behavior of sync_wait and sync_wait_with_variant
-  // for senders with particular completion signatures.
+  // This domain is used to customize the behavior of sync_wait and
+  // sync_wait_with_variant for senders with particular completion signatures.
   struct sync_wait_test_domain
   {
     using single_result_t = std::optional<std::tuple<std::string>>;
@@ -255,6 +255,7 @@ namespace
       requires ex::__mset_eq<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, ex::__mmake_set>,
         ex::__mset<std::string, int>>
+    [[maybe_unused]]
     static auto apply_sender(ex::sync_wait_with_variant_t, Sender&&) -> multi_result_t
     {
       return {std::string{"ciao_multi"}};
@@ -280,7 +281,7 @@ namespace
 
     // The customization will return a different value
     auto snd = ex::starts_on(
-      sched, 
+      sched,
       fallible_just(std::string{"hello_multi"}) | ex::let_error(always(ex::just(42))));
     auto res = ex::sync_wait_with_variant(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::multi_result_t>);

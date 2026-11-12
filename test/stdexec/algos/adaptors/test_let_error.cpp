@@ -100,6 +100,16 @@ namespace
     STDEXEC::sync_wait(std::move(snd));
   }
 
+  TEST_CASE("let_error can be followed by upon_error", "[adaptors][let_error]")
+  {
+    auto snd = ex::just_error(2)
+             | ex::let_error([](int n) noexcept { return ex::just_error(n * 10); })
+             | ex::upon_error([](int n) noexcept { return n + 3; });
+    auto opt = ex::sync_wait(std::move(snd));
+    REQUIRE(opt.has_value());
+    CHECK(std::get<0>(*opt) == 23);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]")
   {
@@ -255,14 +265,16 @@ namespace
       ex::start(op);
       // The function is called immediately after starting the operation
       CHECK(fun_called);
-      // As the returned sender didn't complete yet, the parameter must still be alive
+      // As the returned sender didn't complete yet, the parameter must still be
+      // alive
       CHECK_FALSE(param_destructed);
       CHECK(res == 0);
 
       // Now, tell the scheduler to execute the final operation
       sched.start_next();
 
-      // As the main operation is still valid, the parameter is not yet destructed
+      // As the main operation is still valid, the parameter is not yet
+      // destructed
       CHECK_FALSE(param_destructed);
     }
 
@@ -378,7 +390,8 @@ namespace
                               | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined let_error implementation
+  // Return a different sender when we invoke this custom defined let_error
+  // implementation
   struct let_error_test_domain
   {
     template <exec::sender_for<ex::let_error_t> Sender>

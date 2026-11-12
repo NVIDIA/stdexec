@@ -92,10 +92,11 @@ namespace experimental::execution
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
       {
         __coro_.promise().__parent_                   = __parent;
-        __coro_.promise().__get_disposition_callback_ = [](void* __parent) noexcept
+        __coro_.promise().__get_disposition_callback_ = [](void* __parent_addr) noexcept
         {
-          _Promise& __promise = __std::coroutine_handle<_Promise>::from_address(__parent).promise();
-          return __promise.disposition();
+          _Promise& __parent_promise =
+            __std::coroutine_handle<_Promise>::from_address(__parent_addr).promise();
+          return __parent_promise.disposition();
         };
         __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
@@ -210,8 +211,9 @@ namespace experimental::execution
       static auto __impl(_Action __action, _Ts... __ts) -> __task<_Ts...>
       {
 #if STDEXEC_EDG()
-        // This works around an EDG bug where the compiler misinterprets __get_disposition:
-        // operand to this co_await expression resolves to non-class "<unnamed>"
+        // This works around an EDG bug where the compiler misinterprets
+        // __get_disposition: operand to this co_await expression resolves to
+        // non-class "<unnamed>"
         using __get_disposition =
           std::enable_if_t<sizeof(_Action) != 0, __on_coro_disp::__get_disposition>;
 #endif
@@ -225,7 +227,7 @@ namespace experimental::execution
      public:
       template <class _Action, class... _Ts>
         requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
-      auto operator()(_Action&& __action, _Ts&&... __ts) const -> __task<_Ts...>
+      auto operator()(_Action&& __action, _Ts&&... __ts) const -> __task<__decay_t<_Ts>...>
       {
         return __impl(static_cast<_Action&&>(__action), static_cast<_Ts&&>(__ts)...);
       }

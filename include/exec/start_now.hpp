@@ -22,6 +22,8 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__senders.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
+#include "../stdexec/__detail/__stop_when.hpp"
 
 #include "async_scope.hpp"
 #include "env.hpp"
@@ -33,7 +35,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace experimental::execution
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __start_now
   namespace __start_now
   {
@@ -77,6 +79,7 @@ namespace experimental::execution
 
       constexpr __storage_base(_Env&& __env, std::size_t __pending)
         : __pending_(__pending)
+        , __joiner_(__pending == 0 ? nullptr : &__empty_joiner_)
         , __env_(__mkenv(static_cast<_Env&&>(__env), __source_))
       {}
 
@@ -179,7 +182,10 @@ namespace experimental::execution
       using __receiver_t = __receiver<_Env>;
       using __sender_t   = __sender<_Env>;
       template <class _Sender>
-      using __nested_t = nest_result_t<_AsyncScope, _Sender>;
+      using __stoppable_t =
+        STDEXEC::__call_result_t<STDEXEC::__stop_when_t, _Sender, STDEXEC::inplace_stop_token>;
+      template <class _Sender>
+      using __nested_t = nest_result_t<_AsyncScope, __stoppable_t<_Sender>>;
 
       STDEXEC::__tuple<STDEXEC::connect_result_t<__nested_t<_Senders>, __receiver_t>...>
         __opstates_;
@@ -187,8 +193,12 @@ namespace experimental::execution
      public:
       constexpr __storage(_Env&& __env, _AsyncScope& __scope, _Senders&&... __sndr)
         : __storage_base<_Env>(static_cast<_Env&&>(__env), sizeof...(__sndr))
+        // nest() gives the sender the scope's stop token in place of the receiver's,
+        // so the storage's token has to be fused in underneath it.
         , __opstates_{
-            STDEXEC::connect(__scope.nest(static_cast<_Senders&&>(__sndr)), __receiver_t{this})...}
+            STDEXEC::connect(__scope.nest(STDEXEC::__stop_when(static_cast<_Senders&&>(__sndr),
+                                                               this->__source_.get_token())),
+                             __receiver_t{this})...}
       {
         // Start all of the child operations
         STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, __opstates_);

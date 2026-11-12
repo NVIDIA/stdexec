@@ -30,7 +30,6 @@ import stdexec;
 #  include "__optional.hpp"
 #  include "__schedulers.hpp"
 #  include "__task_scheduler.hpp"
-#  include "__with_awaitable_senders.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstddef>
@@ -43,11 +42,13 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_error
+  STDEXEC_MODULE_EXPORT
   template <class _Error>
   struct with_error
   {
@@ -58,15 +59,21 @@ namespace STDEXEC
   template <class _Error>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE with_error(_Error) -> with_error<_Error>;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_stopped
+  STDEXEC_MODULE_EXPORT
   struct with_stopped
   {};
 
+  struct _THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_;
+  struct _THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_;
+  struct _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_;
+
   namespace __task
   {
-    ////////////////////////////////////////////////////////////////////////////////
-    // A base class for task::promise_type so it can be specialized when _Ty is void:
+    ////////////////////////////////////////////////////////////////////////////
+    // A base class for task::promise_type so it can be specialized when _Ty is
+    // void:
     template <class _Promise, class _Ty>
     struct __promise_base
     {
@@ -148,10 +155,10 @@ namespace STDEXEC
 
       void __deallocate_(void* __ptr, size_t __bytes) noexcept final
       {
-        // __bytes here is the same as __bytes passed to promise_type::operator new. We
-        // overallocated to store the allocator in the blocks immediately following the
-        // promise object. We now use that allocator to deallocate the entire block of
-        // memory:
+        // __bytes here is the same as __bytes passed to promise_type::operator
+        // new. We overallocated to store the allocator in the blocks
+        // immediately following the promise object. We now use that allocator
+        // to deallocate the entire block of memory:
         size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
         [[maybe_unused]]
         void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
@@ -159,11 +166,12 @@ namespace STDEXEC
         static constexpr size_t __alloc_blocks =
           __task::__divmod(sizeof(__task::__any_alloc<_PAlloc>), sizeof(__task::__memblock));
 
-        // Quick sanity check to make sure the allocator is where we expect it to be.
+        // Quick sanity check to make sure the allocator is where we expect it
+        // to be.
         STDEXEC_ASSERT(__alloc_loc == static_cast<void*>(this));
 
-        // Move the allocator out of the block before deallocating, in case the allocator
-        // is stateful and its destructor does something interesting:
+        // Move the allocator out of the block before deallocating, in case the
+        // allocator is stateful and its destructor does something interesting:
         auto __alloc = std::move(__alloc_);
         // Destroy self:
         std::destroy_at(this);
@@ -212,6 +220,13 @@ namespace STDEXEC
     template <class _TaskEnv, class _ParentEnv>
     using __environment_type = __minvoke_or_q<__environment_t, env<>, _TaskEnv, _ParentEnv>;
 
+    template <class _Promise>
+    concept __stoppable_promise = requires(_Promise& __promise) {
+      {
+        __promise.unhandled_stopped()
+      } noexcept -> __std::convertible_to<__std::coroutine_handle<>>;
+    };
+
     template <class _ParentEnv, class _Alloc>
     concept __has_allocator_compatible_with = requires(_ParentEnv const & __parent_env) {
       _Alloc(STDEXEC::get_allocator(__parent_env));
@@ -228,40 +243,24 @@ namespace STDEXEC
     };
 
     template <class _ParentEnv, class _Scheduler, class _Alloc>
-    concept __has_compatible_scheduler =                                   //
-      requires(_ParentEnv const & __parent_env, _Alloc const & __alloc) {  //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc);   //
-      } ||                                                                 //
-      requires(_ParentEnv const & __parent_env) {                          //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env));            //
-      } ||                                                                 //
-      requires { _Scheduler{}; };
+    concept __has_compatible_scheduler =
+      __has_scheduler_compatible_with<_ParentEnv, _Scheduler, _Alloc>
+      || __has_scheduler_compatible_with<_ParentEnv, _Scheduler>
+      || __std::default_initializable<_Scheduler>;
 
-    template <class _ParentEnv, class _TaskEnv>
-    concept __has_compatible_environment_with =
-      __has_compatible_allocator<_ParentEnv, __allocator_type<_TaskEnv>>
-      && __has_compatible_scheduler<_ParentEnv,
-                                    __start_scheduler_type<_TaskEnv>,
-                                    __allocator_type<_TaskEnv>>;
-
-    template <class _StopToken, class _StopSource>
+    template <class _StopSource, class _StopToken>
     struct __stop_callback_box
     {
       void __register_callback(__ignore, __ignore) noexcept {}
       void __reset_callback() noexcept {}
     };
 
-    template <class _StopToken, class _StopSource>
-      requires __not_same_as<__stop_source_token_t<_StopSource>, _StopToken>
-    struct __stop_callback_box<_StopToken, _StopSource>
+    template <class _StopSource, __not_same_as<__stop_source_token_t<_StopSource>> _StopToken>
+    struct __stop_callback_box<_StopSource, _StopToken>
     {
       using __stop_variant_t  = __variant<_StopSource, __stop_source_token_t<_StopSource>>;
       using __callback_fn_t   = __forward_stop_request<_StopSource>;
       using __stop_callback_t = stop_callback_for_t<_StopToken, __callback_fn_t>;
-
-      constexpr __stop_callback_box() noexcept {}
-
-      constexpr ~__stop_callback_box() {}
 
       template <class _Env>
       void __register_callback(_Env const & __env, __stop_variant_t& __stop)
@@ -269,22 +268,19 @@ namespace STDEXEC
       {
         static_assert(__std::constructible_from<__stop_callback_t, _StopToken, _StopSource&>);
         static_assert(__same_as<_StopToken, stop_token_of_t<_Env>>);
-        std::construct_at(&__cb_, get_stop_token(__env), __var::__get<0>(__stop));
+        __cb_.__construct(get_stop_token(__env), __var::__get<0>(__stop));
       }
 
       void __reset_callback() noexcept
       {
-        std::destroy_at(&__cb_);
+        __cb_.__destroy();
       }
 
-      union
-      {
-        __stop_callback_t __cb_;
-      };
+      __manual_lifetime<__stop_callback_t> __cb_;
     };
 
     template <class _Env, class _StopSource>
-    using __stop_callback_box_t = __stop_callback_box<stop_token_of_t<_Env>, _StopSource>;
+    using __stop_callback_box_t = __stop_callback_box<_StopSource, stop_token_of_t<_Env>>;
 
     inline constexpr struct __throw_error_t
     {
@@ -305,17 +301,109 @@ namespace STDEXEC
         std::rethrow_exception(__eptr);
       }
     } __throw_error{};
+
+    template <class _TaskEnv, class _Env>
+    [[nodiscard]]
+    auto __mk_alloc(_Env const & __env) noexcept -> __allocator_type<_TaskEnv>
+    {
+      using __allocator_t = __allocator_type<_TaskEnv>;
+
+      if constexpr (__task::__has_allocator_compatible_with<_Env, __allocator_t>)
+      {
+        return __allocator_t(get_allocator(__env));
+      }
+      else if constexpr (__std::default_initializable<__allocator_t>)
+      {
+        return __allocator_t{};
+      }
+      else
+      {
+        static_assert(__task::__has_compatible_allocator<_Env, __allocator_t>,
+                      "Unable to construct the task's allocator. No suitable constructor found.");
+        __std::unreachable();
+      }
+    }
+
+    template <class _TaskEnv, class _Env>
+    [[nodiscard]]
+    auto __mk_sched(_Env const & __env, __allocator_type<_TaskEnv> const & __alloc) noexcept  //
+      -> __start_scheduler_type<_TaskEnv>
+    {
+      using __allocator_t       = __allocator_type<_TaskEnv>;
+      using __start_scheduler_t = __start_scheduler_type<_TaskEnv>;
+
+      // NOT TO SPEC: try constructing the scheduler with the allocator if
+      // possible.
+      if constexpr (__task::__has_scheduler_compatible_with<_Env,
+                                                            __start_scheduler_t,
+                                                            __allocator_t>)
+      {
+        return __start_scheduler_t(get_start_scheduler(__env), __alloc);
+      }
+      else if constexpr (__task::__has_scheduler_compatible_with<_Env, __start_scheduler_t>)
+      {
+        return __start_scheduler_t(get_start_scheduler(__env));
+      }
+      else if constexpr (__std::default_initializable<__start_scheduler_t>)
+      {
+        return __start_scheduler_t{};
+      }
+      else
+      {
+        static_assert(__task::__has_compatible_scheduler<_Env, __start_scheduler_t, __allocator_t>,
+                      "Unable to construct the task's start scheduler. No suitable constructor "
+                      "found.");
+        __std::unreachable();
+      }
+    }
+
+    template <class _TaskEnv, class _Env>
+    [[nodiscard]]
+    auto __mk_own_env(_Env const & __env) noexcept
+    {
+      using __own_env_t = __environment_type<_TaskEnv, _Env>;
+      if constexpr (__std::constructible_from<__own_env_t, _Env>)
+      {
+        return __own_env_t(__env);
+      }
+      else
+      {
+        return __own_env_t{};
+      }
+    }
+
+    template <class _TaskEnv, class _Env>
+    [[nodiscard]]
+    auto __mk_env(_Env const & __env, __environment_type<_TaskEnv, _Env> const & __own_env) noexcept
+      -> _TaskEnv
+    {
+      if constexpr (__std::constructible_from<_TaskEnv, __environment_type<_TaskEnv, _Env> const &>)
+      {
+        return _TaskEnv(__own_env);
+      }
+      else if constexpr (__std::constructible_from<_TaskEnv, _Env>)
+      {
+        return _TaskEnv(__env);
+      }
+      else
+      {
+        return _TaskEnv{};
+      }
+    }
   }  // namespace __task
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::task
   STDEXEC_MODULE_EXPORT
   template <class _Ty = void, class _TaskEnv = env<>>
   class [[nodiscard]] task
   {
     struct __promise;
-    template <class _Env>
-    using __own_env_t = __task::__environment_type<_TaskEnv, _Env>;
+    template <class _ParentPromise>
+    struct __awaiter;
+    template <class _Receiver>
+    struct __opstate;
+
    public:
     using sender_concept       = sender_tag;
     using promise_type         = __promise;
@@ -341,14 +429,78 @@ namespace STDEXEC
       return __attrs{};
     }
 
+    template <class _Self, class _Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (!__task::__has_compatible_allocator<_Env, allocator_type>)
+      {
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(_THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_),
+          _WITH_ALLOCATOR_(allocator_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else if constexpr (!__task::__has_compatible_scheduler<_Env,
+                                                             start_scheduler_type,
+                                                             allocator_type>)
+      {
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(
+            _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_),
+          _WITH_SCHEDULER_(start_scheduler_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else
+      {
+        return __concat_completion_signatures_t<
+          completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
+          error_types>{};
+      }
+    }
+
     // This transforms a task into an __awaiter that can perform symmetric transfer when
     // co_awaited.
     template <class _ParentPromise>
-      requires __task::__has_compatible_environment_with<env_of_t<_ParentPromise&>, _TaskEnv>
     [[nodiscard]]
-    constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept
+    constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept -> __awaiter<_ParentPromise>
     {
+      static_assert(__task::__stoppable_promise<_ParentPromise>,
+                    "Cannot await task from this coroutine: the promise type of the parent "
+                    "coroutine does not implement unhandled_stopped().");
+      static_assert(__task::__has_compatible_allocator<env_of_t<_ParentPromise&>, allocator_type>,
+                    "Cannot await task from this coroutine: the allocator in the parent "
+                    "coroutine's environment is incompatible with the task's allocator.");
+      static_assert(__task::__has_compatible_scheduler<env_of_t<_ParentPromise&>,
+                                                       start_scheduler_type,
+                                                       allocator_type>,
+                    "Cannot await task from this coroutine: the start scheduler in the parent "
+                    "coroutine's environment is incompatible with the task's scheduler.");
       return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
+    }
+
+    // Connecting a task to a receiver, like co_awaiting it, requires the
+    // receiver's environment to be compatible with the task's configuration
+    // (allocator, start scheduler, stop token, ...). Unlike co_awaiting a task
+    // — which reports errors by throwing them as exceptions at the await point
+    // — connecting a task to a receiver delivers the task's errors with their
+    // declared types directly to the receiver, rather than always delivering
+    // them as std::exception_ptr. (The completion signatures advertised by
+    // get_completion_signatures above describe exactly what the operation state
+    // returned from this member delivers.)
+    template <class _Receiver>
+    [[nodiscard]]
+    constexpr auto connect(_Receiver __rcvr) && noexcept -> __opstate<_Receiver>
+    {
+      static_assert(__task::__has_compatible_allocator<env_of_t<_Receiver>, allocator_type>,
+                    "Cannot connect task to receiver: the allocator in the receiver's environment "
+                    "is incompatible with the task's allocator.");
+      static_assert(__task::__has_compatible_scheduler<env_of_t<_Receiver>,
+                                                       start_scheduler_type,
+                                                       allocator_type>,
+                    "Cannot connect task to receiver: the start scheduler in the receiver's "
+                    "environment is incompatible with the task's scheduler.");
+      return __opstate<_Receiver>(static_cast<task&&>(*this), static_cast<_Receiver&&>(__rcvr));
     }
 
    private:
@@ -356,14 +508,7 @@ namespace STDEXEC
     using __stop_variant_t = __variant<stop_source_type, stop_token_type>;
 
     template <class _Env>
-    using __stop_callback_t = stop_callback_for_t<stop_token_of_t<_Env>, __on_stopped_t>;
-
-    template <class _Env>
     using __stop_callback_box_t = __task::__stop_callback_box_t<_Env, stop_source_type>;
-
-    template <class _Env>
-    static constexpr bool __needs_stop_callback =
-      __not_same_as<stop_token_type, stop_token_of_t<_Env>>;
 
     template <class _Env>
     static constexpr bool __nothrow_callback_registration = noexcept(
@@ -372,111 +517,25 @@ namespace STDEXEC
 
     using __error_variant_t = __error_types_t<error_types, __q<__variant>, __q1<__decay_t>>;
 
-    using __completions_t = __concat_completion_signatures_t<
-      completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
-      error_types>;
-
-    template <class _Env>
-    [[nodiscard]]
-    static auto __mk_alloc(_Env const & __env) noexcept -> allocator_type
-    {
-      if constexpr (__task::__has_allocator_compatible_with<_Env, allocator_type>)
-      {
-        return allocator_type(get_allocator(__env));
-      }
-      else if constexpr (std::default_initializable<allocator_type>)
-      {
-        return allocator_type{};
-      }
-      else
-      {
-        static_assert(__task::__has_compatible_allocator<_Env, allocator_type>,
-                      "Unable to construct the task's allocator. No suitable constructor found.");
-        __std::unreachable();
-      }
-    }
-
-    template <class _Env>
-    [[nodiscard]]
-    static auto __mk_sched(_Env const & __env, allocator_type const & __alloc) noexcept  //
-      -> start_scheduler_type
-    {
-      // NOT TO SPEC: try constructing the scheduler with the allocator if possible.
-      if constexpr (__task::__has_scheduler_compatible_with<_Env,
-                                                            start_scheduler_type,
-                                                            allocator_type>)
-      {
-        return start_scheduler_type(get_start_scheduler(__env), __alloc);
-      }
-      else if constexpr (__task::__has_scheduler_compatible_with<_Env, start_scheduler_type>)
-      {
-        return start_scheduler_type(get_start_scheduler(__env));
-      }
-      else if constexpr (__std::default_initializable<start_scheduler_type>)
-      {
-        return start_scheduler_type{};
-      }
-      else
-      {
-        static_assert(
-          __task::__has_compatible_scheduler<_Env, start_scheduler_type, allocator_type>,
-          "Unable to construct the task's start scheduler. No suitable constructor found.");
-        __std::unreachable();
-      }
-    }
-
-    template <class _Env>
-    [[nodiscard]]
-    static auto __mk_own_env(_Env const & __env) noexcept
-    {
-      if constexpr (__std::constructible_from<__own_env_t<_Env>, _Env>)
-      {
-        return __own_env_t<_Env>(__env);
-      }
-      else
-      {
-        return __own_env_t<_Env>{};
-      }
-    }
-
-    template <class _Env>
-    [[nodiscard]]
-    static auto
-    __mk_env(_Env const & __env, __own_env_t<_Env> const & __own_env) noexcept -> _TaskEnv
-    {
-      if constexpr (__std::constructible_from<_TaskEnv, __own_env_t<_Env> const &>)
-      {
-        return _TaskEnv(__own_env);
-      }
-      else if constexpr (__std::constructible_from<_TaskEnv, _Env>)
-      {
-        return _TaskEnv(__env);
-      }
-      else
-      {
-        return _TaskEnv{};
-      }
-    }
-
     struct __awaiter_base : private allocator_type
     {
       template <class _ParentEnv, class _OwnEnv>
       constexpr explicit __awaiter_base(task&&             __task,
                                         _ParentEnv const & __parent_env,
                                         _OwnEnv const &    __own_env) noexcept
-        : allocator_type(__mk_alloc(__parent_env))
-        , __sch_(__mk_sched(__parent_env, __get_allocator()))
-        , __env_(__mk_env(__parent_env, __own_env))
+        : allocator_type(__task::__mk_alloc<_TaskEnv>(__parent_env))
+        , __sch_(__task::__mk_sched<_TaskEnv>(__parent_env, __get_allocator()))
+        , __env_(__task::__mk_env<_TaskEnv>(__parent_env, __own_env))
         , __task_(static_cast<task&&>(__task))
       {
         auto& __promise = __task_.__coro_.promise();
-        // Set the promise's state pointer to this operation state, so it can call back into
-        // it when the coroutine completes or is stopped.
+        // Set the promise's state pointer to this operation state, so it can
+        // call back into it when the coroutine completes or is stopped.
         __promise.__state_ = this;
 
-        // Initialize the promise's stop source if translation is needed between the
-        // receiver's stop token and the task's stop token:
-        if constexpr (__needs_stop_callback<_ParentEnv>)
+        // Initialize the promise's stop source if translation is needed between
+        // the receiver's stop token and the task's stop token:
+        if constexpr (__not_same_as<stop_token_type, stop_token_of_t<_ParentEnv>>)
         {
           __promise.__stop_.template emplace<0>();
         }
@@ -509,10 +568,11 @@ namespace STDEXEC
       bool                 __stopped_{};
     };
 
-    template <class _Env>
+    template <class _ParentEnv>
     struct __own_env_box
     {
-      __own_env_t<_Env> __own_env_;
+      using __own_env_t = __task::__environment_type<_TaskEnv, _ParentEnv>;
+      __own_env_t __own_env_;
     };
 
     template <class _ParentPromise>
@@ -522,9 +582,9 @@ namespace STDEXEC
       , __stop_callback_box_t<env_of_t<_ParentPromise>>
     {
       constexpr explicit __awaiter(task&& __task, _ParentPromise& __parent) noexcept
-        : __awaiter::__own_env_box{__mk_own_env(STDEXEC::get_env(__parent))}
+        : __awaiter::__own_env_box{__task::__mk_own_env<_TaskEnv>(STDEXEC::get_env(__parent))}
         , __awaiter_base(static_cast<task&&>(__task), STDEXEC::get_env(__parent), this->__own_env_)
-        , __parent_(__parent)
+        , __continuation_(__std::coroutine_handle<_ParentPromise>::from_promise(__parent))
       {}
 
       static constexpr auto await_ready() noexcept -> bool
@@ -536,11 +596,11 @@ namespace STDEXEC
         noexcept(__nothrow_callback_registration<env_of_t<_ParentPromise>>)
           -> __std::coroutine_handle<>
       {
+        STDEXEC_ASSERT(__continuation == this->__continuation_);
         auto& __task_promise    = this->__handle().promise();
         __task_promise.__state_ = this;
-        __task_promise.set_continuation(__continuation);
-        // If the following throws, the coroutine is immediately resumed and the exception
-        // is rethrown at the suspension point.
+        // If the following throws, the coroutine is immediately resumed and the
+        // exception is rethrown at the suspension point.
         this->__register_callback(STDEXEC::get_env(__continuation.promise()),
                                   __task_promise.__stop_);
         return this->__handle();
@@ -549,7 +609,6 @@ namespace STDEXEC
       constexpr auto await_resume() -> _Ty
       {
         // Destroy the coroutine after moving the result/error out of it
-        [[maybe_unused]]
         auto __task = std::move(this->__task_);
         if (!this->__errors_.__is_valueless())
         {
@@ -568,20 +627,134 @@ namespace STDEXEC
           return STDEXEC::__coroutine_unhandled_stopped(this->__handle());
         }
         this->__reset_callback();
-        return this->__handle().promise().continuation().handle();
+        return this->__continuation_;
       }
 
       [[nodiscard]]
       auto __canceled() noexcept -> __std::coroutine_handle<> final
       {
         this->__reset_callback();
-        auto const __continuation = this->__handle().promise().continuation();
-        auto const __coro         = std::exchange(this->__task_.__coro_, {});
+        auto&      __parent = this->__continuation_.promise();
+        auto const __coro   = std::exchange(this->__task_.__coro_, {});
         STDEXEC::__coroutine_destroy_nothrow(__coro);
-        return __continuation.unhandled_stopped();
+        return __parent.unhandled_stopped();
       }
 
-      _ParentPromise& __parent_;
+      __std::coroutine_handle<_ParentPromise> __continuation_;
+    };
+
+    // The operation state produced by connecting a task to a receiver. Like
+    // __awaiter, it drives the task's coroutine to completion; unlike
+    // __awaiter, it has no parent coroutine to symmetrically transfer control
+    // back to, so instead it completes the receiver directly. Because the
+    // task's errors are stored (typed) in the error variant below, they can be
+    // delivered to the receiver with their declared types instead of being
+    // converted to exceptions and caught as std::exception_ptr.
+    template <class _Receiver>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __opstate final
+      : __own_env_box<env_of_t<_Receiver>>
+      , __awaiter_base
+      , __stop_callback_box_t<env_of_t<_Receiver>>
+    {
+      constexpr explicit __opstate(task&& __task, _Receiver&& __rcvr)
+        noexcept(__nothrow_move_constructible<_Receiver>)
+        : __opstate::__own_env_box{__task::__mk_own_env<_TaskEnv>(STDEXEC::get_env(__rcvr))}
+        , __awaiter_base(static_cast<task&&>(__task), STDEXEC::get_env(__rcvr), this->__own_env_)
+        , __rcvr_(static_cast<_Receiver&&>(__rcvr))
+      {}
+
+      STDEXEC_IMMOVABLE(__opstate);
+
+      void start() & noexcept
+      {
+        // Register a stop callback that forwards stop requests from the
+        // receiver's stop token to the task's stop source, then resume the
+        // task's coroutine.
+        auto& __task_promise    = this->__handle().promise();
+        __task_promise.__state_ = this;
+        STDEXEC_TRY
+        {
+          this->__register_callback(STDEXEC::get_env(__rcvr_), __task_promise.__stop_);
+          STDEXEC::__coroutine_resume_nothrow(this->__handle());
+        }
+        STDEXEC_CATCH_ALL
+        {
+          if constexpr (__nothrow_callback_registration<env_of_t<_Receiver>>)
+          {
+            __std::unreachable();
+          }
+          else
+          {
+            // The stop callback is not known to construct without throwing, so
+            // it may throw. In that case the task's coroutine never starts:
+            // destroy it and report the failure to the receiver as an
+            // exception.
+            auto const __coro = std::exchange(this->__task_.__coro_, {});
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
+        }
+      }
+
+      [[nodiscard]]
+      auto __completed() noexcept -> __std::coroutine_handle<> final
+      {
+        // Destroy the stop callback before completing the receiver:
+        this->__reset_callback();
+        if (this->__stopped_)
+        {
+          // The task completed with with_stopped: destroy the coroutine and
+          // report the stopped completion.
+          auto const __coro = std::exchange(this->__task_.__coro_, {});
+          STDEXEC::__coroutine_destroy_nothrow(__coro);
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        }
+        else if (!this->__errors_.__is_valueless())
+        {
+          // The task completed with an error. Destroy the coroutine and deliver
+          // the error with its declared type -- not as an std::exception_ptr:
+          auto const __coro = std::exchange(this->__task_.__coro_, {});
+          STDEXEC::__coroutine_destroy_nothrow(__coro);
+          __visit(STDEXEC::set_error,
+                  std::move(this->__errors_),
+                  static_cast<_Receiver&&>(__rcvr_));
+        }
+        else
+        {
+          // The task completed successfully. Move/copy the result out of the
+          // coroutine before destroying it:
+          auto const __coro = std::exchange(this->__task_.__coro_, {});
+
+          if constexpr (std::is_void_v<_Ty>)
+          {
+            __coro.promise().__result();
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+          }
+          else
+          {
+            // NOTE: _Ty could be a reference type here:
+            _Ty __value = static_cast<_Ty&&>(__coro.promise().__result());
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_Ty&&>(__value));
+          }
+        }
+        return __std::noop_coroutine();
+      }
+
+      [[nodiscard]]
+      auto __canceled() noexcept -> __std::coroutine_handle<> final
+      {
+        // The task was stopped while awaiting a child operation. Destroy the
+        // coroutine and report the stopped completion to the receiver.
+        this->__reset_callback();
+        auto const __coro = std::exchange(this->__task_.__coro_, {});
+        STDEXEC::__coroutine_destroy_nothrow(__coro);
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        return __std::noop_coroutine();
+      }
+
+      _Receiver __rcvr_;
     };
 
     struct __attrs
@@ -611,19 +784,17 @@ namespace STDEXEC
     __std::coroutine_handle<promise_type> __coro_;
   };
 
-  template <class _Rcvr>
-  struct __rcvr_box
-  {
-    _Rcvr __rcvr_;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // task<T,E>::promise_type
   template <class _Ty, class _TaskEnv>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _TaskEnv>::__promise
     : __task::__promise_base<__promise, _Ty>
-    , with_awaitable_senders<__promise>
   {
+   private:
+    struct __env;
+    struct __completed_awaiter;
+
+   public:
     __promise() noexcept = default;
 
     [[nodiscard]]
@@ -632,12 +803,12 @@ namespace STDEXEC
       return task(__std::coroutine_handle<__promise>::from_promise(*this));
     }
 
-    static constexpr __std::suspend_always initial_suspend() noexcept
+    static constexpr auto initial_suspend() noexcept -> __std::suspend_always
     {
       return {};
     }
 
-    auto final_suspend() noexcept
+    auto final_suspend() noexcept -> __completed_awaiter
     {
       return __completed_awaiter{};
     }
@@ -681,9 +852,9 @@ namespace STDEXEC
     }
 
     template <class _Error>
-    constexpr void __set_error(_Error&& __error) noexcept(__nothrow_error_conversion<_Error&&>())
+    constexpr void __set_error(_Error&& __error) noexcept(__nothrow_error_conversion<_Error>())
     {
-      using __is_convertible_error = __mbind_front_q<__mconvertible_to, _Error&&>;
+      using __is_convertible_error = __mbind_front_q<__mconvertible_to, _Error>;
       constexpr auto __count =
         __mapply<__mcount_if<__is_convertible_error>, __error_variant_t>::value;
       static_assert(__count == 1,
@@ -698,7 +869,7 @@ namespace STDEXEC
 
     template <class _Error>
     constexpr auto yield_value(with_error<_Error> __error)  //
-      noexcept(noexcept(__set_error(std::move(__error).error)))
+      noexcept(noexcept(__set_error(std::move(__error).error))) -> __completed_awaiter
     {
       __set_error(std::move(__error).error);
       return __completed_awaiter{};
@@ -709,7 +880,7 @@ namespace STDEXEC
       __state_->__stopped_ = true;
     }
 
-    constexpr auto yield_value(with_stopped) noexcept
+    constexpr auto yield_value(with_stopped) noexcept -> __completed_awaiter
     {
       __set_stopped();
       return __completed_awaiter{};
@@ -730,7 +901,7 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
-    constexpr auto get_env() const noexcept
+    constexpr auto get_env() const noexcept -> __env
     {
       return __env{this};
     }
@@ -738,7 +909,7 @@ namespace STDEXEC
     // When no allocator passed to the coroutine:
     static void* operator new(size_t __bytes)
     {
-      return __promise::operator new(__bytes, std::allocator_arg, std::allocator<std::byte>{});
+      return __promise::operator new(__bytes, std::allocator_arg, allocator_type());
     }
 
     static void operator delete(void* __ptr, size_t __bytes) noexcept
@@ -767,7 +938,8 @@ namespace STDEXEC
                                                                       __promise_blocks
                                                                         + __alloc_blocks);
 
-      // construct the allocator in the blocks immediately following the promise object:
+      // construct the allocator in the blocks immediately following the promise
+      // object:
       void* const __alloc_loc = __ptr + __promise_blocks;
       std::construct_at(static_cast<__task::__any_alloc<__palloc_t>*>(__alloc_loc),
                         std::move(__palloc));
@@ -784,8 +956,18 @@ namespace STDEXEC
    private:
     template <class>
     friend struct __awaiter;
+    template <class>
+    friend struct __opstate;
     friend struct __awaiter_base;
 
+    // On MSVC prior to 14.50, the compiler stores the coroutine handle returned
+    // from await_suspend in the suspended coroutine's frame, so when a
+    // connected task's __opstate::__completed destroys that frame before
+    // await_suspend returns, symmetric transfer would resume a use-after-free.
+    // See
+    // https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric-/1659260
+    // Resume the continuation directly instead: a plain nested resume rather
+    // than a tail call, at the cost of stack growth in deeply chained tasks.
     struct __completed_awaiter
     {
       static constexpr bool await_ready() noexcept
@@ -793,10 +975,14 @@ namespace STDEXEC
         return false;
       }
 
-      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept  //
-        -> __std::coroutine_handle<>
+      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
       {
-        return __coro.promise().__state_->__completed();
+        auto const __continuation = __coro.promise().__state_->__completed();
+#    ifdef STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+        __continuation.resume();
+#    else
+        return __continuation;
+#    endif
       }
 
       static constexpr void await_resume() noexcept {}
@@ -830,14 +1016,14 @@ namespace STDEXEC
         }
       }
 
-      template <__forwarding_query _Query, class... _Args>
-        requires __queryable_with<_TaskEnv, _Query, _Args...>
+      template <class _Env2 = _TaskEnv, __forwarding_query _Query, class... _Args>
+        requires __queryable_with<_Env2, _Query, _Args...>
       [[nodiscard]]
       constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<_TaskEnv, _Query, _Args...>)
-          -> __query_result_t<_TaskEnv, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
+          -> __query_result_t<_Env2, _Query, _Args...>
       {
-        return __query<_Query>()(__promise_->__state_->__env_, static_cast<_Args&&>(__args)...);
+        return __promise_->__state_->__env_.query(_Query(), static_cast<_Args&&>(__args)...);
       }
 
       __promise const * __promise_;

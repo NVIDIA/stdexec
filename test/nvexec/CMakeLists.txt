@@ -16,6 +16,7 @@
 
 set(nvexec_test_sources
     continues_on.cpp
+    device_allocate.cpp
     bulk.cpp
     ensure_started.cpp
     start_detached.cpp
@@ -25,13 +26,16 @@ set(nvexec_test_sources
     split.cpp
     upon_stopped.cpp
     transfer.cpp
+    scheduler.cpp
     launch.cpp
     let_error.cpp
     let_stopped.cpp
     let_value.cpp
     test_main.cpp
     then.cpp
+    nvtx.cpp
     reduce.cpp
+    repeat_n.cpp
     split.cpp
     start_detached.cpp
     transfer.cpp
@@ -43,6 +47,7 @@ set(nvexec_test_sources
 
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
   set_source_files_properties(${nvexec_test_sources} PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(stream_pool.cpp PROPERTIES LANGUAGE CUDA)
 endif()
 
 add_executable(test.nvexec ${nvexec_test_sources})
@@ -57,19 +62,21 @@ target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags
 
 catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)
 
-icm_add_build_failure_test(
-  NAME
-  when_all_fail
-  TARGET
-  when_all_fail
-  SOURCES
-  PARSE
-  when_all_fail.cpp
-  LIBRARIES
-  stdexec
-  nvexec
-  FOLDER
-  test)
+add_executable(test.nvexec.stream_pool stream_pool.cpp test_main.cpp)
+set_target_properties(
+  test.nvexec.stream_pool
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_include_directories(test.nvexec.stream_pool PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
+target_link_libraries(test.nvexec.stream_pool STDEXEC::nvexec stdexec_executable_flags
+                      Catch2::Catch2WithMain nvexec_executable_flags)
+
+catch_discover_tests(test.nvexec.stream_pool PROPERTIES TIMEOUT 30)
+
+stdexec_add_build_failure_test(
+  NAME when_all_fail SOURCE when_all_fail.cpp
+  LIBRARIES stdexec nvexec)
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
   set_source_files_properties(when_all_fail.cpp PROPERTIES LANGUAGE CUDA)
 endif()

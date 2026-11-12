@@ -1,5 +1,5 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,-*,bugprone-*,modernize-*,-bugprone-reserved-identifier,-bugprone-unchecked-optional-access,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,-bugprone-dynamic-static-initializers,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,-*,bugprone-*,modernize-*,-bugprone-reserved-identifier,-bugprone-unchecked-optional-access,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,-bugprone-dynamic-static-initializers,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-modernize-use-designated-initializers'
 WarningsAsErrors: ''
 HeaderFileExtensions:
   - ''
@@ -150,4 +150,3 @@ CheckOptions:
   modernize-use-transparent-functors.SafeMode: 'false'
 SystemHeaders:   false
 ...
-

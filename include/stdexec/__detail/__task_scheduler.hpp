@@ -32,7 +32,6 @@ import stdexec;
 #  include "__diagnostics.hpp"
 #  include "__domain.hpp"
 #  include "__env.hpp"
-#  include "__inline_scheduler.hpp"
 #  include "__just.hpp"
 #  include "__memory.hpp"
 #  include "__meta.hpp"
@@ -68,6 +67,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT
@@ -126,7 +126,7 @@ namespace STDEXEC
       using STDEXEC::__any::__any<__task::__itask_scheduler_backend>::__any;
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __env
     struct __unstoppable_env : __detail::__proxy_env
     {
@@ -139,7 +139,7 @@ namespace STDEXEC
       }
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __just_with_scheduler
     template <class _Sch>
     struct __just_with_scheduler
@@ -151,9 +151,10 @@ namespace STDEXEC
           requires __callable<get_completion_scheduler_t<set_value_t>, _Sch const &, _Env...>
         [[nodiscard]]
         constexpr auto
-        query(get_completion_scheduler_t<set_value_t>, _Env const &... __env) const noexcept
+        query(get_completion_scheduler_t<set_value_t>, _Env const &... __envs) const noexcept
         {
-          return get_completion_scheduler<set_value_t>(__sch_, static_cast<_Env const &>(__env)...);
+          return get_completion_scheduler<set_value_t>(__sch_,
+                                                       static_cast<_Env const &>(__envs)...);
         }
 
         _Sch const & __sch_;
@@ -214,7 +215,7 @@ namespace STDEXEC
             _CANNOT_DISPATCH_BULK_ALGORITHM_TO_TASK_SCHEDULER_BECAUSE_THERE_IS_NO_TASK_SCHEDULER_IN_THE_ENVIRONMENT),
           _TO_FIX_THIS_ERROR_(
             _ADD_A_CONTINUES_ON_TRANSITION_TO_THE_TASK_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-          _WITH_PRETTY_SENDER_<_Sndr>,
+          _WITH_SENDER_<_Sndr>,
           _WITH_ENVIRONMENT_(_Env)>{};
       }
       else
@@ -227,9 +228,10 @@ namespace STDEXEC
 
   //! @brief A type-erased scheduler.
   //!
-  //! The `task_scheduler` struct is implemented in terms of a backend type derived from
-  //! @c parallel_scheduler_backend, providing a type-erased interface for scheduling tasks.
-  //! It exposes query functions to retrieve the completion scheduler and domain.
+  //! The `task_scheduler` struct is implemented in terms of a backend type
+  //! derived from @c parallel_scheduler_backend, providing a type-erased
+  //! interface for scheduling tasks. It exposes query functions to retrieve the
+  //! completion scheduler and domain.
   //!
   //! @see parallel_scheduler_backend
   class task_scheduler
@@ -363,9 +365,10 @@ namespace STDEXEC
       __sched_attrs<task_scheduler> __attrs_;
     };
 
-    //! @brief A receiver used to connect the predecessor of a bulk operation launched by a
-    //! task_scheduler. Its set_value member stores the predecessor's values in the bulk
-    //! operation state and then starts the bulk operation.
+    //! @brief A receiver used to connect the predecessor of a bulk operation
+    //! launched by a task_scheduler. Its set_value member stores the
+    //! predecessor's values in the bulk operation state and then starts the
+    //! bulk operation.
     template <class _BulkTag, class _Policy, class _Fn, class _Rcvr, class _Values>
     struct __bulk_receiver
     {
@@ -420,8 +423,9 @@ namespace STDEXEC
       __bulk_state<_BulkTag, _Policy, _Fn, _Rcvr, _Values>* __state_;
     };
 
-    //! Returns a visitor (callable) used to invoke the bulk (unchunked) function with the
-    //! predecessor's values, which are stored in a variant in the bulk operation state.
+    //! Returns a visitor (callable) used to invoke the bulk (unchunked)
+    //! function with the predecessor's values, which are stored in a variant in
+    //! the bulk operation state.
     template <bool _Parallelize, class _Fn>
     [[nodiscard]]
     constexpr auto __get_execute_bulk_fn(bulk_unchunked_t,
@@ -432,9 +436,11 @@ namespace STDEXEC
     {
       return [=, &__fn](auto& __args)
       {
-        // If we are not parallelizing, we need to run all the iterations sequentially.
+        // If we are not parallelizing, we need to run all the iterations
+        // sequentially.
         size_t const __increments = _Parallelize ? 1 : __shape;
-        // Precompose the function with the arguments so we don't have to do it every iteration.
+        // Precompose the function with the arguments so we don't have to do it
+        // every iteration.
         auto __precomposed_fn = __apply(
           [&](auto&... __as)
           {
@@ -464,7 +470,8 @@ namespace STDEXEC
         }
         else
         {
-          // If we are not parallelizing, we need to pass the entire range to the functor.
+          // If we are not parallelizing, we need to pass the entire range to
+          // the functor.
           __fn_(size_t(0), __shape_, __as...);
         }
       }
@@ -473,8 +480,9 @@ namespace STDEXEC
       _Fn&   __fn_;
     };
 
-    //! Returns a visitor (callable) used to invoke the bulk (chunked) function with the
-    //! predecessor's values, which are stored in a variant in the bulk operation state.
+    //! Returns a visitor (callable) used to invoke the bulk (chunked) function
+    //! with the predecessor's values, which are stored in a variant in the bulk
+    //! operation state.
     template <bool _Parallelize, class _Fn>
     [[nodiscard]]
     constexpr auto __get_execute_bulk_fn(bulk_chunked_t,
@@ -489,12 +497,13 @@ namespace STDEXEC
       };
     }
 
-    //! Stores the state for a bulk operation launched by a task_scheduler. A type-erased
-    //! reference to this object is passed to either the task_scheduler's
-    //! schedule_bulk_chunked or schedule_bulk_unchunked methods, which is expected to call
-    //! execute(begin, end) on it to run the bulk operation. After the bulk operation is
-    //! complete, set_value is called, which forwards the predecessor's values to the
-    //! downstream receiver.
+    //! Stores the state for a bulk operation launched by a task_scheduler. A
+    //! type-erased reference to this object is passed to either the
+    //! task_scheduler's schedule_bulk_chunked or schedule_bulk_unchunked
+    //! methods, which is expected to call execute(begin, end) on it to run the
+    //! bulk operation. After the bulk operation is complete, set_value is
+    //! called, which forwards the predecessor's values to the downstream
+    //! receiver.
     template <class _BulkTag, class _Policy, class _Fn, class _Rcvr, class _Values>
     struct __bulk_state final
       : __detail::__receiver_proxy_base<_Rcvr, bulk_item_receiver_proxy, true>
@@ -552,7 +561,7 @@ namespace STDEXEC
         __storage_[STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_SIZE];
     };
 
-    ////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Operation state for task scheduler bulk operations
     template <class _BulkTag, class _Policy, class _Sndr, class _Fn, class _Rcvr>
     struct __bulk_opstate
@@ -632,7 +641,8 @@ namespace STDEXEC
       __sched_attrs<task_scheduler> __attrs_;
     };
 
-    //! Function called by the `bulk_chunked` operation; calls `execute` on the bulk_item_receiver_proxy.
+    //! Function called by the `bulk_chunked` operation; calls `execute` on the
+    //! bulk_item_receiver_proxy.
     struct __bulk_chunked_fn
     {
       constexpr void operator()(size_t __begin, size_t __end) noexcept
@@ -643,7 +653,8 @@ namespace STDEXEC
       bulk_item_receiver_proxy& __rcvr_;
     };
 
-    //! Function called by the `bulk_unchunked` operation; calls `execute` on the bulk_item_receiver_proxy.
+    //! Function called by the `bulk_unchunked` operation; calls `execute` on
+    //! the bulk_item_receiver_proxy.
     struct __bulk_unchunked_fn
     {
       constexpr void operator()(size_t __idx) noexcept
@@ -654,7 +665,7 @@ namespace STDEXEC
       bulk_item_receiver_proxy& __rcvr_;
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __emplace_into
     template <class _Ty, class _Alloc, class... _Args>
     constexpr auto
@@ -674,7 +685,7 @@ namespace STDEXEC
       return *std::launder(__ptr);
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __opstate
     template <class _Alloc, class _Sndr, class _Env>
     class __opstate : _Alloc
@@ -780,9 +791,9 @@ namespace STDEXEC
     constexpr void schedule(parallel_scheduler_replacement::receiver_proxy& __rcvr_proxy,
                             std::span<std::byte>                            __storage) noexcept
     {
-      // Check whether the receiver's stop token is unstoppable. If so, we can connect the
-      // schedule sender with a receiver that doesn't propagate stop requests, which may
-      // prevent stopped signals from being sent.
+      // Check whether the receiver's stop token is unstoppable. If so, we can
+      // connect the schedule sender with a receiver that doesn't propagate stop
+      // requests, which may prevent stopped signals from being sent.
       auto const __token = __rcvr_proxy.template try_query<inplace_stop_token>(get_stop_token);
       bool const __unstoppable = (!__token.has_value() || !(*__token).stop_possible());
       if (__unstoppable)
@@ -836,8 +847,9 @@ namespace STDEXEC
 
   namespace __detail
   {
-    // Implementation of the get_start_scheduler_t query for __receiver_proxy_base and
-    // __proxy_env from __parallel_scheduler_backend.hpp.
+    // Implementation of the get_start_scheduler_t query for
+    // __receiver_proxy_base and __proxy_env from
+    // __parallel_scheduler_backend.hpp.
     template <class _Rcvr, class _Proxy, bool _Infallible>
     constexpr void
     __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(get_start_scheduler_t,
@@ -846,14 +858,14 @@ namespace STDEXEC
     {
       if (__value_type == __mtypeid<task_scheduler>)
       {
-        auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
         if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
         {
-          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
-        }
-        else
-        {
-          __val.emplace(inline_scheduler{});
+          using __sched_t = __call_result_t<get_start_scheduler_t, env_of_t<_Rcvr>>;
+          if constexpr (__std::constructible_from<task_scheduler, __sched_t>)
+          {
+            auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
+            __val.emplace(get_start_scheduler(get_env(__rcvr_)));
+          }
         }
       }
     }

@@ -34,8 +34,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get install -y doxygen python3-sphinx python3-sphinx-rtd-theme graphviz \
-          libtbb-dev libtaskflow-cpp-dev
+        sudo apt-get update
+        sudo apt-get install -y --fix-missing doxygen python3-sphinx \
+          python3-sphinx-rtd-theme graphviz libtbb-dev libtaskflow-cpp-dev
         pip3 install breathe sphinxcontrib-bibtex sphinx_copybutton IPython myst_parser \
           nbsphinx
 

@@ -44,16 +44,16 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    // The required set_value_t() scheduler-sender completion signature is added in
-    // any_receiver_ref::any_sender::any_scheduler.
+    // The required set_value_t() scheduler-sender completion signature is added
+    // in any_receiver_ref::any_sender::any_scheduler.
     using __any_scheduler_completions_t =
       completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
     using __any_scheduler_impl_t =
       any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>>;
 
-    // A scheduler concept that does not check for copyability since that creates a cycle
-    // in the type system.
+    // A scheduler concept that does not check for copyability since that
+    // creates a cycle in the type system.
     template <class _Scheduler>
     concept __semi_scheduler = requires(_Scheduler& __sched) {
       typename _Scheduler::scheduler_concept;
@@ -110,7 +110,7 @@ namespace experimental::execution
     template <class _ParentPromise>
     struct __default_awaiter_context;
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // This is the context that is associated with basic_task's promise type
     // by default. It handles forwarding of stop requests from parent to child.
     enum class __scheduler_affinity
@@ -157,8 +157,9 @@ namespace experimental::execution
         {
           if constexpr (__parent_promise_has_start_scheduler<_ParentPromise>())
           {
-            // get_start_scheduler is used here to get the parent's "current" scheduler,
-            // which is the one on which this task has been started (i.e., co_await-ed).
+            // get_start_scheduler is used here to get the parent's "current"
+            // scheduler, which is the one on which this task has been started
+            // (i.e., co_await-ed).
             auto __parent_sched = get_start_scheduler(get_env(__parent));
             this->__scheduler_  = __parent_sched;
           }
@@ -234,7 +235,7 @@ namespace experimental::execution
       {}
     };
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // This is the context to be associated with basic_task's awaiter when
     // the parent coroutine's promise type is known, is a __stop_token_provider,
     // and its stop token type is neither inplace_stop_token nor unstoppable.
@@ -242,7 +243,7 @@ namespace experimental::execution
     struct __default_awaiter_context<_ParentPromise>
     {
       using __stop_token_t    = stop_token_of_t<env_of_t<_ParentPromise>>;
-      using __stop_callback_t = __stop_token_t::template callback_type<__forward_stop_request<>>;
+      using __stop_callback_t = stop_callback_for_t<__stop_token_t, __forward_stop_request<>>;
 
       template <__scheduler_affinity _Affinity>
       constexpr explicit __default_awaiter_context(__default_task_context_impl<_Affinity>& __self,
@@ -263,8 +264,8 @@ namespace experimental::execution
       __stop_callback_t   __stop_callback_;
     };
 
-    // If the parent coroutine's type has a stop token of type inplace_stop_token,
-    // we don't need to register a stop callback.
+    // If the parent coroutine's type has a stop token of type
+    // inplace_stop_token, we don't need to register a stop callback.
     template <__indirect_stop_token_provider _ParentPromise>
       requires std::same_as<inplace_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise>
@@ -329,7 +330,7 @@ namespace experimental::execution
     using awaiter_context_t =
       __decay_t<env_of_t<_Promise>>::template awaiter_context_t<_Promise, _ParentPromise>;
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // In a base class so it can be specialized when _Ty is void:
     template <class _Ty>
     struct __promise_base
@@ -345,12 +346,9 @@ namespace experimental::execution
     template <>
     struct __promise_base<void>
     {
-      struct __void
-      {};
-
       constexpr void return_void()
       {
-        __data_.template emplace<0>(__void{});
+        __data_.template emplace<0>(STDEXEC::__void{});
       }
 
       __variant<__void, std::exception_ptr> __data_{__no_init};
@@ -405,9 +403,9 @@ namespace experimental::execution
 
       void set_stopped() noexcept
       {
-        // Resuming the stopped continuation unwinds the coroutine stack until we reach
-        // a promise that can handle the stopped signal. The coroutine referred to by
-        // __continuation_ will never be resumed.
+        // Resuming the stopped continuation unwinds the coroutine stack until
+        // we reach a promise that can handle the stopped signal. The coroutine
+        // referred to by __continuation_ will never be resumed.
         __std::coroutine_handle<> __unwind = __parent_.promise().unhandled_stopped();
         STDEXEC::__coroutine_resume_nothrow(__unwind);
       }
@@ -447,9 +445,10 @@ namespace experimental::execution
             auto __sched = get_start_scheduler(*__p.__context_);
             auto __guard = at_coroutine_exit(__compose(unstoppable, STDEXEC::schedule),
                                              std::move(__sched));
-            // Insert the cleanup action into the head of the continuation chain by
-            // making direct calls to the cleanup task's awaiter member functions. See
-            // type __at_coro_exit::__task in at_coroutine_exit.hpp:
+            // Insert the cleanup action into the head of the continuation chain
+            // by making direct calls to the cleanup task's awaiter member
+            // functions. See type __at_coro_exit::__task in
+            // at_coroutine_exit.hpp:
             __guard.await_suspend(__h);
             (void) __guard.await_resume();
           }
@@ -497,7 +496,7 @@ namespace experimental::execution
     };
 #endif
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // basic_task
     template <class _Ty, class _Context = default_task_context<_Ty>>
     class [[nodiscard]] basic_task
@@ -732,6 +731,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Ty, class _Context>

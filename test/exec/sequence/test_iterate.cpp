@@ -19,11 +19,155 @@
 #include "stdexec/execution.hpp"
 
 #include <array>
+#include <cstddef>
+#include <exception>
+#include <initializer_list>
+#include <iterator>
 #include <numeric>
+#include <optional>
+#include <ranges>
 #include <test_common/catch2.hpp>
+#include <utility>
+#include <vector>
 
 namespace
 {
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct begin_error
+  {};
+
+  struct begin_throws_range
+  {
+    using iterator = std::array<int, 1>::iterator;
+
+    iterator begin()
+    {
+      throw begin_error{};
+    }
+
+    iterator end() noexcept
+    {
+      return values.end();
+    }
+
+    std::array<int, 1> values{0};
+  };
+
+  struct iterator_failure
+  {};
+
+  enum class iterator_failure_point
+  {
+    dereference,
+    increment,
+    postincrement,
+    comparison,
+    comparison_after_first
+  };
+
+  struct throwing_forward_iterator
+  {
+    using iterator_concept = std::forward_iterator_tag;
+    using value_type       = int;
+    using difference_type  = std::ptrdiff_t;
+
+    int*                   current_{};
+    iterator_failure_point failure_point_{};
+
+    int& operator*() const
+    {
+      if (failure_point_ == iterator_failure_point::dereference)
+      {
+        throw iterator_failure{};
+      }
+      return *current_;
+    }
+
+    auto operator++() -> throwing_forward_iterator&
+    {
+      if (failure_point_ == iterator_failure_point::increment)
+      {
+        throw iterator_failure{};
+      }
+      ++current_;
+      return *this;
+    }
+
+    auto operator++(int) -> throwing_forward_iterator
+    {
+      if (failure_point_ == iterator_failure_point::postincrement)
+      {
+        throw iterator_failure{};
+      }
+      auto previous = *this;
+      ++*this;
+      return previous;
+    }
+
+    friend auto operator==(throwing_forward_iterator const & left,
+                           throwing_forward_iterator const & right) -> bool
+    {
+      if (left.failure_point_ == iterator_failure_point::comparison
+          || right.failure_point_ == iterator_failure_point::comparison)
+      {
+        throw iterator_failure{};
+      }
+      if (left.current_ == right.current_
+          && (left.failure_point_ == iterator_failure_point::comparison_after_first
+              || right.failure_point_ == iterator_failure_point::comparison_after_first))
+      {
+        throw iterator_failure{};
+      }
+      return left.current_ == right.current_;
+    }
+  };
+
+  struct throwing_forward_range
+  {
+    int                    value_{42};
+    iterator_failure_point failure_point_;
+
+    auto begin() noexcept -> throwing_forward_iterator
+    {
+      return {&value_, failure_point_};
+    }
+
+    auto end() noexcept -> throwing_forward_iterator
+    {
+      return {&value_ + 1, failure_point_};
+    }
+  };
+
+  struct throwing_comparison_sentinel
+  {
+    int* end_{};
+
+    friend bool operator==(int* current, throwing_comparison_sentinel sentinel)
+    {
+      if (current == sentinel.end_)
+      {
+        throw iterator_failure{};
+      }
+      return false;
+    }
+  };
+
+  struct throwing_comparison_range
+  {
+    int value_{42};
+
+    auto begin() noexcept -> int*
+    {
+      return &value_;
+    }
+
+    auto end() noexcept -> throwing_comparison_sentinel
+    {
+      return {&value_ + 1};
+    }
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   template <class Receiver>
   struct sum_item_rcvr
@@ -103,6 +247,69 @@ namespace
     }
   };
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct error_capture_receiver : sum_receiver<>
+  {
+    void set_error(std::exception_ptr error) noexcept
+    {
+      error_ = std::move(error);
+    }
+
+    std::exception_ptr& error_;
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  struct move_only_sum_receiver : sum_receiver<>
+  {
+    move_only_sum_receiver(int& sum, bool& completed) noexcept
+      : sum_receiver<>{.sum_ = sum}
+      , completed_(completed)
+    {}
+
+    move_only_sum_receiver(move_only_sum_receiver const &) = delete;
+    move_only_sum_receiver(move_only_sum_receiver&&)       = default;
+
+    void set_value() noexcept
+    {
+      completed_ = true;
+    }
+
+    bool& completed_;
+  };
+
+  TEST_CASE("iterate - accepts a move-only receiver", "[sequence_senders][iterate]")
+  {
+    std::array<int, 3> array{42, 43, 44};
+    auto               count = GENERATE(0, 1, 3);
+    auto iterate   = exec::iterate(std::ranges::subrange(array.begin(), array.begin() + count));
+    int  sum       = 0;
+    bool completed = false;
+
+    STATIC_REQUIRE(STDEXEC::receiver<move_only_sum_receiver>);
+
+    auto check = [&](auto&& sequence)
+    {
+      auto op = exec::subscribe(static_cast<decltype(sequence)&&>(sequence),
+                                move_only_sum_receiver{sum, completed});
+      STDEXEC::start(op);
+      CHECK(completed);
+      CHECK(sum == std::accumulate(array.begin(), array.begin() + count, 0));
+    };
+
+    SECTION("lvalue sequence")
+    {
+      check(iterate);
+    }
+    SECTION("const lvalue sequence")
+    {
+      check(std::as_const(iterate));
+    }
+    SECTION("rvalue sequence")
+    {
+      check(std::move(iterate));
+    }
+  }
+
   TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]")
   {
     std::array<int, 3> array{42, 43, 44};
@@ -138,6 +345,194 @@ namespace
     auto op   = exec::subscribe(iterate, sum_receiver<Env>{.sum_ = sum, .env_ = env});
     STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44 + 1));
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("iterate - subscribe propagates begin exceptions", "[sequence_senders][iterate]")
+  {
+    auto iterate = exec::iterate(begin_throws_range{});
+    int  sum     = 0;
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
+    CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
+  }
+
+  TEST_CASE("iterate - item error signatures depend on iterator access",
+            "[sequence_senders][iterate]")
+  {
+    using throwing_item    = exec::__iterate::__sender<throwing_forward_range>;
+    using nonthrowing_item = exec::__iterate::__sender<std::array<int, 1>>;
+    using comparison_item  = exec::__iterate::__sender<throwing_comparison_range>;
+    using error_signature  = STDEXEC::set_error_t(std::exception_ptr);
+
+    STATIC_REQUIRE(throwing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(nonthrowing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(comparison_item::completion_signatures::__contains<error_signature>());
+  }
+
+  TEST_CASE("iterate - forwards iterator operation exceptions", "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_forward_range>);
+
+    for (auto failure_point: {iterator_failure_point::dereference,
+                              iterator_failure_point::increment,
+                              iterator_failure_point::postincrement,
+                              iterator_failure_point::comparison,
+                              iterator_failure_point::comparison_after_first})
+    {
+      int                sum = 0;
+      std::exception_ptr error;
+      auto               sequence = exec::iterate(throwing_forward_range{42, failure_point});
+
+      auto op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+      STDEXEC::start(op);
+
+      REQUIRE(error);
+      CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+      CHECK(sum == (failure_point == iterator_failure_point::comparison_after_first ? 42 : 0));
+    }
+  }
+
+  TEST_CASE("iterate - forwards comparison error after nonthrowing item access",
+            "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_comparison_range>);
+
+    int                sum = 0;
+    std::exception_ptr error;
+    auto               sequence = exec::iterate(throwing_comparison_range{});
+    auto               op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+    STDEXEC::start(op);
+
+    REQUIRE(error);
+    CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+    CHECK(sum == 42);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // A forward range over a fixed array that poisons its storage when
+  // destroyed, so that a read through an iterator that dangles into a
+  // destroyed sender is caught deterministically, without a sanitizer.
+  struct poison_on_destroy_range
+  {
+    static constexpr int poison = -1;
+
+    int values_[3]{};
+
+    explicit poison_on_destroy_range(std::initializer_list<int> list) noexcept
+    {
+      std::size_t index = 0;
+      for (int value: list)
+      {
+        values_[index++] = value;
+      }
+    }
+
+    poison_on_destroy_range(poison_on_destroy_range const &) = default;
+
+    ~poison_on_destroy_range()
+    {
+      for (int& value: values_)
+      {
+        value = poison;
+      }
+    }
+
+    int* begin() noexcept
+    {
+      return values_;
+    }
+
+    int* end() noexcept
+    {
+      return values_ + 3;
+    }
+
+    [[nodiscard]]
+    int const * begin() const noexcept
+    {
+      return values_;
+    }
+
+    [[nodiscard]]
+    int const * end() const noexcept
+    {
+      return values_ + 3;
+    }
+  };
+
+  // A forward range whose elements cannot be copied: a fix that always
+  // copies the range instead of moving out of an rvalue sender fails to
+  // compile against this range.
+  struct move_only_range
+  {
+    std::vector<int> values_;
+
+    explicit move_only_range(std::initializer_list<int> list)
+      : values_(list)
+    {}
+
+    move_only_range(move_only_range&&)       = default;
+    move_only_range(move_only_range const &) = delete;
+
+    auto begin() noexcept
+    {
+      return values_.begin();
+    }
+
+    auto end() noexcept
+    {
+      return values_.end();
+    }
+
+    [[nodiscard]]
+    auto begin() const noexcept
+    {
+      return values_.begin();
+    }
+
+    [[nodiscard]]
+    auto end() const noexcept
+    {
+      return values_.end();
+    }
+  };
+
+  TEST_CASE("iterate - operation state outlives the sequence sender", "[sequence_senders][iterate]")
+  {
+    using seq_t = decltype(exec::iterate(poison_on_destroy_range{}));
+
+    int                  sum = 0;
+    std::optional<seq_t> sndr;
+    sndr.emplace(exec::iterate(poison_on_destroy_range{10, 20, 30}));
+    auto op = exec::subscribe(*sndr, sum_receiver<>{.sum_ = sum});
+    sndr.reset();  // the sender is gone; the operation state must not depend on it
+    STDEXEC::start(op);
+    CHECK(sum == 60);
+  }
+
+  TEST_CASE("iterate - rvalue subscribe moves an owning range", "[sequence_senders][iterate]")
+  {
+    int  sum = 0;
+    auto op = exec::subscribe(exec::iterate(move_only_range{1, 2, 3}), sum_receiver<>{.sum_ = sum});
+    STDEXEC::start(op);
+    CHECK(sum == 6);
+  }
+
+  TEST_CASE("iterate - const lvalue subscribe copies an owning range",
+            "[sequence_senders][iterate]")
+  {
+    using seq_t = decltype(exec::iterate(poison_on_destroy_range{}));
+
+    int                  sum = 0;
+    std::optional<seq_t> sndr;
+    sndr.emplace(exec::iterate(poison_on_destroy_range{1, 2, 3}));
+    auto op = exec::subscribe(std::as_const(*sndr), sum_receiver<>{.sum_ = sum});
+    sndr.reset();
+    STDEXEC::start(op);
+    CHECK(sum == 6);
   }
 
 }  // namespace

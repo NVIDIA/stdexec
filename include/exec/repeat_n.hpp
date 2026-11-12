@@ -76,25 +76,29 @@ namespace experimental::execution
       template <class _Error>
       constexpr void set_error(_Error &&__err) noexcept
       {
+        auto *__state = __state_;
         STDEXEC_TRY
         {
-          auto __err_copy = static_cast<_Error &&>(__err);  // make a copy of the error...
-          __state_->__cleanup();  // ... because this could potentially invalidate it.
-          STDEXEC::set_error(std::move(__state_->__rcvr_), std::move(__err_copy));
+          // make a copy of the error...
+          auto __err_copy = static_cast<_Error &&>(__err);
+          // ... because this could potentially invalidate it.
+          __state->__cleanup();
+          STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__err_copy));
         }
         STDEXEC_CATCH_ALL
         {
           if constexpr (!__nothrow_decay_copyable<_Error>)
           {
-            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
           }
         }
       }
 
       constexpr void set_stopped() noexcept
       {
-        __state_->__cleanup();
-        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+        auto *__state = __state_;
+        __state->__cleanup();
+        STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
       [[nodiscard]]
@@ -204,22 +208,29 @@ namespace experimental::execution
       {
         using __child_t = __child_of<_Sender>;
 
-        auto __completions = transform_completion_signatures(
+        auto __completions = exec::transform_completion_signatures(
           STDEXEC::get_completion_signatures<__bouncy_sndr_t<__child_t>, _Env...>(),
           // transform for set_value completions:
           []<class... _Args>()
           {
             if constexpr (sizeof...(_Args) == 0)
+            {
               return completion_signatures<set_value_t()>();
+            }
             else
-              return STDEXEC::__throw_compile_time_error<
+            {
+              return exec::throw_compile_time_error<
                 _WHAT_(_INVALID_ARGUMENT_),
                 _WHERE_(_IN_ALGORITHM_, repeat_n_t),
                 _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
-                _WITH_PRETTY_SENDER_<__child_t &>>();
+                _WITH_SENDER_<__child_t &>>();
+            }
           },
           // transform for set_error completions:
-          decay_arguments<set_error_t, repeat_n_t>());
+          decay_arguments<set_error_t, repeat_n_t>(),
+          keep_completion<set_stopped_t>(),
+          // Zero repetitions complete successfully without starting the child.
+          completion_signatures<set_value_t()>());
 
         STDEXEC_IF_OK(__completions)
         {
@@ -228,10 +239,10 @@ namespace experimental::execution
             return __completions;  // NOLINT(bugprone-branch-clone)
           else if constexpr (sizeof...(_Env) == 0)
             return STDEXEC::__throw_dependent_sender_error<__child_t>();
-          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> || ...))
+          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> && ...))
             return __completions;
           else
-            return concat_completion_signatures(__completions, __eptr_completion_t());
+            return exec::concat_completion_signatures(__completions, __eptr_completion_t());
         }
       }
 
@@ -253,7 +264,7 @@ namespace experimental::execution
     constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const  //
       -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -268,6 +279,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

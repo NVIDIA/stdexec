@@ -27,11 +27,13 @@ namespace
   TEST_CASE("stop-when of an unstoppable token is the identity", "[adaptors][stop-when]")
   {
     auto snd           = ex::just(42);
-    auto checkIdentity = [](auto&& snd)
+    auto checkIdentity = []<class Sender>(Sender&& snd)
     {
-      auto&& result = ex::__stop_when(std::forward<decltype(snd)>(snd), ex::never_stop_token{});
-
-      REQUIRE(&snd == &result);
+      auto&& result = ex::__stop_when(std::forward<Sender>(snd), ex::never_stop_token{});
+      REQUIRE((!std::is_reference_v<Sender> || &snd == &result));
+      auto [tag, tupl] = result;
+      auto [value]     = tupl;
+      REQUIRE(value == 42);
     };
 
     checkIdentity(snd);
@@ -67,6 +69,43 @@ namespace
 
     wait_for_value(ex::__stop_when(isTokenStoppable(), source.get_token()), true);
   }
+
+#if !STDEXEC_USE_MODULES()
+  // TODO: figure out why this fails in a modules build
+  TEST_CASE("callbacks registered with an already-stopped fused token run exactly once",
+            "[adaptors][stop-when]")
+  {
+    // Regression test for #2326: the first token is already stopped when the
+    // callback is registered, so the function must run once, at registration,
+    // and never again when the second token is stopped later.
+    ex::inplace_stop_source first, second;
+    first.request_stop();
+
+    int  calls        = 0;
+    int  atReg        = -1;
+    auto makeCallback = [](auto token, auto fn) noexcept
+    {
+      using cb_t = decltype(token)::template callback_type<decltype(fn)>;
+      return std::optional<cb_t>(std::in_place, std::move(token), std::move(fn));
+    };
+
+    ex::sync_wait(ex::__stop_when(ex::__stop_when(ex::read_env(ex::get_stop_token)
+                                                    | ex::then(
+                                                      [&](auto token) noexcept
+                                                      {
+                                                        auto cb = makeCallback(token,
+                                                                               [&]() noexcept
+                                                                               { ++calls; });
+                                                        atReg   = calls;
+                                                        second.request_stop();
+                                                      }),
+                                                  first.get_token()),
+                                  second.get_token()));
+
+    REQUIRE(atReg == 1);
+    REQUIRE(calls == 1);
+  }
+#endif
 
 #if !STDEXEC_USE_MODULES()
   // TODO: figure out why this fails in a modules build
@@ -143,5 +182,47 @@ namespace
                      2);
     }
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  TEST_CASE("stop-when fuses its token with a std::stop_token", "[adaptors][stop-when]")
+  {
+    int  invokeCount = 0;
+    auto snd         = make_stop_callback([&invokeCount]() noexcept { invokeCount++; });
+
+    // Stop requested through the receiver's std::stop_token.
+    {
+      std::stop_source        outer;
+      ex::inplace_stop_source inner;
+
+      wait_for_value(ex::__stop_when(snd, inner.get_token())
+                       | ex::then(
+                         [&](auto&& optCallback) noexcept
+                         {
+                           outer.request_stop();
+                           optCallback.reset();
+                           return invokeCount;
+                         })
+                       | ex::write_env(ex::prop(ex::get_stop_token, outer.get_token())),
+                     1);
+    }
+
+    // Stop requested through stop-when's own token.
+    {
+      std::stop_source        outer;
+      ex::inplace_stop_source inner;
+
+      wait_for_value(ex::__stop_when(snd, inner.get_token())
+                       | ex::then(
+                         [&](auto&& optCallback) noexcept
+                         {
+                           inner.request_stop();
+                           optCallback.reset();
+                           return invokeCount;
+                         })
+                       | ex::write_env(ex::prop(ex::get_stop_token, outer.get_token())),
+                     2);
+    }
+  }
+#  endif
 #endif
 }  // namespace

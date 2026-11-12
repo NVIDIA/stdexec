@@ -38,17 +38,24 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   // scheduler concept opt-in tag
   struct scheduler_tag
   {};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.schedule]
   template <class _Scheduler>
   concept __has_schedule_member = requires(_Scheduler &&__sched) {
     static_cast<_Scheduler &&>(__sched).schedule();
+  };
+
+  template <class _Scheduler>
+  concept __has_scheduler_concept = requires {
+    typename _Scheduler::scheduler_concept;
+    requires __std::derived_from<typename _Scheduler::scheduler_concept, scheduler_tag>;
   };
 
   //! @brief A sender factory that obtains a sender from a scheduler.
@@ -68,8 +75,8 @@ namespace STDEXEC
   //!
   //! The sender returned by @c schedule(sched) is informally called a
   //! "schedule-sender" or "schedule sender". The expression
-  //! <tt>schedule(sch)</tt> is *expression-equivalent* to
-  //! <tt>sch.schedule()</tt>, which is the customization point that
+  //! `schedule(sch)` is *expression-equivalent* to
+  //! `sch.schedule()`, which is the customization point that
   //! scheduler authors implement.
   //!
   //! @c schedule also drives the @c stdexec::scheduler concept: a type @c S
@@ -86,9 +93,9 @@ namespace STDEXEC
   //! but every conforming schedule-sender includes:
   //!
   //! @code{.cpp}
-  //! set_value_t()                   // delivered on the scheduler's context
-  //! set_stopped_t()                 // typical: stop-token observed during scheduling
-  //! set_error_t(...)                // implementation-defined; some schedulers can fail
+  //! set_value_t()          // delivered on the scheduler's context
+  //! set_stopped_t()        // typical: stop-token observed during scheduling
+  //! set_error_t(...)       // implementation-defined; some schedulers can fail
   //! @endcode
   //!
   //! @c set_value carries no datums. The point of @c schedule is the
@@ -113,8 +120,8 @@ namespace STDEXEC
   //!   auto sched = get_parallel_scheduler();
   //!
   //!   auto sndr =
-  //!     schedule(sched)                                // hop onto sched
-  //!     | then([] { return 42; });                     // ... and compute on it
+  //!     schedule(sched)                           // hop onto sched ...
+  //!     | then([] { return 42; });                // ... and compute on it
   //!
   //!   auto [v] = sync_wait(std::move(sndr)).value();
   //!   (void)v;
@@ -122,27 +129,16 @@ namespace STDEXEC
   //! @endcode
   //!
   //! @see stdexec::starts_on     — start a sender on a given scheduler
-  //! @see stdexec::continues_on  — transfer execution to a scheduler mid-pipeline
+  //! @see stdexec::continues_on  — transfer execution to a scheduler
+  //!                               mid-pipeline
   //! @see stdexec::on            — execute a sender on a scheduler then return
+  //!                               to the original context
   struct schedule_t
   {
-    //! @brief Obtain a schedule-sender by calling @c __sched.schedule().
-    //!
-    //! @tparam _Scheduler A type whose lvalue has a member function
-    //!                    @c .schedule() returning a sender.
-    //!
-    //! @param __sched     The scheduler to obtain a sender from.
-    //!
-    //! @returns The sender produced by <tt>__sched.schedule()</tt> — a
-    //!          sender that, when connected and started, value-completes
-    //!          (with no datums) on @c __sched's execution context.
-    //!
-    //! @pre <tt>decltype(__sched.schedule())</tt> must satisfy the
-    //!      @c stdexec::sender concept (statically checked).
+   private:
     template <class _Scheduler>
-      requires __has_schedule_member<_Scheduler>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Scheduler &&__sched) const
+    static auto __schedule(_Scheduler &&__sched)
       noexcept(noexcept(static_cast<_Scheduler &&>(__sched).schedule()))
         -> decltype(static_cast<_Scheduler &&>(__sched).schedule())
     {
@@ -151,37 +147,56 @@ namespace STDEXEC
       return static_cast<_Scheduler &&>(__sched).schedule();
     }
 
-    //! @brief Deprecated overload: obtain a schedule-sender via @c tag_invoke.
+   public:
+    //! @brief Obtain a schedule-sender by calling @c __sched.schedule().
     //!
-    //! @deprecated The @c tag_invoke-based customization of @c schedule is
-    //!             deprecated in favor of the <tt>sched.schedule()</tt>
-    //!             member-function form. New scheduler types should provide
-    //!             a member @c .schedule() instead of a @c tag_invoke
-    //!             overload for @c schedule_t.
+    //! @tparam _Scheduler A type whose lvalue has a member function
+    //!                    @c .schedule() returning a sender.
+    //!
+    //! @param __sched     The scheduler to obtain a sender from.
+    //!
+    //! @returns The sender produced by `__sched.schedule()` — a
+    //!          sender that, when connected and started, value-completes
+    //!          (with no datums) on @c __sched's execution context.
+    //!
+    //! @pre `decltype(__sched.schedule())` must satisfy the
+    //!      @c stdexec::sender concept (statically checked).
     template <class _Scheduler>
-      requires __has_schedule_member<_Scheduler> || __tag_invocable<schedule_t, _Scheduler>
-    [[deprecated("the use of tag_invoke for schedule is deprecated")]]
-    STDEXEC_ATTRIBUTE(host, device, always_inline)  //
-      auto operator()(_Scheduler &&__sched) const
-      noexcept(__nothrow_tag_invocable<schedule_t, _Scheduler>)
-        -> __tag_invoke_result_t<schedule_t, _Scheduler>
-    {
-      static_assert(sender<__tag_invoke_result_t<schedule_t, _Scheduler>>);
-      return __tag_invoke(*this, static_cast<_Scheduler &&>(__sched));
-    }
+      requires __has_schedule_member<_Scheduler> && __has_scheduler_concept<__decay_t<_Scheduler>>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    auto operator()(_Scheduler &&__sched) const
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
+
+    template <class _Scheduler>
+      requires __has_schedule_member<_Scheduler>
+    [[deprecated("The scheduler must define the schedule_concept tag.")]]
+    STDEXEC_ATTRIBUTE(host, device, always_inline) auto operator()(_Scheduler &&__sched) const
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
   };
 
   //! @brief The customization point object for the @c schedule sender factory.
   //!
-  //! @c schedule is an instance of @ref schedule_t. See @ref schedule_t for
+  //! @c schedule is an instance of @c schedule_t. See @ref schedule_t for
   //! the full description, completion signatures, scheduler-concept
   //! relationship, and a usage example.
   //!
   //! @hideinitializer
   inline constexpr schedule_t schedule{};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.sched]
+
+  //! @brief SFINAE-safe check that @c schedule(s) is valid and returns a
+  //!        @em stdexec sender.
+  //!
+  //! Unlike @c __callable<schedule_t, _Scheduler>, this does not hard-error
+  //! for types whose @c schedule() returns something that is not a stdexec
+  //! sender (e.g., a scheduler belonging to a different execution framework);
+  //! it simply evaluates to @c false. See NVIDIA/stdexec#1406.
+  template <class _Scheduler>
+  concept __returns_stdexec_sender = requires(_Scheduler &&__sched) {
+    { schedule(static_cast<_Scheduler &&>(__sched)) } -> sender;
+  };
 
   //! @brief A lightweight handle to an *execution context* — the
   //!        abstraction over things that can run sender pipelines.
@@ -194,9 +209,10 @@ namespace STDEXEC
   //!
   //! Concretely, a type @c S satisfies @c scheduler if:
   //!
-  //! 1. @c schedule(s) is well-formed and returns a @c sender. This is
-  //!    the *defining* operation; everything else is value-semantics
-  //!    plumbing.
+  //! 1. @c schedule(s) is well-formed and returns a @c sender — a @em
+  //!    stdexec sender, not merely any type a foreign framework might
+  //!    call a sender. This is the *defining* operation; everything else
+  //!    is value-semantics plumbing.
   //! 2. @c S's decayed type is equality-comparable (two schedulers compare
   //!    equal iff they refer to the same execution resource — used for
   //!    optimization decisions such as elision of redundant
@@ -207,13 +223,16 @@ namespace STDEXEC
   //!
   //! See [exec.sched] in the C++26 working draft.
   //!
-  //! @see stdexec::schedule       — the customization point that defines this concept
+  //! @see stdexec::schedule       — the basis operation for this concept
   //! @see stdexec::starts_on      — adaptor that runs a sender on a scheduler
-  //! @see stdexec::continues_on   — adaptor that transfers to a scheduler mid-pipeline
-  //! @see stdexec::schedule_result_t — the sender type returned by @c schedule(s)
+  //! @see stdexec::continues_on   — adaptor that transfers to a scheduler
+  //!                                mid-pipeline
+  //! @see stdexec::schedule_result_t — the sender type returned by
+  //!                                   @c schedule(s)
   STDEXEC_MODULE_EXPORT
   template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
+                   && __returns_stdexec_sender<_Scheduler>
                    && __std::equality_comparable<__decay_t<_Scheduler>>
                    && __std::copy_constructible<__decay_t<_Scheduler>>
                    && __nothrow_move_constructible<__decay_t<_Scheduler>>;
@@ -312,8 +331,8 @@ namespace STDEXEC
     }
   };
 
-  //! @brief A query type for asking a sender's attributes for the scheduler on which that
-  //! sender will complete.
+  //! @brief A query type for asking a sender's attributes for the scheduler on
+  //! which that sender will complete.
   //!
   //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
   template <__completion_tag _Tag>
@@ -322,9 +341,9 @@ namespace STDEXEC
     template <class Sig>
     inline static constexpr get_completion_scheduler_t<_Tag> (*signature)(Sig) = nullptr;
 
-    // This function object reads the completion scheduler from an attribute object or a
-    // scheduler, accounting for the fact that the query member function may or may not
-    // accept an environment.
+    // This function object reads the completion scheduler from an attribute
+    // object or a scheduler, accounting for the fact that the query member
+    // function may or may not accept an environment.
     struct __read_query_t
     {
       using __self_t = get_completion_scheduler_t;
@@ -350,18 +369,19 @@ namespace STDEXEC
     };
 
    private:
-    // A scheduler might have a completion scheduler different from itself; for example, an
-    // inline_scheduler completes wherever the scheduler's sender is started. So we
-    // recursively ask the scheduler for its completion scheduler until we find one whose
-    // completion scheduler is equal to itself (or it doesn't have one).
+    // A scheduler might have a completion scheduler different from itself; for
+    // example, an inline_scheduler completes wherever the scheduler's sender is
+    // started. So we recursively ask the scheduler for its completion scheduler
+    // until we find one whose completion scheduler is equal to itself (or it
+    // doesn't have one).
     struct __recurse_query_t
     {
       template <class _Self = __recurse_query_t, class _Sch, class... _Env>
       constexpr auto operator()([[maybe_unused]] _Sch __sch, _Env const &...__env) const noexcept
       {
         static_assert(scheduler<_Sch>);
-        // When determining where the scheduler's operations will complete, we query
-        // for the completion scheduler of the value channel:
+        // When determining where the scheduler's operations will complete, we
+        // query for the completion scheduler of the value channel:
         using __read_query_t = typename get_completion_scheduler_t<set_value_t>::__read_query_t;
 
         if constexpr (__callable<__read_query_t, _Sch, _Env const &...>)
@@ -414,8 +434,8 @@ namespace STDEXEC
     template <class _Attrs, class... _Env>
     static consteval auto __get_declfn() noexcept
     {
-      // If __attrs has a completion scheduler, then return it (after checking the scheduler
-      // for _its_ completion scheduler):
+      // If __attrs has a completion scheduler, then return it (after checking
+      // the scheduler for _its_ completion scheduler):
       if constexpr (__callable<__read_query_t, _Attrs const &, _Env const &...>)
       {
         using __result_t =
@@ -424,19 +444,26 @@ namespace STDEXEC
                           _Env const &...>;
         return __declfn<__result_t>();
       }
-      // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
-      // the environment for the current scheduler and return that (after checking the
-      // scheduler for _its_ completion scheduler).
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
+      // NOT TO SPEC: Otherwise, if __attrs indicates that its sender completes
+      // inline, then we can ask the environment for the current scheduler and
+      // return that (after checking the scheduler for _its_ completion
+      // scheduler).
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         using __result_t = __call_result_t<__recurse_query_t,
-                                           __call_result_t<get_start_scheduler_t, _Env const &>...,
+                                           __call_result_t<get_start_scheduler_t, _Env const &...>,
                                            _Env const &...>;
         return __declfn<__result_t>();
       }
-      // Otherwise, if we are asking a scheduler for a completion scheduler, return the
-      // scheduler itself.
+      // Otherwise, if we are asking a scheduler for a completion scheduler,
+      // return the scheduler itself, but only if _Env... is not empty. (If
+      // `sched.query(get_completion_scheduler<...>)` is ill-formed, then it is
+      // possible that we need to ask again later with an env; e.g., if `sched`
+      // is an `inline_scheduler`. If instead we fall back to simply returning
+      // `sched`, then we end up with different answers for the
+      // `get_completion_scheduler<...>` query depending on whether we ask with
+      // an environment or not. That would be weird.)
       else if constexpr (scheduler<_Attrs> && sizeof...(_Env) != 0)
       {
         return __declfn<__decay_t<_Attrs>>();
@@ -451,24 +478,25 @@ namespace STDEXEC
     constexpr auto operator()(_Attrs const &__attrs, _Env const &...__env) const noexcept
       -> __unless_one_of_t<decltype(_DeclFn()), void>
     {
-      // If __attrs has a completion scheduler, then return it (after checking the scheduler
-      // for _its_ completion scheduler):
+      // If __attrs has a completion scheduler, then return it (after checking
+      // the scheduler for _its_ completion scheduler):
       if constexpr (__callable<__read_query_t, _Attrs const &, _Env const &...>)
       {
         return __check_domain<_Attrs, _Env...>(
           __recurse_query_t{}(__read_query_t{}(__attrs, __env...), __env...));
       }
-      // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
-      // the environment for the current scheduler and return that (after checking the
-      // scheduler for _its_ completion scheduler).
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
-                         && __callable<get_start_scheduler_t, _Env const &...>)
+      // NOT TO SPEC: Otherwise, if __attrs indicates that its sender completes
+      // inline, then we can ask the environment for the current scheduler and
+      // return that (after checking the scheduler for _its_ completion
+      // scheduler).
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
+                         && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         return __check_domain<_Attrs, _Env...>(
           __recurse_query_t{}(get_start_scheduler(__env...), __hide_scheduler{__env}...));
       }
-      // Otherwise, if we are asking a scheduler for a completion scheduler, return the
-      // scheduler itself.
+      // Otherwise, we are asking a scheduler for a completion scheduler, so
+      // return the scheduler itself.
       else
       {
         return __attrs;
@@ -532,6 +560,7 @@ namespace STDEXEC
     get_completion_scheduler<set_stopped_t>{};
 #  endif
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_scheduler_of_t =
@@ -604,7 +633,7 @@ namespace STDEXEC
   template <class _Sch, class _Env>
   constexpr auto __mk_sch_env([[maybe_unused]] _Sch __sch, _Env const &__env) noexcept
   {
-    if constexpr (__completes_inline<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env>
+    if constexpr (__completes_where_it_starts<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env>
                   && __callable<get_start_scheduler_t, _Env const &>)
     {
       auto __sch2 = get_completion_scheduler<set_value_t>(get_start_scheduler(__env),
@@ -617,24 +646,45 @@ namespace STDEXEC
     }
   }
 
-  namespace __detail
+  //! This environment is for when one sender is started from the completion of
+  //! another sender. In that case, the completion scheduler/domain for the
+  //! first sender should be used as the scheduler/domain for the second sender.
+  //!
+  //! This environment is used by the @c let_[value|error|stopped] algorithms as
+  //! well as the @c finally algorithm and @c sequence algorithms.
+  //!
+  //! @note This env assumes that the results of the first sender are
+  //! decay-copied into the operation state of the composite sender.
+  //!
+  //! @tparam _CvSender The sender whose completion is starting the next sender.
+  //! @tparam _Env The environment of the receiver connected to the primary
+  //! sender. @tparam _SetTags The completions that cause the next sender to
+  //! start. For example, for @c let_value, this would be @c set_value_t, and
+  //! for @c finally, this would be @c set_value_t, @c set_error_t, and @c
+  //! set_stopped_t.
+  template <class... _SetTags>
+  struct __mk_secondary_env_t
   {
-    template <class... _SetTags>
-    struct __mk_secondary_env_impl
+   private:
+    template <class... _SetTags2>
+    struct __impl
     {
-      template <class _CvFn, sender _Sender, class _Env>
-      constexpr auto operator()(_CvFn, _Sender const &__sndr, _Env const &__env) const noexcept
+      template <class _Env, sender_in<_Env> _Sender>
+      constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
       {
-        using __domain_t = __make_domain_t<__completion_domain_of_t<_SetTags, _Sender, _Env>...>;
-        // We can only know the scheduler that the secondary sender is started on if there
-        // is exactly one kind of completion that starts the secondary sender.
+        using __domain_t =
+          __detail::__make_domain_t<__completion_domain_of_t<_SetTags2, _Sender, _Env>...>;
+        // We can only know the scheduler that the secondary sender is started
+        // on if there is exactly one kind of completion that starts the
+        // secondary sender.
         STDEXEC_CONSTEXPR_LOCAL bool __has_completion_scheduler =
-          sizeof...(_SetTags) == 1
-          && (__has_completion_scheduler_for<_SetTags, __mcall1<_CvFn, _Sender>, _Env> || ...);
+          sizeof...(_SetTags2) == 1
+          && (__has_completion_scheduler_for<_SetTags2, _Sender, _Env> || ...);
 
         if constexpr (__has_completion_scheduler)
         {
-          auto __sch = (get_completion_scheduler<_SetTags>(get_env(__sndr), __fwd_env(__env)), ...);
+          auto __sch = (get_completion_scheduler<_SetTags2>(get_env(__sndr), __fwd_env(__env)),
+                        ...);
           return STDEXEC::__mk_sch_env(__sch, __fwd_env(__env));
         }
         else if constexpr (__not_same_as<__domain_t, indeterminate_domain<>>)
@@ -647,45 +697,26 @@ namespace STDEXEC
         }
       }
     };
-  }  // namespace __detail
 
-  //! This environment is for when one sender is started from the completion of another
-  //! sender. In that case, the completion scheduler/domain for the first sender should
-  //! be used as the scheduler/domain for the second sender.
-  //!
-  //! This environment is used by the \c let_[value|error|stopped] algorithms as well as
-  //! the \c finally algorithm and \c sequence algorithms.
-  //!
-  //! \note This env assumes that the results of the first sender are decay-copied into
-  //! the operation state of the composite sender.
-  //!
-  //! \tparam _CvSender The sender whose completion is starting the next sender.
-  //! \tparam _Env The environment of the receiver connected to the primary sender.
-  //! \tparam _SetTags The completions that cause the next sender to start. For example,
-  //! for \c let_value, this would be \c set_value_t, and for \c finally, this would be
-  //! \c set_value_t, \c set_error_t, and \c set_stopped_t.
-  template <class... _SetTags>
-  struct __mk_secondary_env_t
-  {
+   public:
     template <class _Sender, class _Env>
     using __impl_t =
       __minvoke<__mremove_if<__mbind_back_q<__never_sends_t, _Sender, __fwd_env_t<_Env const &>>,
-                             __qq<__detail::__mk_secondary_env_impl>>,
+                             __qq<__impl>>,
                 _SetTags...>;
 
-    template <class _CvFn, class _Sender, class _Env>
-    constexpr auto operator()(_CvFn __cv, _Sender const &__sndr, _Env const &__env) const noexcept
-      -> __call_result_t<__impl_t<_Sender, _Env>, _CvFn, _Sender const &, _Env const &>
+    template <class _Sender, class _Env>
+    constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
+      -> __call_result_t<__impl_t<_Sender, _Env>, _Sender const &, _Env const &>
     {
-      return __impl_t<_Sender, _Env>()(__cv, __sndr, __env);
+      return __impl_t<_Sender, _Env>()(__sndr, __env);
     }
   };
 
   template <class _CvSender, class _Env, class... _SetTags>
-  using __secondary_env_t =
-    __call_result_t<__mk_secondary_env_t<_SetTags...>, __copy_cvref_fn<_CvSender>, _CvSender, _Env>;
+  using __secondary_env_t = __call_result_t<__mk_secondary_env_t<_SetTags...>, _CvSender, _Env>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __infallible_scheduler
   template <class _Env>
   using __unstoppable_env_t = env<prop<get_stop_token_t, never_stop_token>, _Env>;

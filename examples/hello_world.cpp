@@ -13,49 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <iostream>
 
-// Pull in the reference implementation of P2300:
+#include <cstdio>
 #include <stdexec/execution.hpp>
 
-#include "exec/static_thread_pool.hpp"
+namespace ex = stdexec;
 
-using namespace stdexec;
-using stdexec::sync_wait;
-
-auto main() -> int
+int main()
 {
-  exec::static_thread_pool ctx{8};
-  scheduler auto           sch = ctx.get_scheduler();  // 1
+  auto sched  = ex::get_parallel_scheduler();
+  auto square = [](int i)
+  {
+    return i * i;
+  };
 
-  sender auto begin = schedule(sch);  // 2
-  sender auto hi_again = then(                                           // 3
-    begin,                                                               // 3
-    [] {                                                                 // 3
-      std::cout << "Hello world! Have an int.\n";                        // 3
-      return 13;                                                         // 3
-    });                                                                  // 3
+  // Build a lazy pipeline: three squares, computed in parallel.
+  auto work = ex::when_all(ex::on(sched, ex::just(0) | ex::then(square)),
+                           ex::on(sched, ex::just(1) | ex::then(square)),
+                           ex::on(sched, ex::just(2) | ex::then(square)));
 
-  sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; });  // 4
-  auto [i]           = sync_wait(std::move(add_42)).value();              // 5
-  std::cout << "Result: " << i << std::endl;
+  // Launch the work and wait for the result.
+  auto [i, j, k] = ex::sync_wait(std::move(work)).value();
 
-  // Sync_wait provides a run_loop scheduler
-  std::tuple<run_loop::scheduler> t = sync_wait(get_scheduler()).value();
-  (void) t;
-
-  auto y = let_value(get_scheduler(),
-                     [](auto sched)
-                     {
-                       return starts_on(sched,
-                                        then(just(),
-                                             []
-                                             {
-                                               std::cout << "from run_loop\n";
-                                               return 42;
-                                             }));
-                     });
-  sync_wait(std::move(y));
-
-  sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
+  std::printf("%d %d %d\n", i, j, k);  // prints "0 1 4"
 }

@@ -33,6 +33,9 @@
 #include <test_common/type_helpers.hpp>
 
 #include <array>
+#include <exception>
+#include <optional>
+#include <stdexcept>
 
 using namespace std::chrono_literals;
 using namespace exec;
@@ -142,7 +145,8 @@ namespace
   {
     return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
   };
-  // log_start completes with the provided sequence after printing provided string
+  // log_start completes with the provided sequence after printing provided
+  // string
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message)
   {
@@ -204,12 +208,113 @@ namespace
   template <ex::sender Sender>
   struct as_sequence_t : Sender
   {
-    using sender_concept = sequence_sender_tag;
-    using item_types     = exec::item_types<Sender>;
-    auto subscribe(auto receiver)
+    using sender_concept        = sequence_sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+    using item_types            = exec::item_types<Sender>;
+    auto subscribe(auto receiver) &&
     {
-      return connect(set_next(receiver, *static_cast<Sender*>(this)), receiver);
+      return ex::connect(exec::set_next(receiver, static_cast<Sender&&>(*this)), receiver);
     }
+  };
+
+  TEST_CASE("merge_each - accepts a move-only nested sequence sender",
+            "[sequence_senders][merge_each]")
+  {
+    using item_sender_t = decltype(fallible_just{empty_sequence()});
+
+    STATIC_REQUIRE_FALSE(std::copy_constructible<item_sender_t>);
+
+    auto sequences = as_sequence_t<item_sender_t>{fallible_just{empty_sequence()}};
+    auto merged    = merge_each(std::move(sequences));
+
+    [[maybe_unused]]
+    auto op = subscribe(std::move(merged), null_receiver{});
+  }
+
+  template <class Error>
+  struct error_sequence
+  {
+    using sender_concept        = sequence_sender_tag;
+    using item_types            = exec::item_types<>;
+    using completion_signatures = ex::completion_signatures<ex::set_error_t(Error)>;
+
+    template <ex::receiver Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(receiver_), static_cast<Error&&>(error_));
+      }
+
+      Receiver receiver_;
+      Error    error_;
+    };
+
+    template <ex::receiver Receiver>
+    auto subscribe(Receiver receiver) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), static_cast<Error&&>(error_)};
+    }
+
+    Error error_;
+  };
+
+  struct error_state
+  {
+    std::optional<int> nested_error_{};
+    std::exception_ptr outer_error_{};
+    bool               completed_ = false;
+    bool               stopped_   = false;
+  };
+
+  struct record_error_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    template <ex::sender Item>
+    auto set_next(Item&& item) &
+    {
+      auto record_error = [state = state_]<class Error>(Error&& error) noexcept
+      {
+        if constexpr (std::same_as<std::decay_t<Error>, int>)
+        {
+          state->nested_error_ = static_cast<Error&&>(error);
+        }
+      };
+      return ex::upon_stopped(ex::upon_error(static_cast<Item&&>(item), record_error),
+                              []() noexcept {});
+    }
+
+    void set_value() noexcept
+    {
+      state_->completed_ = true;
+    }
+
+    template <class Error>
+    void set_error(Error&& error) noexcept
+    {
+      if constexpr (std::same_as<std::decay_t<Error>, int>)
+      {
+        state_->nested_error_ = static_cast<Error&&>(error);
+      }
+      else if constexpr (std::same_as<std::decay_t<Error>, std::exception_ptr>)
+      {
+        state_->outer_error_ = static_cast<Error&&>(error);
+      }
+    }
+
+    void set_stopped() noexcept
+    {
+      state_->stopped_ = true;
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+
+    error_state* state_;
   };
 
   TEST_CASE("merge_each - merge two sequence senders of no elements",
@@ -225,14 +330,15 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(
+      ex::__ok<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -264,14 +370,15 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(
+      ex::__ok<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -297,7 +404,7 @@ namespace
     using range_sequence_t = STDEXEC::__call_result_t<decltype(range), int, int>;
     STATIC_REQUIRE(__well_formed_sequence_sender<range_sequence_t>);
     STATIC_REQUIRE_FALSE(std::same_as<item_types_of_t<range_sequence_t>, item_types<>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<range_sequence_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<range_sequence_t>,
                                 ex::completion_signatures<ex::set_error_t(std::exception_ptr),
                                                           ex::set_stopped_t(),
                                                           ex::set_value_t()>>);
@@ -309,7 +416,7 @@ namespace
     using empty_sequence_t = STDEXEC::__call_result_t<empty_sequence_t>;
     STATIC_REQUIRE(__well_formed_sequence_sender<empty_sequence_t>);
     STATIC_REQUIRE(std::same_as<item_types_of_t<empty_sequence_t>, item_types<>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<empty_sequence_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<empty_sequence_t>,
                                 ex::completion_signatures<ex::set_value_t()>>);
 
     using just_empty_sender_t = ex::__call_result_t<ex::just_t, empty_sequence_t>;
@@ -322,21 +429,22 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<__item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<ex::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     STATIC_REQUIRE(__equivalent<__item_types_of_t<sequences_t>,
                                 item_types<just_range_sender_t, just_empty_sender_t>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<sequences_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<sequences_t>,
                                 ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t()>>);
 
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<__item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<merged_t, ex::env<>>,
-                                ex::completion_signatures<ex::set_error_t(std::exception_ptr),
-                                                          ex::set_stopped_t(),
-                                                          ex::set_value_t()>>);
+    STATIC_REQUIRE(
+      __equivalent<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>,
+                   ex::completion_signatures<ex::set_error_t(std::exception_ptr),
+                                             ex::set_stopped_t(),
+                                             ex::set_value_t()>>);
 
     int count = 0;
 
@@ -353,31 +461,186 @@ namespace
     CHECK(v.has_value() == true);
   }
 
-// TODO - fix problem with stopping
-#if 0
-  TEST_CASE(
-    "merge_each - merge_each sender stops when a nested sequence fails",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+  TEST_CASE("merge_each - preserves errors from nested value senders",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(ex::just(ex::just_error(42)));
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
 
-    auto sequences = merge(
-      log_start(range(100, 120), "range 100-120"),
-      ex::just(emits_error(std::runtime_error{"failed sequence "})),
-      log_start(range(200, 220), "range 200-220")
-      );
+    ex::start(op);
 
-    [[maybe_unused]] auto merged = merge_each(std::move(sequences));
-
-    int count = 0;
-
-    auto v = ex::sync_wait(ignore_all_values(merged | then_each([&count](int x){
-      ++count;
-      UNSCOPED_INFO("item: " << x
-        << ", on thread id: " << std::this_thread::get_id());
-    })));
-
-    CHECK(count == 20);
-    CHECK(v.has_value() == false);
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
   }
-#endif  // 0
+
+  TEST_CASE("merge_each - preserves errors from nested sequences", "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        nested_sequence = error_sequence<int>{42};
+    auto        merged          = merge_each(ex::just(std::move(nested_sequence)));
+    auto        op              = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  // A sender of a nested sequence that can also complete without producing one
+  template <class Completion>
+  using maybe_nested_sequence_t = variant_sender<decltype(ex::just(ex::just(0))), Completion>;
+
+  TEST_CASE("merge_each - completes when the sender of a nested sequence fails",
+            "[sequence_senders][merge_each]")
+  {
+    using nested_sequence_sender_t = maybe_nested_sequence_t<decltype(ex::just_error(0))>;
+
+    error_state state{};
+    int         count  = 0;
+    auto        merged = merge_each(range(0, 3)
+                             | exec::transform_each(ex::let_value(
+                               [](int i) noexcept -> nested_sequence_sender_t
+                               {
+                                 if (i == 1)
+                                 {
+                                   return ex::just_error(42);
+                                 }
+                                 return ex::just(ex::just(i));
+                               })))
+                | then_each([&count](int) noexcept { ++count; });
+    auto op = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(count == 1);
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  TEST_CASE("merge_each - continues when the sender of a nested sequence is stopped",
+            "[sequence_senders][merge_each]")
+  {
+    using nested_sequence_sender_t = maybe_nested_sequence_t<decltype(ex::just_stopped())>;
+
+    error_state state{};
+    int         count  = 0;
+    auto        merged = merge_each(range(0, 3)
+                             | exec::transform_each(ex::let_value(
+                               [](int i) noexcept -> nested_sequence_sender_t
+                               {
+                                 if (i == 1)
+                                 {
+                                   return ex::just_stopped();
+                                 }
+                                 return ex::just(ex::just(i));
+                               })))
+                | then_each([&count](int) noexcept { ++count; });
+    auto op = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(count == 2);
+    CHECK_FALSE(state.nested_error_.has_value());
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  TEST_CASE("merge_each - completes with stopped when stop is requested between nested sequences",
+            "[sequence_senders][merge_each]")
+  {
+    ex::inplace_stop_source stop_source;
+    int                     count    = 0;
+    bool                    executed = false;
+    auto merged = merge_each(range(0, 3) | then_each([](int) noexcept { return range(0, 3); }))
+                | then_each(
+                    [&](int) noexcept
+                    {
+                      if (++count == 4)
+                      {
+                        stop_source.request_stop();
+                      }
+                    })
+                | ignore_all_values() | with_stop_token_from(stop_source);
+    auto op = ex::connect(std::move(merged), expect_stopped_receiver_ex{executed});
+
+    ex::start(op);
+
+    CHECK(count == 4);
+    CHECK(executed);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throwing_subscribe_sequence
+  {
+    using sender_concept        = sequence_sender_tag;
+    using item_types            = exec::item_types<>;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <ex::receiver Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver&&>(receiver_));
+      }
+
+      Receiver receiver_;
+    };
+
+    template <ex::receiver Receiver>
+    auto subscribe(Receiver receiver) && -> operation<Receiver>
+    {
+      if (throws_)
+      {
+        throw std::runtime_error("subscribe failed");
+      }
+      return {static_cast<Receiver&&>(receiver)};
+    }
+
+    bool throws_ = true;
+  };
+
+  TEST_CASE("merge_each - completes when subscribing to a nested sequence throws",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(ex::just(throwing_subscribe_sequence{}));
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  TEST_CASE("merge_each - preserves errors from the outer sequence",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(error_sequence<int>{42});
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.outer_error_ != nullptr);
+    bool caught = false;
+    try
+    {
+      std::rethrow_exception(state.outer_error_);
+    }
+    catch (int error)
+    {
+      caught = true;
+      CHECK(error == 42);
+    }
+    CHECK(caught);
+    CHECK_FALSE(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+#endif
 
 }  // namespace

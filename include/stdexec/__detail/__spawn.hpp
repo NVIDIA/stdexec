@@ -43,16 +43,17 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.spawn]
   namespace __spawn
   {
     struct __spawn_state_base
     {
-      explicit __spawn_state_base(void (*__complete)(__spawn_state_base*) noexcept) noexcept
-        : __complete_(__complete)
+      explicit __spawn_state_base(void (*__complete_fn)(__spawn_state_base*) noexcept) noexcept
+        : __complete_(__complete_fn)
       {}
 
       __spawn_state_base(__spawn_state_base&&) = delete;
@@ -137,22 +138,21 @@ namespace STDEXEC
   //! @brief A sender consumer that eagerly starts a sender and ties its
   //!        lifetime to an *async scope*.
   //!
-  //! @c spawn is the standard "fire-and-forget into a scope" consumer.
-  //! You give it a sender, a @c scope_token (a handle to an async scope),
-  //! and optionally an environment, and @c spawn:
+  //! @c spawn is the standard "fire-and-forget into a scope" consumer. You give
+  //! it a sender, a @c scope_token (a handle to an async scope), and optionally
+  //! an environment, and @c spawn:
   //!
-  //! 1. allocates an operation state on the heap (using an allocator
-  //!    queried from the environment or the sender's own environment),
+  //! 1. allocates an operation state on the heap (using an allocator queried
+  //!    from the environment or the sender's own environment),
   //! 2. tries to associate the resulting operation with the scope via
-  //!    <tt>token.try_associate()</tt>,
-  //! 3. if the association succeeds, eagerly @c start s the operation,
-  //!    and on completion deallocates the state and releases the scope
-  //!    association.
+  //!    `token.try_associate()`,
+  //! 3. if the association succeeds, eagerly @c start s the operation, and on
+  //!    completion deallocates the state and releases the scope association.
   //!
   //! If association fails (typically because the scope has already begun
-  //! shutting down), @c spawn destroys the state and returns without
-  //! starting the operation. The result of the sender, if any, is
-  //! discarded — @c spawn returns @c void.
+  //! shutting down), @c spawn destroys the state and returns without starting
+  //! the operation. The result of the sender, if any, is discarded — @c spawn
+  //! returns @c void.
   //!
   //! See [exec.spawn] in the C++26 working draft for the normative
   //! specification.
@@ -172,33 +172,34 @@ namespace STDEXEC
   //!
   //! The argument sender must not be able to complete with @c set_error
   //! — @c spawn cannot deliver an error to a non-existent caller. The
-  //! @c requires clause enforces this with a
-  //! <tt>__never_sends<set_error_t, ...></tt> check; the diagnostic
-  //! overload says "spawn expects a sender that cannot fail" if the check
-  //! fires.
+  //! @c requires clause enforces this with a `__never_sends<set_error_t, ...>`
+  //! check. The diagnostic overload first checks that the sender after scope
+  //! wrapping and environment injection is valid in the selected environment
+  //! and delegates to the sender diagnostics if that check fails; otherwise, it
+  //! reports that @c spawn expects a sender that cannot fail.
   //!
-  //! Successful and stopped completions are both accepted; their results
-  //! are discarded.
+  //! Successful and stopped completions are both accepted; their results are
+  //! discarded.
   //!
   //! **Scope semantics.**
   //!
-  //! The scope is the *owner of lifetime* for the spawned operation.
-  //! Calling code is expected to eventually @c join() the scope (or
-  //! otherwise wait for all spawned work to drain) before destroying it
-  //! — typically once at program shutdown, or once per logical unit of
-  //! related background work.
+  //! The scope is the *owner of lifetime* for the spawned operation. Calling
+  //! code is expected to eventually @c join() the scope (or otherwise wait for
+  //! all spawned work to drain) before destroying it — typically once at
+  //! program shutdown, or once per logical unit of related background work.
   //!
-  //! @c spawn is the canonical fire-and-forget consumer for any work
-  //! that has a clear "owning context" (a request, a session, a worker).
-  //! For top-level work with no owning scope, use @c exec::start_detached
-  //! (an stdexec extension). For fire-and-forget work whose completion
-  //! you want to *observe* (without blocking), use
+  //! @c spawn is the canonical fire-and-forget consumer for any work that has a
+  //! clear "owning context" (a request, a session, a worker). For top-level
+  //! work with no owning scope, use @c exec::start_detached (an stdexec
+  //! extension). For fire-and-forget work whose completion you want to
+  //! *observe* (without blocking), use
   //! @c stdexec::spawn_future.
   //!
-  //! @see stdexec::spawn_future   — like @c spawn, but returns a sender that completes
-  //!                                when the spawned work completes
+  //! @see stdexec::spawn_future   — like @c spawn, but returns a sender that
+  //!                                completes when the spawned work completes
   //! @see exec::start_detached    — scope-less fire-and-forget (extension)
-  //! @see stdexec::sync_wait      — top-level synchronous wait that returns the result
+  //! @see stdexec::sync_wait      — top-level synchronous wait that returns the
+  //!                                result
   STDEXEC_MODULE_EXPORT
   struct spawn_t
   {
@@ -219,7 +220,7 @@ namespace STDEXEC
     //! @brief Spawn @c __sndr into the scope identified by @c __tkn, using
     //!        a default (empty) environment.
     //!
-    //! Equivalent to <tt>spawn(__sndr, __tkn, env<>{})</tt>.
+    //! Equivalent to `spawn(__sndr, __tkn, env<>{})`.
     //!
     //! @tparam _Sender A sender type with no @c set_error_t completions.
     //! @tparam _Token  A type satisfying @c stdexec::scope_token.
@@ -235,19 +236,27 @@ namespace STDEXEC
     // with the primary three-argument overload above (they differ only by a
     // constraint), which the Sphinx C++ domain cannot disambiguate.
 #  if !defined(STDEXEC_DOXYGEN_INVOKED)
-    //! @brief Diagnostic overload — selected when the sender's completion
-    //!        signatures include @c set_error_t. Emits a @c static_assert
-    //!        explaining that @c spawn expects a sender that cannot fail.
+    //! @brief Diagnostic overload selected when the no-error requirement fails.
+    //!        If the sender after scope wrapping and environment injection is
+    //!        not valid in the selected environment, delegates to the sender
+    //!        diagnostics; otherwise, emits a @c static_assert explaining that
+    //!        @c spawn expects a sender that cannot fail.
     //!
     //! Not normally called; the @c requires clause on the primary overload
     //! steers compilation here on a constraint failure.
     template <sender _Sender, scope_token _Token, class _Env>
     void operator()(_Sender&&, _Token, _Env&&) const
     {
-      using _spawn_sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
-      static_assert(sender_in<_spawn_sndr_t, _Env>
-                      && __never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
-                    "spawn expects a sender that cannot fail");
+      using __sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
+      if constexpr (!sender_in<__sndr_t, _Env>)
+      {
+        __diagnose_sender_concept_failure<__sndr_t, _Env>();
+      }
+      else
+      {
+        static_assert(__never_sends<STDEXEC::set_error_t, __sndr_t, _Env>,
+                      "spawn expects a sender that cannot fail");
+      }
     }
 #  endif  // !defined(STDEXEC_DOXYGEN_INVOKED)
 
@@ -255,9 +264,9 @@ namespace STDEXEC
     //!        the allocator queried from @c __env.
     //!
     //! Allocates the operation state on the heap (using
-    //! <tt>stdexec::get_allocator(__env)</tt>, falling back to
+    //! `stdexec::get_allocator(__env)`, falling back to
     //! @c std::allocator), associates with the scope via
-    //! <tt>__tkn.try_associate()</tt>, and on success @c start s the
+    //! `__tkn.try_associate()`, and on success @c start s the
     //! operation. On completion the state is destroyed and deallocated.
     //!
     //! @tparam _Sender A sender type with no @c set_error_t completions.
@@ -309,7 +318,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c spawn sender consumer.
   //!
-  //! @c spawn is an instance of @ref spawn_t. See @ref spawn_t for the full
+  //! @c spawn is an instance of @c spawn_t. See @ref spawn_t for the full
   //! description, scope semantics, and a usage example.
   //!
   //! @hideinitializer

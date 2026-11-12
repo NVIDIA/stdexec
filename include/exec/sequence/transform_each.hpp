@@ -45,9 +45,6 @@ namespace experimental::execution
   struct _WITH_ITEM_SENDER_
   {};
 
-  template <class _Sender>
-  using _WITH_PRETTY_ITEM_SENDER_ = _WITH_ITEM_SENDER_(STDEXEC::__demangle_t<_Sender>);
-
   namespace __transform_each
   {
     using namespace STDEXEC;
@@ -125,7 +122,8 @@ namespace experimental::execution
 
       template <class _Adaptor, class _Sequence>
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence)
-        noexcept(__nothrow_decay_copyable<_Adaptor, _Sequence>)
+        noexcept(__nothrow_decay_copyable<_Adaptor, _Sequence>
+                 && __nothrow_subscribable<_Sequence, __receiver<_Receiver, _Adaptor>>)
           -> __operation<_Sequence, _Receiver, _Adaptor>
       {
         return {static_cast<_Sequence&&>(__sequence),
@@ -187,10 +185,10 @@ namespace experimental::execution
               if constexpr (!__callable<__closure_t, _ItemSender>)
               {
                 return exec::__invalid_item_types<_TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-                                                  _WITH_PRETTY_SEQUENCE_<__child_of<_Self>>,
+                                                  _WITH_SEQUENCE_<__child_of<_Self>>,
                                                   __fn_t<_WITH_ENVIRONMENT_, _Env>...,
                                                   _WITH_ADAPTOR_<__data_of<_Self>>,
-                                                  _WITH_PRETTY_ITEM_SENDER_<_ItemSender>>();
+                                                  _WITH_ITEM_SENDER_(_ItemSender)>();
               }
               else
               {
@@ -217,11 +215,10 @@ namespace experimental::execution
       }
 
       template <class _Sexpr>
-      static auto get_env(_Sexpr const & __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>>
+      static decltype(auto) get_env(_Sexpr const & __sexpr) noexcept
       {
-        static_assert(sender_for<_Sexpr, transform_each_t>);
         return __apply([]<class _Child>(__ignore, __ignore, _Child const & __child)
-                       { return STDEXEC::get_env(__child); },
+                         -> decltype(auto) { return STDEXEC::get_env(__child); },
                        __sexpr);
       }
     };

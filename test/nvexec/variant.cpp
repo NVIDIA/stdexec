@@ -20,6 +20,9 @@
 #include <cuda/std/tuple>
 #include <thrust/universal_vector.h>
 
+#include <cstddef>
+#include <new>
+
 #include "common.cuh"
 #include "nvexec/detail/variant.cuh"
 
@@ -31,6 +34,19 @@ using nvexec::visit;
 
 namespace
 {
+  int variant_destructor_calls = 0;
+
+  struct variant_destructor_probe
+  {
+    STDEXEC_ATTRIBUTE(host, device)
+    variant_destructor_probe() = default;
+
+    STDEXEC_ATTRIBUTE(host, device)
+    ~variant_destructor_probe()
+    {
+      NV_IF_TARGET(NV_IS_HOST, (++variant_destructor_calls;));
+    }
+  };
 
   TEST_CASE("nvexec variant max size is correct", "[cuda][stream][containers][variant]")
   {
@@ -55,6 +71,21 @@ namespace
     STATIC_REQUIRE(variant_t<double>::size == 1);
     STATIC_REQUIRE(variant_t<int, double>::size == 2);
     STATIC_REQUIRE(variant_t<char, int, double>::size == 3);
+  }
+
+  TEST_CASE("nvexec variant initializes its index before constructing the first alternative",
+            "[cuda][stream][containers][variant]")
+  {
+    using variant_type = variant_t<variant_destructor_probe>;
+
+    alignas(variant_type) std::byte storage[sizeof(variant_type)]{};
+    variant_destructor_calls = 0;
+
+    auto* variant = ::new (storage) variant_type;
+    CHECK(variant_destructor_calls == 0);
+
+    variant->~variant_type();
+    CHECK(variant_destructor_calls == 1);
   }
 
   TEST_CASE("nvexec variant emplaces alternative from CPU", "[cuda][stream][containers][variant]")

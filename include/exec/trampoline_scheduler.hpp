@@ -20,7 +20,7 @@
 
 #include "completion_behavior.hpp"
 
-#if STDEXEC_USE_MODULES()
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import std;
 import stdexec;
 #else
@@ -32,9 +32,10 @@ import stdexec;
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/stop_token.hpp"
 
-#  include <cstddef>
-#  include <utility>
-#endif
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <utility>
+#  endif
 
 namespace experimental::execution
 {
@@ -110,6 +111,8 @@ namespace experimental::execution
       std::size_t __max_recursion_size_;
 
      public:
+      using scheduler_concept = scheduler_tag;
+
       constexpr __scheduler() noexcept
         : __attrs{16}
         , __max_recursion_size_(4096)
@@ -131,10 +134,10 @@ namespace experimental::execution
       {
         using __execute_fn = void(__opstate_base*) noexcept;
 
-        constexpr explicit __opstate_base(__execute_fn* __execute,
+        constexpr explicit __opstate_base(__execute_fn* __exec_fn,
                                           std::size_t   __max_size,
                                           std::size_t   __max_depth) noexcept
-          : __execute_(__execute)
+          : __execute_(__exec_fn)
           , __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth)
         {}
@@ -179,12 +182,12 @@ namespace experimental::execution
               if (__prev_ != nullptr)
               {
                 // was not empty
-                std::exchange(__prev_->__next_, static_cast<__opstate_base*>(this));
+                __prev_->__next_ = static_cast<__opstate_base*>(this);
               }
               else
               {
                 // was empty
-                std::exchange(__current_state->__head_, static_cast<__opstate_base*>(this));
+                __current_state->__head_ = static_cast<__opstate_base*>(this);
               }
             }
           }
@@ -254,6 +257,7 @@ namespace experimental::execution
         }
 
         template <class _Receiver>
+        [[nodiscard]]
         constexpr auto connect(_Receiver __rcvr) const noexcept -> __opstate<_Receiver>
         {
           return __opstate<_Receiver>{static_cast<_Receiver&&>(__rcvr),
@@ -292,15 +296,16 @@ namespace experimental::execution
       while (__head_ != nullptr)
       {
         // pop the head of the list
-#if STDEXEC_NVHPC()
-        // there appears to be a codegen bug in nvhpc where the optimizer does not see the
-        // assign to __head_ that happens in the std::exchange call below, causing it to
-        // erroneously optimize away the `if (__head_ != nullptr)` check later on.
+#  if STDEXEC_NVHPC()
+        // there appears to be a codegen bug in nvhpc where the optimizer does
+        // not see the assign to __head_ that happens in the std::exchange call
+        // below, causing it to erroneously optimize away the `if (__head_ !=
+        // nullptr)` check later on.
         _Operation* __op = __head_;
         __head_          = __head_->__next_;
-#else
+#  else
         _Operation* __op = std::exchange(__head_, __head_->__next_);
-#endif
+#  endif
         __op->__next_ = nullptr;
         __op->__prev_ = nullptr;
         if (__head_ != nullptr)
@@ -328,3 +333,4 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+#endif

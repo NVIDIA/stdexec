@@ -48,7 +48,8 @@ namespace
   template <auto const &Tag, class... Args>
   using result_of_t = ex::__result_of<Tag, Args...>;
 
-  //! Used for to make a class non-movable without giving up aggregate initialization
+  //! Used for to make a class non-movable without giving up aggregate
+  //! initialization
   struct immovable
   {
     immovable() = default;

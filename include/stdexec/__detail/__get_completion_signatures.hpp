@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -27,21 +27,17 @@ import stdexec;
 
 // include these after __execution_fwd.hpp
 #  include "__awaitable.hpp"
-#  include "__completion_info.hpp"
 #  include "__completion_signatures.hpp"  // IWYU pragma: export
 #  include "__connect_awaitable.hpp"
 #  include "__diagnostics.hpp"
 #  include "__env.hpp"
+#  include "__gather_completion_signatures.hpp"
 #  include "__meta.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
-
-#  if !STDEXEC_USE_MODULES()
-#    include <algorithm>
-#  endif
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __detail
@@ -55,26 +51,26 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.getcomplsigs]
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // get_completion_signatures
   STDEXEC_PRAGMA_PUSH()
-  // warning C4913: user defined binary operator ',' exists but no overload could convert all operands,
-  // default built-in binary operator ',' used
+  // warning C4913: user defined binary operator ',' exists but no overload
+  // could convert all operands, default built-in binary operator ',' used
   STDEXEC_PRAGMA_IGNORE_MSVC(4913)
 
   struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION;
 
   namespace __cmplsigs
   {
-#  define STDEXEC_GET_COMPLSIGS(...)                                                                 \
-  STDEXEC_REMOVE_REFERENCE(                                                                        \
+#  define STDEXEC_GET_COMPLSIGS(...)                                                                \
+  STDEXEC_REMOVE_REFERENCE(                                                                         \
     STDEXEC_PP_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
 
-#  define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                      \
-  STDEXEC::__cmplsigs::__checked_complsigs(                                                        \
+#  define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                     \
+  STDEXEC::__cmplsigs::__checked_complsigs(                                                         \
     __VA_ARGS__, static_cast<__mlist<STDEXEC_PP_EXPAND _ARGS>*>(nullptr))
 
     template <class _Ty>
@@ -103,7 +99,7 @@ namespace STDEXEC
         return __throw_compile_time_error<
           _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
           _WITH_COMPLETION_SIGNATURES_(_Completions),
-          _WITH_PRETTY_SENDER_<_Sender>,
+          _WITH_SENDER_<_Sender>,
           __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
       }
     }
@@ -150,14 +146,6 @@ namespace STDEXEC
       __non_sender<_Env>                               //
       && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env); };
 
-    template <class _Sender, class... _Env>
-    concept __with_legacy_tag_invoke =
-      __tag_invocable<get_completion_signatures_t, _Sender, _Env...>;
-
-    template <class _Sender, class... _Env>
-    concept __with_legacy_non_dependent_tag_invoke =
-      (sizeof...(_Env) == 0) && __tag_invocable<get_completion_signatures_t, _Sender, env<>>;
-
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
     concept __with_legacy_member_alias = requires {
@@ -167,25 +155,6 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
-    template <class _Sender, class _Env>
-    concept __with = __with_legacy_static_member<_Sender, _Env>              //
-                  || __with_legacy_member<_Sender, _Env>                     //
-                  || __with_legacy_member_alias<_Sender>                     //
-                  || __with_consteval_static_member_with_env<_Sender, _Env>  //
-                  || __with_consteval_static_member<_Sender>                 //
-                  || __with_legacy_tag_invoke<_Sender, _Env>                 //
-                  || __with_legacy_non_dependent_tag_invoke<_Sender, _Env>   //
-                  || __with_co_await<_Sender, _Env>;
-  }  // namespace __cmplsigs
-
-  template <class _Sender, class _Env>
-  concept __has_get_completion_signatures = requires(__declfn_t<_Sender &&> __sndr,
-                                                     __declfn_t<_Env &&>    __env) {
-    { transform_sender(__sndr(), __env()) } -> __cmplsigs::__with<_Env>;
-  };
-
-  namespace __cmplsigs
-  {
     template <class _Sender>
     [[nodiscard]]
     consteval auto __get_completion_signatures_helper()
@@ -206,16 +175,6 @@ namespace STDEXEC
       else if constexpr (__with_legacy_member<_Sender>)
       {
         using __completions_t = __legacy_member_result_t<_Sender>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
-      }
-      else if constexpr (__with_legacy_tag_invoke<_Sender>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
-      }
-      else if constexpr (__with_legacy_non_dependent_tag_invoke<_Sender>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
         return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
       }
       else if constexpr (__with_co_await<_Sender>)
@@ -254,11 +213,6 @@ namespace STDEXEC
         using __completions_t = __legacy_member_result_t<_Sender, _Env>;
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __completions_t());
       }
-      else if constexpr (__with_legacy_tag_invoke<_Sender, _Env>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __completions_t());
-      }
       else if constexpr (__with_co_await<_Sender, _Env>)
       {
         return __co_await_completions_t<_Sender, _Env>();
@@ -281,7 +235,7 @@ namespace STDEXEC
       template <class _Sender, class _Env>
       constexpr auto operator()(_Sender &&, _Env const &) const noexcept
       {
-        using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
+        using __new_sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Sender, _Env>>;
         static_assert(!__merror<__new_sndr_t>);
         return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
       }
@@ -351,10 +305,15 @@ namespace STDEXEC
   //! @c co_await result type, @c set_error_t(std::exception_ptr) for
   //! any exceptions, and @c set_stopped_t for stop-token cancellation.
   //!
-  //! @see stdexec::completion_signatures   — the pack-of-signatures container
-  //! @see stdexec::completion_signatures_of_t — convenience type alias around this
-  //! @see stdexec::sender_in               — the concept built on top of this
-  //! @see stdexec::transform_sender        — domain-customization run before signature computation
+  //! @see stdexec::completion_signatures      — the pack-of-signatures
+  //!  container
+  //! @see stdexec::completion_signatures_of_t — type alias for the result of
+  //!                                            @c get_completion_signatures
+  //! @see stdexec::sender_in                  — concept that tests whether a
+  //!                                            type is a sender in a given
+  //!                                            environment
+  //! @see stdexec::transform_sender           — domain-customization run before
+  //!                                            signature computation
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
   consteval auto get_completion_signatures()
@@ -377,11 +336,9 @@ namespace STDEXEC
   //! See @ref get_completion_signatures() for the full description.
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Env>
-    requires __has_get_completion_signatures<_Sender, _Env>
   consteval auto get_completion_signatures()
   {
-    using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
-    static_assert(!__merror<__new_sndr_t>);
+    using __new_sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Sender, _Env>>;
     return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
   }
 
@@ -394,7 +351,7 @@ namespace STDEXEC
     return STDEXEC::get_completion_signatures<_Sender, _Env...>();
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
 #  if STDEXEC_GCC()
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -423,10 +380,10 @@ namespace STDEXEC
 
 #  elif STDEXEC_MSVC()
 
-  // MSVC cannot handle a __completion_signatures_of_t alias template that requires
-  // get_completion_signatures to be a constant expression, even if we wrap the call to
-  // get_completion_signatures in an integral_constant like we do for EDG. So we skip
-  // checking the requirement.
+  // MSVC cannot handle a __completion_signatures_of_t alias template that
+  // requires get_completion_signatures to be a constant expression, even if we
+  // wrap the call to get_completion_signatures in an integral_constant like we
+  // do for EDG. So we skip checking the requirement.
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
@@ -443,7 +400,7 @@ namespace STDEXEC
     __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 #  endif
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures
   template <class _Parent, class _Child, class... _Env>
   [[nodiscard]]
@@ -483,10 +440,10 @@ namespace STDEXEC
 
   template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>
   using __gather_completions_of_t =
-    __gather_completions_t<_WantedTag,
-                           __completion_signatures_of_t<_Sender, _Env>,
-                           _Tuple,
-                           _Variant>;
+    __gather_completion_signatures_t<_WantedTag,
+                                     __completion_signatures_of_t<_Sender, _Env>,
+                                     _Tuple,
+                                     _Variant>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender,
@@ -525,20 +482,7 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
-  using __count_of =
-    __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
-
-  template <class _Sender, class... _Env>
-  consteval auto __get_completion_info()
-  {
-    auto __cmplsigs = STDEXEC::get_completion_signatures<_Sender, _Env...>();
-    STDEXEC_IF_OK(__cmplsigs)
-    {
-      auto __cmplinfo = STDEXEC::__cmplsigs::__to_array(__cmplsigs);
-      std::ranges::for_each(__cmplinfo, &__completion_info::__populate<_Sender, _Env...>);
-      return __cmplinfo;
-    }
-  }
+  using __count_of = __msize_t<__completion_signatures_of_t<_Sender, _Env...>::__count(_Tag())>;
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

@@ -20,12 +20,17 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include "../detail/variant.cuh"
+
 #include "common.cuh"
 
 #include <cuda/std/tuple>
 
 #include <cstddef>
+#include <memory>
+#include <optional>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -46,7 +51,7 @@ namespace nv::execution::_strm
     template <class CvSender, class Receiver>
     struct receiver : stream_receiver_base
     {
-      using env_t     = _strm::opstate_base<Receiver>::env_t;
+      using env_t     = terminal_stream_env_t<env_of_t<Receiver>>;
       using storage_t = variant_storage_t<CvSender, env_t>;
 
       static constexpr std::size_t memory_allocation_size() noexcept
@@ -55,6 +60,8 @@ namespace nv::execution::_strm
       }
 
       _strm::opstate_base<Receiver>& opstate_;
+      // Set when the work before the transition runs on another scheduler.
+      stream_provider* src_provider_{nullptr};
 
       template <class Tag, class... Args>
       void complete(Tag, Args&&... args) noexcept
@@ -83,11 +90,20 @@ namespace nv::execution::_strm
             storage->template emplace<tuple_t>(Tag(), static_cast<Args&&>(args)...);
           }
 
+          auto complete_error = [storage, &opstate = opstate_](cudaError_t status) noexcept
+          {
+            if constexpr (!construct_on_device)
+            {
+              storage->~storage_t();
+            }
+            opstate.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+          };
+
           int dev_id{};
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id));
               status != cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            complete_error(std::move(status));
             return;
           }
 
@@ -98,7 +114,7 @@ namespace nv::execution::_strm
                                        dev_id));
               status != cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            complete_error(std::move(status));
             return;
           }
 
@@ -110,7 +126,7 @@ namespace nv::execution::_strm
                   cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                 status != cudaSuccess)
             {
-              opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+              complete_error(std::move(status));
               return;
             }
           }
@@ -123,7 +139,7 @@ namespace nv::execution::_strm
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status != cudaSuccess)
             {
-              opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+              complete_error(std::move(status));
               return;
             }
           }
@@ -165,8 +181,45 @@ namespace nv::execution::_strm
       [[nodiscard]]
       auto get_env() const noexcept -> env_t
       {
-        return opstate_.make_env();
+        return make_terminal_stream_env(STDEXEC::get_env(opstate_.rcvr_),
+                                        src_provider_ ? src_provider_
+                                                      : opstate_.get_stream_provider());
       }
+    };
+
+    template <class CvSourceSender, class Receiver>
+    struct opstate
+    {
+      using operation_state_concept = STDEXEC::operation_state_tag;
+      using receiver_t              = receiver<CvSourceSender, Receiver>;
+      using inner_opstate_t         = stream_opstate_t<CvSourceSender, receiver_t, Receiver>;
+
+      opstate(CvSourceSender&& sndr, Receiver rcvr, context dst_ctx, std::optional<context> src_ctx)
+        : src_provider_(src_ctx ? std::make_unique<stream_provider>(*src_ctx) : nullptr)
+        , inner_(_strm::stream_opstate(
+            static_cast<CvSourceSender&&>(sndr),
+            static_cast<Receiver&&>(rcvr),
+            [this](_strm::opstate_base<Receiver>& op) -> receiver_t
+            { return receiver_t{{}, op, src_provider_.get()}; },
+            dst_ctx))
+      {}
+
+      STDEXEC_IMMOVABLE(opstate);
+
+      void start() & noexcept
+      {
+        if (src_provider_ && src_provider_->status_ != cudaSuccess)
+        {
+          inner_.propagate_completion_signal(STDEXEC::set_error,
+                                             cudaError_t(src_provider_->status_));
+          return;
+        }
+        STDEXEC::start(inner_);
+      }
+
+     private:
+      std::unique_ptr<stream_provider> src_provider_;
+      inner_opstate_t                  inner_;
     };
 
     template <class Sender>
@@ -201,12 +254,6 @@ namespace nv::execution::_strm
      private:
       Sender sndr_;
     };
-
-    template <class... Ty>
-    using value_completions_t = completion_signatures<set_value_t(__decay_t<Ty>...)>;
-
-    template <class Ty>
-    using error_completions_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
   }  // namespace _trnsfr
 
   template <class Scheduler, class Sender>
@@ -214,42 +261,47 @@ namespace nv::execution::_strm
   {
     using source_sender_t = _trnsfr::source_sender<Sender>;
 
-    template <class Self, class Receiver>
-    using receiver_t = _trnsfr::receiver<__copy_cvref_t<Self, Sender>, Receiver>;
-
     explicit continues_on_sender(Scheduler sched, Sender sndr)
       : sched_(sched)
       , sndr_{static_cast<Sender&&>(sndr)}
     {}
 
-    template <__decays_to<continues_on_sender> Self, receiver Receiver>
-      requires sender_to<__copy_cvref_t<Self, source_sender_t>, Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
-      -> stream_opstate_t<__copy_cvref_t<Self, source_sender_t>,
-                          receiver_t<Self, Receiver>,
-                          Receiver>
-    {
-      auto receiver_factory =
-        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Self, Receiver>
-      {
-        return receiver_t<Self, Receiver>{{}, stream_provider};
-      };
+    template <class Self, class Receiver>
+    using opstate_t = _trnsfr::opstate<__copy_cvref_t<Self, source_sender_t>, Receiver>;
 
-      return _strm::stream_opstate(static_cast<Self&&>(self).sndr_,
-                                   static_cast<Receiver&&>(rcvr),
-                                   receiver_factory,
-                                   self.sched_.ctx_);
+    template <__decays_to<continues_on_sender> Self, receiver Receiver>
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
+      -> opstate_t<Self, Receiver>
+    {
+      // Work before the transition keeps running on its own scheduler's stream.
+      std::optional<context> src_ctx;
+      if constexpr (stream_sender<Sender, env_of_t<Receiver>>
+                    && stream_completing_sender<Sender, env_of_t<Receiver>>)
+      {
+        auto src_sched = get_completion_scheduler<set_value_t>(STDEXEC::get_env(self.sndr_),
+                                                               STDEXEC::get_env(rcvr));
+        if (src_sched != self.sched_)
+        {
+          src_ctx = src_sched.ctx_;
+        }
+      }
+
+      return opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,
+                                       static_cast<Receiver&&>(rcvr),
+                                       self.sched_.ctx_,
+                                       src_ctx};
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<continues_on_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      completion_signatures<set_error_t(cudaError_t)>,
-      _trnsfr::value_completions_t,
-      _trnsfr::error_completions_t>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        exec::decay_arguments<set_value_t, continues_on_t>(),
+        exec::decay_arguments<set_error_t, continues_on_t>(),
+        {},
+        completion_signatures<set_error_t(cudaError_t)>());
     }
 
     [[nodiscard]]
@@ -277,13 +329,5 @@ namespace nv::execution::_strm
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
-
-// Decode the sender name for diagnostics:
-namespace STDEXEC::__detail
-{
-  template <class Scheduler, class Sender>
-  extern __mtype<nvexec::_strm::continues_on_sender<Scheduler, __demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::continues_on_sender<Scheduler, Sender>>;
-}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -108,6 +108,7 @@ namespace
       complete_(::STDEXEC::set_value, std::forward<Args>(args)...);
     }
 
+    [[nodiscard]]
     constexpr decltype(auto) get_env() const noexcept
     {
       return ::STDEXEC::get_env(r_);
@@ -159,6 +160,7 @@ namespace
 
     const struct
     {
+      [[nodiscard]]
       auto query(get_stop_token_t const &) const noexcept
       {
         return source_.get_token();
@@ -853,7 +855,7 @@ namespace
                           {
                             auto local = std::move(h);
                             (void) local;
-                            std::lock_guard const l(m);
+                            std::scoped_lock const l(m);
                             barrier.arrive_and_wait();
                             std::this_thread::sleep_for(std::chrono::milliseconds(50));
                           });
@@ -1101,7 +1103,9 @@ namespace
     asio_impl::io_context      ctx;
     asio_impl::ip::tcp::socket socket(ctx);
     asio_impl::streambuf       buf;
-    //  With a SFINAE-unfriendly async_result<...>::initiate the below line doesn't compile because there's a hard compilation error trying to consider the async_read overload for dynamic buffers
+    // With a SFINAE-unfriendly async_result<...>::initiate the below line
+    // doesn't compile because there's a hard compilation error trying to
+    // consider the async_read overload for dynamic buffers
     //
     //  See: https://github.com/NVIDIA/stdexec/issues/1684
     auto sender = asio_impl::async_read(socket, buf, completion_token);

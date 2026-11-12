@@ -42,7 +42,7 @@ struct receiver_t
 template <class Domain>
 void check_if_pool_domain()
 {
-  using pool_domain = exec::_pool_::_static_thread_pool::domain;
+  using pool_domain = exec::_pool::_static_thread_pool::domain;
   static_assert(std::is_same_v<Domain, pool_domain>);
 }
 

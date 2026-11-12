@@ -17,9 +17,12 @@
 set(exec_test_sources
     ../test_main.cpp
     test_bwos_lifo_queue.cpp
+    test_atomic_intrusive_queue.cpp
     test_any_sender.cpp
     test_task.cpp
     test_timed_thread_scheduler.cpp
+    test_timed_scheduler_fallback.cpp
+    test_thread_pool_base.cpp
     test_variant_sender.cpp
     test_type_async_scope.cpp
     test_completion_signatures.cpp
@@ -41,8 +44,10 @@ set(exec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING}>:test_io_uring_context.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_WINDOWS_THREAD_POOL}>:test_windows_thread_pool_context.cpp>
     test_trampoline_scheduler.cpp
+    test_scheduler_concept.cpp
     test_sequence_senders.cpp
     test_static_thread_pool.cpp
+    test_xorshift.cpp
     test_just_from.cpp
     test_fork_join.cpp
     test_cpo_split.cpp
@@ -51,12 +56,15 @@ set(exec_test_sources
     test_split.cpp
     test_ensure_started.cpp
     test_start_detached.cpp
+    test_stoppable_base.cpp
     sequence/test_any_sequence_of.cpp
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp
     sequence/test_iterate.cpp
+    sequence/test_write_env_sequence.cpp
     sequence/test_transform_each.cpp
     sequence/test_merge.cpp
+    sequence/test_sequence_any_sender.cpp
     # These tests cause Microsoft's compiler to run out of memory
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each.cpp>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each_threaded.cpp>
@@ -70,25 +78,19 @@ set_source_files_properties(
   test_any_sender.cpp PROPERTIES COMPILE_FLAGS
                                  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
-if(STDEXEC_BUILD_MODULES)
-  # these are the only files that build right now...
-  add_executable(test.exec
-      ../test_main.cpp
-      async_scope/test_empty.cpp
-      async_scope/test_spawn.cpp)
-  set_target_properties(test.exec PROPERTIES CXX_MODULE_STD ON)
-else()
+if(NOT STDEXEC_BUILD_MODULES)
+  # None of the exec tests build successfully as modules yet.
   add_executable(test.exec ${exec_test_sources})
+
+  add_compile_diagnostics(test.exec)
+  target_link_libraries(
+    test.exec
+    PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
+    PRIVATE common_test_settings)
+
+  # Discover the Catch2 test built by the application
+  catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 endif()
-
-add_compile_diagnostics(test.exec)
-target_link_libraries(
-  test.exec
-  PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
-  PRIVATE common_test_settings)
-
-# Discover the Catch2 test built by the application
-catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 
 if(STDEXEC_ENABLE_ASIO)
   add_subdirectory(asio)
@@ -103,28 +105,10 @@ if(STDEXEC_ENABLE_TBB)
 endif()
 
 # Test which parses a source file for an expected error message
-icm_add_build_failure_test(
-  NAME
-  test_repeat_until_fail
-  TARGET
-  test_repeat_until_fail
-  SOURCES
-  PARSE
-  test_repeat_until_fail.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+stdexec_add_build_failure_test(
+  NAME test_repeat_until_fail SOURCE test_repeat_until_fail.cpp
+  LIBRARIES stdexec)
 
-icm_add_build_failure_test(
-  NAME
-  test_repeat_n_fail
-  TARGET
-  test_repeat_n_fail
-  SOURCES
-  PARSE
-  test_repeat_n_fail.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+stdexec_add_build_failure_test(
+  NAME test_repeat_n_fail SOURCE test_repeat_n_fail.cpp
+  LIBRARIES stdexec)
