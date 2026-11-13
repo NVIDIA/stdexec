@@ -366,6 +366,49 @@ namespace STDEXEC
   struct _THE_RECEIVER_DOES_NOT_ACCEPT_ALL_OF_THE_SENDERS_COMPLETION_SIGNALS_
   {};
 
+  //! @brief A receiver that can be reconstructed from its child operation state.
+  //!
+  //! `inlinable_receiver<R, ChildOp>` refines @c receiver and requires the
+  //! decayed receiver type to provide a class-level `make_receiver_for`
+  //! function. The function is called with a pointer to the child operation
+  //! state and must be non-throwing and return exactly the decayed receiver
+  //! type:
+  //!
+  //! @code{.cpp}
+  //! struct my_receiver {
+  //!   using receiver_concept = stdexec::receiver_tag;
+  //!
+  //!   template <class ChildOp>
+  //!   static my_receiver make_receiver_for(ChildOp*) noexcept;
+  //!
+  //!   // set_value, set_error, set_stopped, and get_env ...
+  //! };
+  //! @endcode
+  //!
+  //! An operation state that uses such a receiver can recreate it on demand
+  //! with `R::make_receiver_for(this)` instead of storing a receiver object.
+  //! This can reduce the size of nested operation states when the receiver's
+  //! state is recoverable from the operation-state address. `ChildOp` only
+  //! appears as a pointer parameter, so it may be incomplete when the concept
+  //! is checked in an operation-state definition.
+  //!
+  //! The concept checks the syntactic protocol only. For a receiver object
+  //! `rcvr` connected to an operation state `op`, the semantic requirement is
+  //! that `R::make_receiver_for(std::addressof(op))` recreate a receiver equal
+  //! to `rcvr`.
+  //!
+  //! See [exec.recv.concepts] in the C++26 working draft.
+  //!
+  //! @see stdexec::receiver
+  //! @see stdexec::operation_state
+  STDEXEC_MODULE_EXPORT
+  template <class _Receiver, class _ChildOp>
+  concept inlinable_receiver = receiver<_Receiver> && requires(_ChildOp *__child_op) {
+    {
+      std::remove_cvref_t<_Receiver>::make_receiver_for(__child_op)
+    } noexcept -> __std::same_as<std::remove_cvref_t<_Receiver>>;
+  };
+
   namespace __detail
   {
     template <class _Receiver, class _Tag, class... _Args>
