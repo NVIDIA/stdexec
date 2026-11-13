@@ -108,7 +108,7 @@ namespace experimental::execution
   {};
 
   STDEXEC_MODULE_EXPORT
-  struct sequence_sender_tag : STDEXEC::sender_tag
+  struct sequence_sender_tag : STDEXEC::__sequence_sender_tag
   {};
 
   using sequence_tag
@@ -214,9 +214,7 @@ namespace experimental::execution
   }  // namespace __sequence_sndr
 
   template <class _Sequence>
-  concept __enable_sequence_sender =
-    requires { typename _Sequence::sender_concept; }  //
-    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_tag>;
+  concept __enable_sequence_sender = STDEXEC::__sequence_sender_tagged<_Sequence>;
 
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
@@ -396,6 +394,26 @@ namespace experimental::execution
     concept __with_consteval_static_member =
       __minvocable_q<__consteval_static_member_result_t, _Sequence, _Env...>;
 
+    // A sequence sender whose items are the items of another sender, in some
+    // environment, names that sender and environment with a nested
+    // __item_types_from_t<_Sequence, _Env...> = __mlist<_Sender, _SenderEnv...>.
+    template <class _Sequence, class... _Env>
+    using __item_types_from_t =
+      STDEXEC::__decay_t<_Sequence>::template __item_types_from_t<_Sequence, _Env...>;
+
+    template <class _Sequence, class... _Env>
+    concept __with_item_types_from = enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>
+                                  && __minvocable_q<__item_types_from_t, _Sequence, _Env...>;
+
+    template <class _Sender, class... _Env>
+    consteval auto __get_item_types_helper();
+
+    template <class _Sender, class... _Env>
+    consteval auto __get_item_types_from(__mlist<_Sender, _Env...>*)
+    {
+      return __get_item_types_helper<_Sender, _Env...>();
+    }
+
     template <class _Sequence, class... _Env>
     [[nodiscard]]
     consteval auto __get_item_types_helper()
@@ -425,6 +443,11 @@ namespace experimental::execution
       else if constexpr (__with_consteval_static_member<_Sequence>)
       {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
+      }
+      else if constexpr (__with_item_types_from<_Sequence, _Env...>)
+      {
+        return __get_item_types_from(
+          static_cast<__item_types_from_t<_Sequence, _Env...>*>(nullptr));
       }
       else if constexpr (__transparent_sequence_adaptor<_Sequence>)
       {

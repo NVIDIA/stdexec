@@ -26,6 +26,7 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__concepts.hpp"
+#  include "__sender_concepts.hpp"
 #  include "__type_traits.hpp"
 #  include "__utility.hpp"
 
@@ -34,6 +35,17 @@ import stdexec;
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
+  // Base of exec::sequence_sender_tag, so that senders in stdexec can tell
+  // whether a sender is a sequence sender.
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct __sequence_sender_tag : sender_tag
+  {};
+
+  template <class _Sender>
+  concept __sequence_sender_tagged = requires {
+    typename __decay_t<_Sender>::sender_concept;
+  } && __std::derived_from<typename __decay_t<_Sender>::sender_concept, __sequence_sender_tag>;
+
   namespace __subscribe_
   {
     template <class _Sender, class _Receiver>
