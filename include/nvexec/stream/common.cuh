@@ -429,10 +429,11 @@ namespace nv::execution
     using decayed_tuple_t = ::cuda::std::tuple<__decay_t<Ts>...>;
 
     template <class Sender, class Env>
-    using variant_storage_t =
-      __for_each_completion_signature_t<__completion_signatures_of_t<Sender, Env>,
-                                        decayed_tuple_t,
-                                        __munique<__q<_nullable_variant_t>>::__f>;
+    using variant_storage_t = __for_each_completion_signature_t<
+      __completion_signatures_of_t<Sender, Env>,
+      decayed_tuple_t,
+      __munique<
+        __mbind_back_q<_nullable_variant_t, ::cuda::std::tuple<set_error_t, cudaError_t>>>::__f>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
 
