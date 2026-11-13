@@ -239,9 +239,10 @@ namespace nv::execution::_strm
 
       template <__decay_copyable Self, class... Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>
       {
-        return {};
+        return exec::concat_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          STDEXEC::completion_signatures<set_error_t(cudaError_t)>());
       }
 
       [[nodiscard]]

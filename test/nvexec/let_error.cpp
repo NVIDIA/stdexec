@@ -1,9 +1,12 @@
-#include <exec/env.hpp>
 #include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include <test_common/catch2.hpp>
 
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 namespace ex = STDEXEC;
 
@@ -11,6 +14,21 @@ using nvexec::is_on_gpu;
 
 namespace
 {
+  using _attrs_base_t =
+    ex::env<ex::prop<ex::get_completion_scheduler_t<ex::set_value_t>, nvexec::stream_scheduler>,
+            ex::prop<ex::get_completion_domain_t<ex::set_value_t>, nvexec::stream_domain>>;
+
+  struct _attrs : _attrs_base_t
+  {};
+
+  template <class SetTag = ex::set_value_t>
+  auto _proclaim_completes_on(nvexec::stream_scheduler sch)
+  {
+    return exec::write_attrs(_attrs{
+      ex::env{ex::prop{ex::get_completion_scheduler<SetTag>, sch},
+              ex::prop{ex::get_completion_domain<SetTag>, nvexec::stream_domain{}}}
+    });
+  }
 
   TEST_CASE("nvexec let_error returns a sender", "[cuda][stream][adaptors][let_error]")
   {
@@ -38,10 +56,10 @@ namespace
                      flags.set();
                    }
 
-                   return ex::just()
-                        | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
-                 });
-    STDEXEC::sync_wait(std::move(snd));
+                   return ex::just();
+                 })
+             | ::_proclaim_completes_on(stream_ctx.get_scheduler());
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -56,16 +74,16 @@ namespace
 
     auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::let_error(
-                 [flags](int err)
+                 [flags, sch = stream_ctx.get_scheduler()](int err)
                  {
                    if (is_on_gpu() && err == 42)
                    {
                      flags.set(0);
                    }
 
-                   return ex::just()
-                        | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
+                   return ex::just();
                  })
+             | ::_proclaim_completes_on(stream_ctx.get_scheduler())
              | a_sender(
                  [flags]
                  {
@@ -74,7 +92,7 @@ namespace
                      flags.set(1);
                    }
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -98,7 +116,7 @@ namespace
 
                    return ex::schedule(sch);
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }

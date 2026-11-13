@@ -1,8 +1,12 @@
 #include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include <test_common/catch2.hpp>
 
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 #include <cuda/std/span>
 
@@ -12,6 +16,21 @@ using nvexec::is_on_gpu;
 
 namespace
 {
+  using _attrs_base_t =
+    ex::env<ex::prop<ex::get_completion_scheduler_t<ex::set_value_t>, nvexec::stream_scheduler>,
+            ex::prop<ex::get_completion_domain_t<ex::set_value_t>, nvexec::stream_domain>>;
+
+  struct _attrs : _attrs_base_t
+  {};
+
+  template <class SetTag = ex::set_value_t>
+  auto _proclaim_completes_on(nvexec::stream_scheduler sch)
+  {
+    return exec::write_attrs(_attrs{
+      ex::env{ex::prop{ex::get_completion_scheduler<SetTag>, sch},
+              ex::prop{ex::get_completion_domain<SetTag>, nvexec::stream_domain{}}}
+    });
+  }
 
   TEST_CASE("nvexec bulk returns a sender", "[cuda][stream][adaptors][bulk]")
   {
@@ -227,6 +246,8 @@ namespace
                               [](std::size_t i, cuda::std::span<double> out)
                               { out[i] = (double) i; })
               | STDEXEC::let_value([](cuda::std::span<double> out) { return STDEXEC::just(out); })
+              // proclaim that value completions will happen on the specified scheduler:
+              | ::_proclaim_completes_on(ctx.get_scheduler())
               | STDEXEC::bulk(ex::par,
                               nelems,
                               [](std::size_t i, cuda::std::span<double> out)
