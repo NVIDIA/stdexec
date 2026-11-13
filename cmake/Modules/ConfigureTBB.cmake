@@ -29,6 +29,26 @@ else()
   set(STDEXEC_ENABLE_TBB OFF)
 endif()
 
+# Some distro-packaged TBB configs (e.g., Debian/Ubuntu's libtbb-dev) list
+# /usr/include in INTERFACE_INCLUDE_DIRECTORIES. That makes CMake pass
+# `-isystem /usr/include`, which precedes the libstdc++ header directories and
+# breaks the `#include_next <math.h>` in <cmath> (seen with clang's CUDA mode).
+# System directories are already on the implicit include path, so strip them.
+if(TBB_FOUND)
+  foreach(_tbb_target tbb tbbmalloc tbbmalloc_proxy tbbbind_2_5 tbbbind_2_0
+                      tbbbind)
+    if(TARGET TBB::${_tbb_target})
+      get_target_property(_tbb_incs TBB::${_tbb_target}
+                          INTERFACE_INCLUDE_DIRECTORIES)
+      if(_tbb_incs)
+        list(REMOVE_ITEM _tbb_incs /usr/include /usr/local/include)
+        set_property(TARGET TBB::${_tbb_target} PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+                                                         "${_tbb_incs}")
+      endif()
+    endif()
+  endforeach()
+endif()
+
 # TBB does not sanitize cleanly. Disable TBB support if any sanitizer is
 # enabled.
 string(FIND "${CMAKE_CXX_FLAGS}" "-fsanitize" _fsanitize_flag_index)
