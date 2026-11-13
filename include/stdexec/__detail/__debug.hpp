@@ -157,10 +157,11 @@ namespace STDEXEC
     {
       if constexpr (sender_in<_CvSender, _Env>)
       {
-        using __receiver_t  = __debug::__receiver_t<_CvSender, _Env, _Sigs>;
-        using __operation_t = connect_result_t<_CvSender, __receiver_t>;
+        using __receiver_t = __debug::__receiver_t<_CvSender, _Env, _Sigs>;
         //static_assert(receiver_of<__receiver_t, _Sigs>);
-        if constexpr (!__std::same_as<__operation_t, __debug::__opstate>)
+        // Skip senders that cannot be connected to the debug receiver, like the
+        // senders built around __sender_proxy that `on` uses for its attributes.
+        if constexpr (__callable<connect_t, _CvSender, __receiver_t>)
         {
           if (__mnever<_CvSender>)
           {

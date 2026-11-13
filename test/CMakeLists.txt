@@ -124,6 +124,9 @@ target_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted
                                                        # from stdlib headers,
                                                        # why?
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-subobject-linkage> # stdexec class templates
+                                                     # used with test types from
+                                                     # anonymous namespaces
     $<$<CXX_COMPILER_ID:Clang>:-Wno-unknown-warning-option
     -Wno-gnu-line-marker
     -Wno-unused-function
@@ -258,17 +261,20 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
 
   # With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect reports a sender that
-  # completes with a result it did not declare as a deprecation warning. The
-  # stdexec include directory is a SYSTEM one, so -Wsystem-headers is needed to
-  # see the warning.
+  # completes with a result it did not declare as a deprecation warning. When
+  # stdexec is not the main project, its include directory is a SYSTEM one, and
+  # -Wsystem-headers is needed to see the warning.
   if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     stdexec_add_build_failure_test(
       NAME test_connect_fail1 SOURCE stdexec/cpos/test_connect_fail1.cpp
       LIBRARIES stdexec)
     target_compile_definitions(test_connect_fail1
                                PRIVATE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
-    target_compile_options(test_connect_fail1 PRIVATE -Wsystem-headers
-                           -Werror=deprecated-declarations)
+    target_compile_options(test_connect_fail1
+                           PRIVATE -Werror=deprecated-declarations)
+    if(NOT STDEXEC_MAIN_PROJECT)
+      target_compile_options(test_connect_fail1 PRIVATE -Wsystem-headers)
+    endif()
   endif()
 
   if(STDEXEC_BUILD_RELACY_TESTS)
