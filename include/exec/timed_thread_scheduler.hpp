@@ -127,7 +127,8 @@ namespace experimental::execution
   class timed_thread_context
   {
    private:
-    static constexpr std::ptrdiff_t context_closed = std::numeric_limits<std::ptrdiff_t>::min() / 2;
+    static constexpr std::ptrdiff_t context_closed = (std::numeric_limits<std::ptrdiff_t>::min)()
+                                                   / 2;
    public:
     timed_thread_context() noexcept
       : run_thread_(&timed_thread_context::run, this)

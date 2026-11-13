@@ -367,7 +367,7 @@ namespace
     do  // NOLINT(bugprone-infinite-loop)
     {
       auto const tmp = throw_after;
-      throw_after    = std::numeric_limits<unsigned>::max();
+      throw_after    = (std::numeric_limits<unsigned>::max)();
       auto op = ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
@@ -474,7 +474,7 @@ namespace
     do  // NOLINT(bugprone-infinite-loop)
     {
       auto const tmp = throw_after;
-      throw_after    = std::numeric_limits<unsigned>::max();
+      throw_after    = (std::numeric_limits<unsigned>::max)();
       auto op = ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
