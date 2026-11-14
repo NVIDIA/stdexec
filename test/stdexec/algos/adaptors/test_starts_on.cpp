@@ -224,7 +224,7 @@ namespace
   struct starts_on_test_domain
   {
     template <exec::sender_for<ex::starts_on_t> Sender>
-    static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto const &...)
+    static auto transform_sender(STDEXEC::set_value_t, Sender &&, auto const &...)
     {
       return ex::just(std::string{"Hello, world!"});
     }
@@ -245,26 +245,26 @@ namespace
   {
     move_checker() noexcept = default;
 
-    move_checker(move_checker const & other) noexcept
+    move_checker(move_checker const &other) noexcept
     {
       REQUIRE(other.valid);
       valid = true;
     }
 
-    auto operator=(move_checker const & other) noexcept -> move_checker&
+    auto operator=(move_checker const &other) noexcept -> move_checker &
     {
       REQUIRE(other.valid);
       valid = true;
       return *this;
     }
 
-    move_checker(move_checker&& other) noexcept
+    move_checker(move_checker &&other) noexcept
     {
       other.valid = false;
       valid       = true;
     }
 
-    auto operator=(move_checker&& other) noexcept -> move_checker&
+    auto operator=(move_checker &&other) noexcept -> move_checker &
     {
       other.valid = false;
       valid       = true;
@@ -296,7 +296,7 @@ namespace
     {
       void start() & noexcept
       {
-        ex::set_value(static_cast<Receiver&&>(rcvr_));
+        ex::set_value(static_cast<Receiver &&>(rcvr_));
       }
 
       Receiver rcvr_;
@@ -311,7 +311,7 @@ namespace
       [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
-        return {{}, static_cast<Receiver&&>(rcvr)};
+        return {{}, static_cast<Receiver &&>(rcvr)};
       }
 
       [[nodiscard]]
@@ -340,7 +340,7 @@ namespace
     struct attrs
     {
       template <class Tag, class... Env>
-      static auto query(ex::__get_completion_behavior_t<Tag>, Env&&...) noexcept
+      static auto query(ex::__get_completion_behavior_t<Tag>, Env &&...) noexcept
       {
         return ex::__completion_behavior::__asynchronous_affine;
       }
@@ -349,7 +349,7 @@ namespace
     template <class Receiver>
     static auto connect(Receiver rcvr)
     {
-      return ex::connect(ex::just(), static_cast<Receiver&&>(rcvr));
+      return ex::connect(ex::just(), static_cast<Receiver &&>(rcvr));
     }
 
     [[nodiscard]]
@@ -381,6 +381,148 @@ namespace
     CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env<>{}) == sched);
 
     ex::sync_wait(std::move(snd));
+  }
+
+  struct starts_on_attrs_domain
+  {};
+
+  struct id_scheduler;
+
+  struct id_scheduler_attrs
+  {
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> id_scheduler;
+
+    [[nodiscard]]
+    auto
+    query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> starts_on_attrs_domain
+    {
+      return {};
+    }
+
+    int id_;
+  };
+
+  template <class Receiver>
+  struct id_scheduler_opstate : immovable
+  {
+    void start() & noexcept
+    {
+      ex::set_value(static_cast<Receiver &&>(rcvr_));
+    }
+
+    Receiver rcvr_;
+  };
+
+  struct id_scheduler_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Receiver>
+    [[nodiscard]]
+    auto connect(Receiver rcvr) const -> id_scheduler_opstate<Receiver>
+    {
+      return {{}, static_cast<Receiver &&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> id_scheduler_attrs
+    {
+      return {id_};
+    }
+
+    int id_;
+  };
+
+  //! A scheduler with a runtime identity. Its schedule sender's attributes
+  //! mirror the scheduler's completion queries.
+  struct id_scheduler
+  {
+    using scheduler_concept = ex::scheduler_tag;
+
+    int id_;
+
+    auto operator==(id_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> id_scheduler
+    {
+      return *this;
+    }
+
+    [[nodiscard]]
+    auto
+    query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> starts_on_attrs_domain
+    {
+      return {};
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> id_scheduler_sender
+    {
+      return {id_};
+    }
+  };
+
+  inline auto
+  id_scheduler_attrs::query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+    -> id_scheduler
+  {
+    return id_scheduler{id_};
+  }
+
+  template <class Sender, class Tag>
+  concept has_completion_scheduler = requires(Sender const &snd) {
+    ex::get_completion_scheduler<Tag>(ex::get_env(snd));
+  };
+
+  template <class Sender, class Tag>
+  concept has_completion_scheduler_with_env = requires(Sender const &snd) {
+    ex::get_completion_scheduler<Tag>(ex::get_env(snd), ex::env<>{});
+  };
+
+  template <class Sender, class Tag>
+  concept has_completion_domain = requires(Sender const &snd) {
+    ex::get_env(snd).query(ex::get_completion_domain<Tag>);
+  };
+
+  TEST_CASE("starts_on's child sees the scheduler as its start scheduler", "[adaptors][starts_on]")
+  {
+    id_scheduler sched{42};
+    auto [seen] =
+      ex::sync_wait(ex::starts_on(sched, ex::read_env(ex::get_start_scheduler))).value();
+    static_assert(std::same_as<decltype(seen), id_scheduler>);
+    CHECK(seen.id_ == 42);
+  }
+
+  TEST_CASE("starts_on completion attributes can be queried without an environment",
+            "[adaptors][starts_on]")
+  {
+    // These senders complete wherever they are started, so their completion
+    // scheduler and domain come from the start scheduler that starts_on provides.
+    // That must work whether or not an environment is passed to the query.
+    id_scheduler sched{42};
+
+    auto value   = ex::starts_on(sched, ex::just(1));
+    auto error   = ex::starts_on(sched, ex::just_error(1));
+    auto stopped = ex::starts_on(sched, ex::just_stopped());
+
+    static_assert(has_completion_scheduler<decltype(value), ex::set_value_t>);
+    static_assert(has_completion_scheduler<decltype(error), ex::set_error_t>);
+    static_assert(has_completion_scheduler<decltype(stopped), ex::set_stopped_t>);
+    static_assert(has_completion_scheduler_with_env<decltype(error), ex::set_error_t>);
+    static_assert(has_completion_domain<decltype(value), ex::set_value_t>);
+    static_assert(has_completion_domain<decltype(error), ex::set_error_t>);
+    static_assert(has_completion_domain<decltype(stopped), ex::set_stopped_t>);
+
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(value)).id_ == 42);
+    CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(error)).id_ == 42);
+    CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(stopped)).id_ == 42);
+    CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(error), ex::env<>{}).id_ == 42);
+
+    auto domain = ex::get_env(error).query(ex::get_completion_domain<ex::set_error_t>);
+    static_assert(std::same_as<decltype(domain), starts_on_attrs_domain>);
   }
 }  // namespace
 
