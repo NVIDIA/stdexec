@@ -667,7 +667,7 @@ namespace experimental::execution
     }
     else
     {
-      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), __env...);
+      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...);
     }
     return __completions_t{};
   }
