@@ -72,11 +72,11 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag> __query,
                            _Env&&... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
+        -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env...>>
       {
         // If child doesn't complete inline, delegate to child's completion
         // scheduler
-        return __query(__attr_, __mk_env2(__sched_, __env)...);
+        return __query(__attr_, __mk_env2(__sched_, __env...));
       }
 
       // Query for completion domain - calculate type from child's env with
@@ -84,7 +84,7 @@ namespace STDEXEC
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
+        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env...>>
       {
         return {};
       }
