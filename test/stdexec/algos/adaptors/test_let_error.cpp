@@ -15,6 +15,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 #include <stdexec/execution.hpp>
 
 #include <exec/env.hpp>
@@ -403,11 +404,64 @@ namespace
 
   TEST_CASE("let_error can be customized", "[adaptors][let_error]")
   {
-    basic_inline_scheduler<let_error_test_domain> sched{};
+    auto attrs = ex::prop{ex::get_completion_domain<ex::set_error_t>, let_error_test_domain{}};
 
-    // The customization will return a different value
-    auto snd = ex::just(std::string{"hello"})
-             | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-    wait_for_value(ex::starts_on(sched, std::move(snd)), std::string{"what error?"});
+    // The customization will return a different stopped
+    auto snd = ex::schedule(ex::get_parallel_scheduler())  //
+             | exec::write_attrs(attrs)                    //
+             | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"stopped"}); });
+    wait_for_value(std::move(snd), std::string{"what error?"});
+  }
+
+  struct let_error_value_domain
+  {};
+
+  TEST_CASE("let_error has a value completion domain", "[adaptors][let_error]")
+  {
+    // The value completions of a let_error sender are the predecessor's value completions,
+    // passed through, plus the value completions of the secondary senders. They all
+    // complete on sch, so that is the domain of the let_error sender's value channel.
+    basic_inline_scheduler<let_error_value_domain> sch{};
+    auto                                           pred = ex::continues_on(ex::just(1), sch);
+    auto snd    = ex::let_error(pred, [sch](auto) { return ex::continues_on(ex::just(1), sch); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_error_value_domain>);
+  }
+
+  TEST_CASE("let_error value completion domain includes the secondary senders'",
+            "[adaptors][let_error]")
+  {
+    // Here the predecessor can complete with the let_error tag, so the secondary senders
+    // can be invoked and also contribute value completions.
+    basic_inline_scheduler<let_error_value_domain> sch{};
+    auto                                           pred = ex::continues_on(ex::just_error(1), sch);
+    auto snd    = ex::let_error(pred, [sch](auto) { return ex::continues_on(ex::just(1), sch); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_error_value_domain>);
+  }
+
+  TEST_CASE("let_error reports the predecessor's value scheduler when the secondary senders "
+            "complete inline and the predecessor never completes with the let_error tag",
+            "[adaptors][let_error]")
+  {
+    runtime_id_scheduler sch{42};
+    auto                 snd = ex::let_error(ex::continues_on(ex::just(1), sch),
+                             [](auto) noexcept { return ex::just(2); });
+    auto csch = ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env<>{});
+    CHECK(csch.id_ == 42);
+  }
+
+  TEST_CASE("let_error secondary senders are started in the environment of the predecessor's "
+            "let_error completion",
+            "[adaptors][let_error]")
+  {
+    // The predecessor has no value completions. just(2) is started from the predecessor's
+    // let_error completion, which happens on sch, so its (and the let_error sender's) value
+    // domain is sch's domain.
+    basic_inline_scheduler<let_error_value_domain> sch{};
+    auto snd    = ex::let_error(ex::continues_on(ex::just_error(1), sch),
+                             [](auto) noexcept { return ex::just(2); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_error_value_domain>);
   }
 }  // namespace

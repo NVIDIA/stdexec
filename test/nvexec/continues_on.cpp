@@ -312,10 +312,13 @@ namespace
   template <class FirstSched, class SecondSched>
   void record_streams_across(FirstSched first, SecondSched second, cudaStream_t* streams)
   {
-    auto sndr = STDEXEC::schedule(first) | STDEXEC::let_value([] { return nvexec::get_stream(); })
+    auto sndr = STDEXEC::starts_on(first, nvexec::get_stream())
               | STDEXEC::then([streams](cudaStream_t stream) { streams[0] = stream; })
               | STDEXEC::continues_on(second)
               | STDEXEC::let_value([] { return nvexec::get_stream(); })
+              // proclaim that value completions will happen on the specified scheduler:
+              | exec::write_attrs(
+                  STDEXEC::prop{STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>, second})
               | STDEXEC::then([streams](cudaStream_t stream) { streams[1] = stream; });
 
     STDEXEC::sync_wait(std::move(sndr));

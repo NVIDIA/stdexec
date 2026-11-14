@@ -95,7 +95,7 @@ inline constexpr auto __reschedule_on_current = ex::get_scheduler() | ex::let_va
 // naming it fails the modular and nvc++ configurations.
 static_assert(ex::__completes_inline<ex::set_value_t,
                                      ex::env_of_t<decltype(__reschedule_on_current)>,
-                                     ex::env<>>);
+                                     ex::prop<ex::get_scheduler_t, ex::inline_scheduler>>);
 static_assert(!ex::__completes_inline<ex::set_stopped_t,
                                       ex::env_of_t<decltype(__reschedule_on_current)>,
-                                      ex::env<>>);
+                                      ex::prop<ex::get_scheduler_t, ex::inline_scheduler>>);

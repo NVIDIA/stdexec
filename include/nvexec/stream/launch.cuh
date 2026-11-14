@@ -116,7 +116,7 @@ namespace nv::execution
         {
           if constexpr (__callable<Fun, cudaStream_t, Args&...>)
           {
-            return completion_signatures<set_value_t(Args...)>();
+            return completion_signatures<set_value_t(Args...), set_error_t(cudaError_t)>();
           }
           else
           {

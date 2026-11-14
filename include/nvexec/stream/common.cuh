@@ -429,10 +429,14 @@ namespace nv::execution
     using decayed_tuple_t = ::cuda::std::tuple<__decay_t<Ts>...>;
 
     template <class Sender, class Env>
-    using variant_storage_t =
-      __for_each_completion_signature_t<__completion_signatures_of_t<Sender, Env>,
-                                        decayed_tuple_t,
-                                        __munique<__q<_nullable_variant_t>>::__f>;
+    using variant_storage_t = __for_each_completion_signature_t<
+      // The variant must always be able to hold a `cudaError_t` error, since that is how
+      // stream receivers report `std::exception_ptr` errors. Adding it to the completion
+      // signatures *before* uniquing avoids duplicate alternatives.
+      __concat_completion_signatures_t<__completion_signatures_of_t<Sender, Env>,
+                                       completion_signatures<set_error_t(cudaError_t)>>,
+      decayed_tuple_t,
+      __munique<__q<_nullable_variant_t>>::__f>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
 
@@ -661,6 +665,23 @@ namespace nv::execution
     template <class OuterReceiver>
     struct opstate_base : stream_opstate_base
     {
+      // Stream operation states complete their receiver from a kernel. Connecting one directly
+      // to the host sync_wait receiver is a mistake: it means the default sync_wait was selected
+      // instead of the stream scheduler's. That happens when the sender passed to sync_wait does
+      // not report a stream completion scheduler.
+      static_assert(stream_receiver<OuterReceiver>
+                      || !__is_instance_of<OuterReceiver, __sync_wait::__receiver>,
+                    "A stream sender was passed to sync_wait, but the sender does not report that "
+                    "it completes "
+                    "on a stream scheduler, so the default sync_wait was selected. This happens, "
+                    "for example, "
+                    "after let_value, let_error and let_stopped, whose completion scheduler "
+                    "depends on the "
+                    "sender their function returns. Pipe the sender through a write_attrs adaptor "
+                    "that "
+                    "proclaims its completion scheduler and domain before passing it to "
+                    "sync_wait.");
+
       using operation_state_concept = STDEXEC::operation_state_tag;
       using outer_env_t             = env_of_t<OuterReceiver>;
       using env_t                   = make_stream_env_t<outer_env_t>;
