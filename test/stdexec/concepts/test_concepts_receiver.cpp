@@ -311,91 +311,94 @@ TEST_CASE("receiver types satisfy the receiver concept", "[concepts][receiver]")
 {
   using namespace empty_recv;
 
-  REQUIRE(ex::receiver<recv0>);
-  REQUIRE(ex::receiver<recv_int>);
-  REQUIRE(ex::receiver<recv0_ec>);
-  REQUIRE(ex::receiver<recv_int_ec>);
-  REQUIRE(ex::receiver<expect_void_receiver<>>);
-  REQUIRE(ex::receiver<expect_void_receiver_ex>);
-  REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, int>>);
-  REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, double>>);
-  REQUIRE(ex::receiver<expect_stopped_receiver<>>);
-  REQUIRE(ex::receiver<expect_stopped_receiver_ex<>>);
-  REQUIRE(ex::receiver<expect_error_receiver<>>);
-  REQUIRE(ex::receiver<expect_error_receiver_ex<std::error_code>>);
-  REQUIRE(ex::receiver<logging_receiver>);
+  STATIC_REQUIRE(ex::receiver<recv0>);
+  STATIC_REQUIRE(ex::receiver<recv_int>);
+  STATIC_REQUIRE(ex::receiver<recv0_ec>);
+  STATIC_REQUIRE(ex::receiver<recv_int_ec>);
+  STATIC_REQUIRE(ex::receiver<expect_void_receiver<>>);
+  STATIC_REQUIRE(ex::receiver<expect_void_receiver_ex>);
+  STATIC_REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, int>>);
+  STATIC_REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, double>>);
+  STATIC_REQUIRE(ex::receiver<expect_stopped_receiver<>>);
+  STATIC_REQUIRE(ex::receiver<expect_stopped_receiver_ex<>>);
+  STATIC_REQUIRE(ex::receiver<expect_error_receiver<>>);
+  STATIC_REQUIRE(ex::receiver<expect_error_receiver_ex<std::error_code>>);
+  STATIC_REQUIRE(ex::receiver<logging_receiver>);
 }
 
 TEST_CASE("receiver types satisfy the receiver_of concept", "[concepts][receiver]")
 {
   using namespace empty_recv;
 
-  REQUIRE(ex::receiver_of<recv_int, ex::completion_signatures<ex::set_value_t(int)>>);
-  REQUIRE(ex::receiver_of<recv0_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
-  REQUIRE(
+  STATIC_REQUIRE(ex::receiver_of<recv_int, ex::completion_signatures<ex::set_value_t(int)>>);
+  STATIC_REQUIRE(
+    ex::receiver_of<recv0_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
+  STATIC_REQUIRE(
     ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
-  REQUIRE(ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_value_t(int)>>);
-  REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, int>,
-                          ex::completion_signatures<ex::set_value_t(int)>>);
-  REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, double>,
-                          ex::completion_signatures<ex::set_value_t(double)>>);
-  REQUIRE(
+  STATIC_REQUIRE(ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_value_t(int)>>);
+  STATIC_REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, int>,
+                                 ex::completion_signatures<ex::set_value_t(int)>>);
+  STATIC_REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, double>,
+                                 ex::completion_signatures<ex::set_value_t(double)>>);
+  STATIC_REQUIRE(
     ex::receiver_of<expect_stopped_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<expect_stopped_receiver_ex<>,
-                          ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(
+  STATIC_REQUIRE(ex::receiver_of<expect_stopped_receiver_ex<>,
+                                 ex::completion_signatures<ex::set_value_t(char)>>);
+  STATIC_REQUIRE(
     ex::receiver_of<expect_error_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<expect_error_receiver_ex<std::error_code>,
-                          ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<logging_receiver, ex::completion_signatures<ex::set_value_t(char)>>);
+  STATIC_REQUIRE(ex::receiver_of<expect_error_receiver_ex<std::error_code>,
+                                 ex::completion_signatures<ex::set_value_t(char)>>);
+  STATIC_REQUIRE(
+    ex::receiver_of<logging_receiver, ex::completion_signatures<ex::set_value_t(char)>>);
 }
 
 TEST_CASE("receiver type w/o set_value models receiver but not receiver_of", "[concepts][receiver]")
 {
-  REQUIRE(ex::receiver<recv_no_set_value>);
-  REQUIRE(!ex::receiver_of<recv_no_set_value, ex::completion_signatures<ex::set_value_t()>>);
+  STATIC_REQUIRE(ex::receiver<recv_no_set_value>);
+  STATIC_REQUIRE(!ex::receiver_of<recv_no_set_value, ex::completion_signatures<ex::set_value_t()>>);
 }
 
 TEST_CASE("type with set_value noexcept is a receiver", "[concepts][receiver]")
 {
-  REQUIRE(ex::receiver<recv_set_value_noexcept>);
-  REQUIRE(ex::receiver_of<recv_set_value_noexcept, ex::completion_signatures<ex::set_value_t()>>);
+  STATIC_REQUIRE(ex::receiver<recv_set_value_noexcept>);
+  STATIC_REQUIRE(
+    ex::receiver_of<recv_set_value_noexcept, ex::completion_signatures<ex::set_value_t()>>);
 }
 
 TEST_CASE("non-movable type is not a receiver", "[concepts][receiver]")
 {
-  REQUIRE(!ex::receiver<recv_non_movable>);
-  REQUIRE(!ex::receiver_of<recv_non_movable, ex::completion_signatures<ex::set_value_t()>>);
+  STATIC_REQUIRE(!ex::receiver<recv_non_movable>);
+  STATIC_REQUIRE(!ex::receiver_of<recv_non_movable, ex::completion_signatures<ex::set_value_t()>>);
 }
 
 TEST_CASE("inlinable_receiver", "[concepts][receiver]")
 {
-  static_assert(!ex::inlinable_receiver<inlinable_receiver, int>);
-  static_assert(!ex::inlinable_receiver<inlinable_receiver, non_inlinable_state>);
-  static_assert(ex::inlinable_receiver<inlinable_receiver, inlinable_state>);
+  STATIC_REQUIRE(!ex::inlinable_receiver<inlinable_receiver, int>);
+  STATIC_REQUIRE(!ex::inlinable_receiver<inlinable_receiver, non_inlinable_state>);
+  STATIC_REQUIRE(ex::inlinable_receiver<inlinable_receiver, inlinable_state>);
 
   auto sender             = ex::just(42) | test_adaptor{};
   using normal_state      = ex::connect_result_t<decltype(sender), normal_receiver>;
   using inlinable_state_t = ex::connect_result_t<decltype(sender), inlinable_receiver>;
-  static_assert(ex::operation_state<normal_state>);
-  static_assert(ex::operation_state<inlinable_state_t>);
+  STATIC_REQUIRE(ex::operation_state<normal_state>);
+  STATIC_REQUIRE(ex::operation_state<inlinable_state_t>);
 
   auto nested_sender           = sender | test_adaptor{};
   using nested_normal_state    = ex::connect_result_t<decltype(nested_sender), normal_receiver>;
   using nested_inlinable_state = ex::connect_result_t<decltype(nested_sender), inlinable_receiver>;
-  static_assert(sizeof(normal_state) == sizeof(nested_normal_state));
-  static_assert(sizeof(inlinable_state_t) == sizeof(nested_inlinable_state));
+  STATIC_REQUIRE(sizeof(normal_state) == sizeof(nested_normal_state));
+  STATIC_REQUIRE(sizeof(inlinable_state_t) == sizeof(nested_inlinable_state));
 
   auto [result] = ex::sync_wait(nested_sender).value();
   REQUIRE(result == 42);
 
-  auto nested_4_sender = ex::just(67) | test_adaptor{} | test_adaptor{} | test_adaptor{}
-                       | test_adaptor{};
+  auto nested_4_sender        = ex::just(67) | test_adaptor{} | test_adaptor{} | test_adaptor{}
+                              | test_adaptor{};
   using nested_4_normal_state = ex::connect_result_t<decltype(nested_4_sender), normal_receiver>;
   using nested_4_inlinable_state =
     ex::connect_result_t<decltype(nested_4_sender), inlinable_receiver>;
-  static_assert(sizeof(normal_state) == sizeof(nested_4_normal_state));
-  static_assert(sizeof(inlinable_state_t) == sizeof(nested_4_inlinable_state));
+  STATIC_REQUIRE(sizeof(normal_state) == sizeof(nested_4_normal_state));
+  STATIC_REQUIRE(sizeof(inlinable_state_t) == sizeof(nested_4_inlinable_state));
 
   auto [result1] = ex::sync_wait(nested_4_sender).value();
   REQUIRE(result1 == 67);
