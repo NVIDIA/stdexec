@@ -189,9 +189,14 @@ struct test_basic_state
       child_op_t(ex::connect(std::move(__sender), receiver_t{this}));
   }
 
+  ~test_basic_state()
+  {
+    std::destroy_at(std::launder(reinterpret_cast<child_op_t *>(storage)));
+  }
+
   void start() & noexcept
   {
-    ex::start(*::std::launder(reinterpret_cast<child_op_t *>(storage)));
+    ex::start(*std::launder(reinterpret_cast<child_op_t *>(storage)));
   }
 
   _Receiver &get_receiver() noexcept
@@ -254,7 +259,7 @@ struct test_basic_sender
 struct test_adaptor : ex::sender_adaptor_closure<test_adaptor>
 {
   template <class _Sender>
-  auto operator()(_Sender __sender)
+  auto operator()(_Sender __sender) const noexcept
   {
     return test_basic_sender<test_adaptor, _Sender>{*this, std::move(__sender)};
   }
