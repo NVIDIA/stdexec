@@ -16,9 +16,31 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__config.hpp"
 
-#include <chrono>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import std;
+import stdexec;
+#else
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+
+#  include "../stdexec/__detail/__basic_sender.hpp"
+#  include "../stdexec/__detail/__concepts.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__get_completion_signatures.hpp"
+#  include "../stdexec/__detail/__just.hpp"
+#  include "../stdexec/__detail/__let.hpp"
+#  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__queries.hpp"
+#  include "../stdexec/__detail/__schedulers.hpp"
+#  include "../stdexec/__detail/__sender_concepts.hpp"
+#  include "../stdexec/__detail/__sender_introspection.hpp"
+#  include "../stdexec/__detail/__type_traits.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <chrono>
+#  endif
+#endif
 
 namespace experimental::execution::__timed_scheduler_fallback
 {

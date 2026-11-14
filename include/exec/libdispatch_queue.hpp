@@ -16,30 +16,53 @@
 
 #pragma once
 
-#if __has_include(<dispatch/dispatch.h>)
+#include "../stdexec/__detail/__config.hpp"
 
-#  include <stdexec/execution.hpp>
-
-#  if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import std;
 import stdexec;
-#  else
+#else
+#  include "../stdexec/__detail/__bulk.hpp"
+#  include "../stdexec/__detail/__domain.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+#  include "../stdexec/__detail/__execution_legacy.hpp"  // IWYU pragma: keep
+#  include "../stdexec/__detail/__operation_states.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__schedulers.hpp"
+#  include "../stdexec/__detail/__stop_token.hpp"
+#  include "../stdexec/__detail/__transform_sender.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#    include <atomic>
+#    include <concepts>
+#    include <cstddef>
+#    include <cstdint>
+#    include <exception>
+#    include <tuple>
+#    include <type_traits>
+#    include <utility>
+#    include <variant>
+#    include <vector>
+#  endif
+#endif
+
+#include "completion_signatures.hpp"
+#include "sender_for.hpp"
+
+#if !defined(STDEXEC_IN_MODULE_PURVIEW)
 // TODO: This is needed for libdispatch to compile with GCC. Need to look for
 // workaround.
-#    ifndef __has_feature
-#      define __has_feature(x) false
-#    endif
-#    ifndef __has_extension
-#      define __has_extension(x) false
-#    endif
+#  ifndef __has_feature
+#    define __has_feature(x) false
+#  endif
+#  ifndef __has_extension
+#    define __has_extension(x) false
+#  endif
 
-#    include "completion_signatures.hpp"
-#    include "sender_for.hpp"
-
-#    if !STDEXEC_USE_MODULES()
-#      include <dispatch/dispatch.h>
-#      include <utility>
-#      include <vector>
-#    endif
+#  include <dispatch/dispatch.h>
+#endif
 
 namespace experimental::execution
 {
@@ -597,6 +620,3 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-
-#  endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
-#endif    // __has_include(<dispatch/dispatch.h>)
