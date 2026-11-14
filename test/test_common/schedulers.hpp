@@ -132,6 +132,13 @@ namespace
 
     auto operator==(impulse_scheduler const &) const noexcept -> bool = default;
 
+    template <ex::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept
+    {
+      return *this;
+    }
+
    private:
     //! Command type that can store the action of firing up a sender
     using oper_command_t = std::function<void()>;
@@ -221,13 +228,19 @@ namespace
   {
     using scheduler_concept = ex::scheduler_tag;
 
+    auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
+
     [[nodiscard]]
     auto schedule() const noexcept
     {
       return sender{};
     }
 
-    auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+    {
+      return *this;
+    }
 
     [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
@@ -248,6 +261,23 @@ namespace
       Receiver rcvr_;
     };
 
+    // The schedule sender's attributes mirror the scheduler's completion queries.
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+      {
+        return basic_inline_scheduler();
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
+        requires(!std::same_as<Domain, void>)
+      {
+        return {};
+      }
+    };
+
     struct sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -263,7 +293,7 @@ namespace
       [[nodiscard]]
       auto get_env() const noexcept
       {
-        return sched_attrs(basic_inline_scheduler(), ex::set_value);
+        return attrs{};
       }
     };
   };

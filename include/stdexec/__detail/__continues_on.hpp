@@ -164,6 +164,46 @@ namespace STDEXEC
         return false;
       }
 
+      //! @brief Returns `true` when a @c _SetTag completion of the predecessor
+      //! (or a failure to decay-copy its values) can be forwarded through the scheduler.
+      template <class _SetTag, class... _Env>
+      static consteval bool __forwards_completion() noexcept
+      {
+        return __sends<_SetTag, _Sender, __fwd_env_t<_Env>...>
+            || __has_decay_copy_errors<_SetTag, _Env...>();
+      }
+
+      template <class _SetTag, class... _Env>
+      static consteval auto __forwarded_domain() noexcept
+      {
+        using _SchSndr       = schedule_result_t<_Scheduler>;
+        constexpr bool __own = __sends<_SetTag, _SchSndr, __env2_t<_Env>...>;
+        if constexpr (__forwards_completion<_SetTag, _Env...>())
+        {
+          using _Fwd = __completion_domain_of_t<set_value_t, _SchSndr, __env2_t<_Env>...>;
+          if constexpr (__own)
+          {
+            return __common_domain_t<
+              _Fwd,
+              __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>>();
+          }
+          else
+          {
+            return _Fwd();
+          }
+        }
+        else
+        {
+          return __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>();
+        }
+      }
+
+      template <class _SetTag, class... _Env>
+      static consteval bool __sch_sends() noexcept
+      {
+        return __sends<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>;
+      }
+
       _Scheduler      __sch_;
       _Sender const & __sndr_;
 
@@ -181,38 +221,34 @@ namespace STDEXEC
       //! @note If @c _SetTag is @c set_value_t, then we are in the happy path:
       //! everything succeeded and execution continues on @c _Scheduler.
       //!
-      //! Otherwise, if @c _Sender never completes with @c _SetTag, and either
-      //! @c _SetTag is @c set_stopped_t or decay-copying @c _Sender's value
-      //! results cannot throw, then a @c _SetTag completion can only come from
-      //! the scheduler's sender. In this case, return the scheduler's
-      //! completion scheduler if it has one.
-      //!
-      //! Otherwise, if the scheduler's sender never completes with @c _SetTag,
-      //! then a @c _SetTag completion can only come from the original sender,
-      //! so return the original sender's completion scheduler.
+      //! Otherwise, completions of the predecessor sender are saved and replayed
+      //! from the @c set_value completion of the scheduler's sender, so they
+      //! complete on the scheduler's @c set_value completion scheduler. If the
+      //! scheduler's sender can also complete with @c _SetTag itself, there is no
+      //! way to know at compile time which scheduler a given completion will use
+      //! (they are runtime values), so the query is not provided.
       template <class _SetTag, class... _Env>
         requires(__same_as<_SetTag, set_value_t>
-                 || __never_sends<_SetTag, _Sender, __fwd_env_t<_Env>...>)
-             && (!__has_decay_copy_errors<_SetTag, _Env...>())
+                 || (__forwards_completion<_SetTag, _Env...>() && !__sch_sends<_SetTag, _Env...>()))
+      [[nodiscard]]
+      constexpr auto
+      query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
+        -> __call_result_t<get_completion_scheduler_t<set_value_t>, _Scheduler, __sch_env_t<_Env>...>
+      {
+        return get_completion_scheduler<set_value_t>(__sch_, __mk_sch_env(__env)...);
+      }
+
+      //! @overload
+      //! Only the scheduler's sender can complete with @c _SetTag.
+      template <class _SetTag, class... _Env>
+        requires(!__same_as<_SetTag, set_value_t> && !__forwards_completion<_SetTag, _Env...>()
+                 && __sch_sends<_SetTag, _Env...>())
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
         -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __sch_env_t<_Env>...>
       {
         return get_completion_scheduler<_SetTag>(__sch_, __mk_sch_env(__env)...);
-      }
-
-      //! @overload
-      template <class _SetTag, class... _Env>
-        requires __never_sends<_SetTag, schedule_result_t<_Scheduler>, __sch_env_t<_Env>...>
-      [[nodiscard]]
-      constexpr auto
-      query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>,
-                           env_of_t<_Sender>,
-                           __fwd_env_t<_Env>...>
-      {
-        return get_completion_scheduler<_SetTag>(get_env(__sndr_), __fwd_env(__env)...);
       }
 
       //! @brief Queries the completion domain for a given @c _SetTag.
@@ -233,39 +269,25 @@ namespace STDEXEC
       //! from the sender's value completions.
       template <__same_as<set_value_t> _SetTag, class... _Env>
       [[nodiscard]]
-      constexpr auto
-      query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
-        __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>,
-        indeterminate_domain<>>
+      constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>>
       {
         return {};
       }
 
       //! @overload
+      //! @note Completions of the predecessor sender are saved and replayed from
+      //! the @c set_value completion of the scheduler's sender, so they complete
+      //! in the scheduler's @c set_value completion domain. The scheduler's sender
+      //! may additionally complete with @c _SetTag itself, in which case that
+      //! domain contributes too.
       template <__one_of<set_error_t, set_stopped_t> _SetTag, class... _Env>
-        requires(!__has_decay_copy_errors<_SetTag, _Env...>())
+        requires(__forwards_completion<_SetTag, _Env...>()
+                 || __sends<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>)
       [[nodiscard]]
-      constexpr auto
-      query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
-        __common_domain_t<
-          __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>>,
-        indeterminate_domain<>>
-      {
-        return {};
-      }
-
-      //! @overload
-      template <class _SetTag, class... _Env>
-        requires(__has_decay_copy_errors<_SetTag, _Env...>())
-      [[nodiscard]]
-      constexpr auto
-      query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
-        __common_domain_t<
-          __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>,
-          __completion_domain_of_t<set_value_t, _Sender, __fwd_env_t<_Env>...>>,
-        indeterminate_domain<>>
+      constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<decltype(__forwarded_domain<_SetTag, _Env...>())>
       {
         return {};
       }
