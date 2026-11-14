@@ -89,35 +89,6 @@ namespace STDEXEC
     {};
   }  // namespace __adaptors
 
-// BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
-// don't shadow type aliases of the same name in base classes. :-O
-// On mingw gcc, 'bool(type::existing_member_function)' evaluates to true,
-// but 'int(type::existing_member_function)' is an error (as desired).
-#  define STDEXEC_DISPATCH_MEMBER(_TAG)                                                            \
-  template <class _Self, class... _Ts>                                                             \
-  STDEXEC_ATTRIBUTE(host, device, always_inline)                                                   \
-  static auto __call_##_TAG(_Self&& __self, _Ts&&... __ts) noexcept                                \
-    -> decltype((static_cast<_Self&&>(__self))._TAG(static_cast<_Ts&&>(__ts)...)) {                \
-    static_assert(noexcept((static_cast<_Self&&>(__self))._TAG(static_cast<_Ts&&>(__ts)...)));     \
-    return static_cast<_Self&&>(__self)._TAG(static_cast<_Ts&&>(__ts)...);                         \
-  } /**/
-#  define STDEXEC_CALL_MEMBER(_TAG, ...) __call_##_TAG(__VA_ARGS__)
-
-#  if STDEXEC_CLANG()
-// Only clang gets this right.
-#    define STDEXEC_MISSING_MEMBER(_Dp, _TAG) requires { typename _Dp::_TAG; }
-#    define STDEXEC_DEFINE_MEMBER(_TAG)       STDEXEC_DISPATCH_MEMBER(_TAG) using _TAG = void
-#  else
-#    define STDEXEC_MISSING_MEMBER(_Dp, _TAG) (__missing_##_TAG<_Dp>())
-#    define STDEXEC_DEFINE_MEMBER(_TAG)                                                            \
-    template <class _Dp>                                                                           \
-    static constexpr bool __missing_##_TAG() noexcept {                                            \
-      return requires { requires bool(int(_Dp::_TAG)); };                                          \
-    }                                                                                              \
-    STDEXEC_DISPATCH_MEMBER(_TAG)                                                                  \
-    static constexpr int _TAG = 1 /**/
-#  endif
-
   template <__class _Derived, class _Base = __adaptors::__not_a_receiver>
   struct __receiver_adaptor
     : __adaptors::__adaptor_base<_Base>
