@@ -176,10 +176,18 @@ namespace STDEXEC
       template <class _SetTag, class... _Env>
       static consteval auto __forwarded_domain() noexcept
       {
-        using _SchSndr       = schedule_result_t<_Scheduler>;
-        constexpr bool __own = __sends<_SetTag, _SchSndr, __env2_t<_Env>...>;
-        if constexpr (__forwards_completion<_SetTag, _Env...>())
+        using _SchSndr = schedule_result_t<_Scheduler>;
+        // Clang 16 substitutes the return type of `query` before checking its
+        // constraints, so this function can be instantiated with a _SetTag (e.g.,
+        // `void`) that the query would reject. Bail out before touching anything
+        // that could hard-error.
+        if constexpr (!__one_of<_SetTag, set_error_t, set_stopped_t>)
         {
+          return indeterminate_domain<>();
+        }
+        else if constexpr (__forwards_completion<_SetTag, _Env...>())
+        {
+          constexpr bool __own = __sends<_SetTag, _SchSndr, __env2_t<_Env>...>;
           using _Fwd = __completion_domain_of_t<set_value_t, _SchSndr, __env2_t<_Env>...>;
           if constexpr (__own)
           {
@@ -192,16 +200,14 @@ namespace STDEXEC
             return _Fwd();
           }
         }
-        else if constexpr (__own)
+        else if constexpr (__sends<_SetTag, _SchSndr, __env2_t<_Env>...>)
         {
           return __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>();
         }
         else
         {
           // Neither the predecessor nor the scheduler's sender can complete with
-          // _SetTag. The query's constraints exclude this case, but older compilers
-          // (clang 16) substitute the return type before checking constraints, so
-          // this must not be a hard error.
+          // _SetTag. The query's constraints exclude this case; see above.
           return indeterminate_domain<>();
         }
       }
