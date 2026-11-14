@@ -38,6 +38,7 @@ import stdexec;
 #  include "../../stdexec/__detail/__type_traits.hpp"
 
 #  include <exception>
+#  include <mutex>
 #  include <system_error>
 #  include <type_traits>
 #endif
@@ -156,34 +157,43 @@ namespace experimental::execution::asio
 
     template <class Sender>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE explicit sender(Sender) -> sender<Sender>;
+
+    template <typename Mutex>
+    struct token
+    {
+      static constexpr auto as_default_on = asio::as_default_on<token>;
+      template <typename IoObject>
+      using as_default_on_t = asio::as_default_on_t<token, IoObject>;
+    };
   }  // namespace detail::use_sender
 
-  struct use_sender_t
-  {
-    static constexpr auto as_default_on = asio::as_default_on<use_sender_t>;
+  using use_sender_t = detail::use_sender::token<std::recursive_mutex>;
 
-    template <class IoObject>
-    using as_default_on_t = asio::as_default_on_t<use_sender_t, IoObject>;
-  };
+  inline use_sender_t const use_sender{};
 
-  inline constexpr use_sender_t use_sender{};
+  using thread_unsafe_use_sender_t =
+    detail::use_sender::token<detail::completion_token::null_basic_lockable>;
+
+  inline thread_unsafe_use_sender_t const thread_unsafe_use_sender{};
+
 }  // namespace experimental::execution::asio
 
 namespace exec = experimental::execution;
 
 namespace ASIOEXEC_ASIO_NAMESPACE
 {
-  template <class... Signatures>
-  struct async_result<::exec::asio::use_sender_t, Signatures...>
+  template <typename Mutex, typename... Signatures>
+  struct async_result<::exec::asio::detail::use_sender::token<Mutex>, Signatures...>
   {
-    template <class Initiation, ::STDEXEC::__decay_copyable... Args>
-    static constexpr auto initiate(Initiation &&init, ::exec::asio::use_sender_t, Args &&...args)
+    template <typename Initiation, ::STDEXEC::__decay_copyable... Args>
+    static constexpr auto
+    initiate(Initiation &&i, ::exec::asio::detail::use_sender::token<Mutex> const &, Args &&...args)
     {
-      using async_result_t = async_result<::exec::asio::completion_token_t, Signatures...>;
-      return ::exec::asio::detail::use_sender::sender{
-        async_result_t::initiate(static_cast<Initiation &&>(init),
-                                 ::exec::asio::completion_token,
-                                 static_cast<Args &&>(args)...)};
+      return ::exec::asio::detail::use_sender::sender(
+        async_result<::exec::asio::detail::completion_token::token<Mutex>, Signatures...>::initiate(
+          static_cast<Initiation &&>(i),
+          ::exec::asio::detail::completion_token::token<Mutex>{},
+          static_cast<Args &&>(args)...));
     }
   };
 }  // namespace ASIOEXEC_ASIO_NAMESPACE
