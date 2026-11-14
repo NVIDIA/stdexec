@@ -192,9 +192,17 @@ namespace STDEXEC
             return _Fwd();
           }
         }
-        else
+        else if constexpr (__own)
         {
           return __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>();
+        }
+        else
+        {
+          // Neither the predecessor nor the scheduler's sender can complete with
+          // _SetTag. The query's constraints exclude this case, but older compilers
+          // (clang 16) substitute the return type before checking constraints, so
+          // this must not be a hard error.
+          return indeterminate_domain<>();
         }
       }
 
