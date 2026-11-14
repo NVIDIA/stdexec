@@ -188,7 +188,7 @@ namespace STDEXEC
         else if constexpr (__forwards_completion<_SetTag, _Env...>())
         {
           constexpr bool __own = __sends<_SetTag, _SchSndr, __env2_t<_Env>...>;
-          using _Fwd = __completion_domain_of_t<set_value_t, _SchSndr, __env2_t<_Env>...>;
+          using _Fwd           = __completion_domain_of_t<set_value_t, _SchSndr, __env2_t<_Env>...>;
           if constexpr (__own)
           {
             return __common_domain_t<
