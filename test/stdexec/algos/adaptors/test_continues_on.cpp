@@ -37,6 +37,10 @@ using namespace std::chrono_literals;
 
 namespace
 {
+  template <class Sender>
+  using value_type_of_t =
+    ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>;
+
   struct potentially_throwing_connect_scheduler
   {
     using scheduler_concept = ex::scheduler_tag;
@@ -73,6 +77,20 @@ namespace
 
     auto
     operator==(potentially_throwing_connect_scheduler const &) const noexcept -> bool = default;
+  };
+
+  struct value_type
+  {
+    int val_;
+  };
+
+  struct continues_on_test_domain
+  {
+    template <exec::sender_for<ex::continues_on_t> Sender>
+    static auto transform_sender(STDEXEC::set_value_t, Sender &&, auto const &...)
+    {
+      return ex::just(value_type{53});
+    }
   };
 
   TEST_CASE("continues_on returns a sender", "[adaptors][continues_on]")
@@ -296,25 +314,205 @@ namespace
     check_sends_stopped<true>(ex::continues_on(ex::just(3), sched3));
   }
 
-  struct value_type
+  TEST_CASE("continues_on keeps updates completion domain for error channel",
+            "[adaptors][continues_on]")
   {
-    int val_;
-  };
+    // The following scheduler does not send errors. Any errors are forwarded
+    // from the predecessor sender on the scheduler's domain.
+    basic_inline_scheduler<continues_on_test_domain> sched{};
+    auto snd    = ex::continues_on(ex::just_error(1), sched);
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_error_t>);
+    static_assert(std::same_as<decltype(domain), continues_on_test_domain>);
+  }
 
-  template <class Sender>
-  using value_type_of_t =
-    ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>;
-
-  struct continues_on_test_domain
+  //! A scheduler with runtime identity. Its value completions happen on a scheduler
+  //! with the same id. If `ErrorId != 0`, its sender can also complete with an
+  //! error, which happens on a scheduler with id `ErrorId`.
+  template <class ValueDomain, int ErrorId = 0>
+  struct id_scheduler
   {
-    template <exec::sender_for<ex::continues_on_t> Sender>
-    static auto transform_sender(STDEXEC::set_value_t, Sender &&, auto const &...)
+    using scheduler_concept = ex::scheduler_tag;
+
+    int id_;
+
+    auto operator==(id_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> id_scheduler
     {
-      return ex::just(value_type{53});
+      return *this;
     }
+
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_error_t>) const noexcept -> id_scheduler
+      requires(ErrorId != 0)
+    {
+      return id_scheduler{id_ + ErrorId};
+    }
+
+    [[nodiscard]]
+    auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> ValueDomain
+    {
+      return {};
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept
+    {
+      return sender{*this};
+    }
+
+    struct attrs
+    {
+      id_scheduler sched_;
+
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> id_scheduler
+      {
+        return sched_;
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_error_t>) const noexcept -> id_scheduler
+        requires(ErrorId != 0)
+      {
+        return id_scheduler{sched_.id_ + ErrorId};
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> ValueDomain
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct opstate : immovable
+    {
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver &&>(rcvr_));
+      }
+
+      Receiver rcvr_;
+    };
+
+    struct sender
+    {
+      using sender_concept = STDEXEC::sender_tag;
+      using completion_signatures =
+        std::conditional_t<ErrorId != 0,
+                           ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>,
+                           ex::completion_signatures<ex::set_value_t()>>;
+
+      template <class Receiver>
+      [[nodiscard]]
+      auto connect(Receiver rcvr) const -> opstate<Receiver>
+      {
+        return {{}, static_cast<Receiver &&>(rcvr)};
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> attrs
+      {
+        return {sched_};
+      }
+
+      id_scheduler sched_;
+    };
   };
 
-  TEST_CASE("continues_on can be customized early", "[adaptors][continues_on]")
+  template <class Sender, class Tag>
+  concept has_completion_scheduler = requires(Sender const &snd) {
+    ex::get_completion_scheduler<Tag>(ex::get_env(snd));
+  };
+
+  template <class Sender, class Tag>
+  concept has_completion_domain = requires(Sender const &snd) {
+    ex::get_env(snd).query(ex::get_completion_domain<Tag>);
+  };
+
+  TEST_CASE("continues_on: completion scheduler of the value channel is the scheduler",
+            "[adaptors][continues_on]")
+  {
+    id_scheduler<continues_on_test_domain> sched{42};
+    auto                                   snd = ex::continues_on(ex::just(1), sched);
+    auto csched = ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd));
+    CHECK(csched.id_ == 42);
+  }
+
+  TEST_CASE("continues_on: forwarded errors and stopped complete on the scheduler's value "
+            "completion scheduler",
+            "[adaptors][continues_on]")
+  {
+    id_scheduler<continues_on_test_domain> sched{42};
+
+    auto err       = ex::continues_on(ex::just_error(1), sched);
+    auto err_sched = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(err));
+    CHECK(err_sched.id_ == 42);
+
+    auto stopped       = ex::continues_on(ex::just_stopped(), sched);
+    auto stopped_sched = ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(stopped));
+    CHECK(stopped_sched.id_ == 42);
+
+    // ... and not on the predecessor's completion scheduler
+    id_scheduler<continues_on_test_domain> other{7};
+    auto                                   on_other = ex::continues_on(ex::just_error(1), other);
+    auto                                   snd      = ex::continues_on(std::move(on_other), sched);
+    auto snd_sched = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd));
+    CHECK(snd_sched.id_ == 42);
+  }
+
+  TEST_CASE("continues_on: errors sent only by the scheduler's sender complete on the scheduler's "
+            "error completion scheduler",
+            "[adaptors][continues_on]")
+  {
+    id_scheduler<continues_on_test_domain, 100> sched{1};
+    auto                                        snd = ex::continues_on(ex::just(), sched);
+    auto err_sched = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd));
+    CHECK(err_sched.id_ == 101);
+    // the value completion scheduler is unaffected
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)).id_ == 1);
+  }
+
+  TEST_CASE("continues_on: no completion scheduler when the schedulers are ambiguous or the "
+            "channel is never used",
+            "[adaptors][continues_on]")
+  {
+    // Both the predecessor's errors (forwarded through the value scheduler) and the
+    // scheduler's own errors are possible. Which scheduler is used is only known
+    // at runtime, so there is no completion scheduler.
+    id_scheduler<continues_on_test_domain, 100> err_sched{1};
+    auto both = ex::continues_on(ex::just_error(1), err_sched);
+    static_assert(!has_completion_scheduler<decltype(both), ex::set_error_t>);
+    static_assert(has_completion_scheduler<decltype(both), ex::set_value_t>);
+
+    // Nothing can complete with an error.
+    id_scheduler<continues_on_test_domain> sched{1};
+    auto                                   none = ex::continues_on(ex::just(), sched);
+    static_assert(!has_completion_scheduler<decltype(none), ex::set_error_t>);
+    static_assert(!has_completion_scheduler<decltype(none), ex::set_stopped_t>);
+  }
+
+  TEST_CASE("continues_on: forwarded stopped completes in the scheduler's value domain",
+            "[adaptors][continues_on]")
+  {
+    id_scheduler<continues_on_test_domain> sched{1};
+    auto                                   snd = ex::continues_on(ex::just_stopped(), sched);
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_stopped_t>);
+    static_assert(std::same_as<decltype(domain), continues_on_test_domain>);
+  }
+
+  TEST_CASE("continues_on: there is no error completion domain if nothing can send errors",
+            "[adaptors][continues_on]")
+  {
+    id_scheduler<continues_on_test_domain> sched{1};
+    auto                                   snd = ex::continues_on(ex::just(), sched);
+    static_assert(!has_completion_domain<decltype(snd), ex::set_error_t>);
+    static_assert(has_completion_domain<decltype(snd), ex::set_value_t>);
+  }
+
+  TEST_CASE("continues_on can be customized", "[adaptors][continues_on]")
   {
     // The customization will return a different value
     basic_inline_scheduler<continues_on_test_domain> sched;
