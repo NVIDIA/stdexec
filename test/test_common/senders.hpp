@@ -239,7 +239,7 @@ namespace
     };
 
     template <ex::__decays_to<completes_if> Self, class Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) noexcept
       -> operation<Receiver>
     {
       return {self.condition_, std::forward<Receiver>(rcvr)};

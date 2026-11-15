@@ -887,7 +887,7 @@ namespace STDEXEC
 ///
 /// @code
 /// template <__std::same_as<self_t> Self, class Receiver>
-/// STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) {
+/// auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) {
 ///   return ...;
 /// }
 /// STDEXEC_EXPLICIT_THIS_END(connect)
@@ -912,16 +912,12 @@ namespace STDEXEC
                                   _NAME))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
-    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN()
+    (STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__))
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
-    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
-                             STDEXEC_PP_RPAREN()) STDEXEC_PP_LPAREN() STDEXEC_EXPLICIT_THIS_ARGS
+    static STDEXEC_EXPLICIT_THIS_MANGLE(__VA_ARGS__) STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \

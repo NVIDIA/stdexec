@@ -100,7 +100,7 @@ namespace nv::execution::_strm::__algo_range_init_fun
       __minvoke_q<__mfirst, DerivedSender, Receiver>::template receiver_t<Receiver>;
 
     template <__decays_to_derived_from<sender> Self, STDEXEC::receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
       return stream_opstate<__copy_cvref_t<Self, Sender>>(

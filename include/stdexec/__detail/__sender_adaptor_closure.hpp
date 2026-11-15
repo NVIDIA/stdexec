@@ -102,7 +102,7 @@ namespace STDEXEC
     template <class _Self, sender _Sender>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _Sender, __copy_cvref_t<_Self, _As>...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self&& __self, _Sender&& __sndr)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self&& __self, _Sender&& __sndr)
       noexcept(
         __nothrow_callable<__copy_cvref_t<_Self, _Fn>, _Sender, __copy_cvref_t<_Self, _As>...>)
     {

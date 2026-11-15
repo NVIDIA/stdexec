@@ -436,7 +436,7 @@ namespace STDEXEC
       }
 
       template <class _Self, class _Receiver>
-      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self &&__self, _Receiver __rcvr)
+      constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self &&__self, _Receiver __rcvr)
         noexcept(__nothrow_constructible_from<__opstate_t<_Self, _Receiver>,
                                               __copy_cvref_t<_Self, _Sender1>,
                                               __copy_cvref_t<_Self, _Sender2>,

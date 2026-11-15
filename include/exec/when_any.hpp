@@ -227,7 +227,7 @@ namespace experimental::execution
       {}
 
       template <__decay_copyable _Self, receiver _Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept(  //
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr) noexcept(  //
         STDEXEC::__nothrow_constructible_from<__opstate_t<_Self, _Receiver>,
                                               _Receiver,
                                               __copy_cvref_t<_Self, _Senders>...>)

@@ -586,7 +586,7 @@ namespace experimental::execution
       // as extra. Without it, clang-format runs connect into the next member.
       // clang-format off
       template <__decays_to<_bulk_sender> Self, receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         STDEXEC_AUTO_RETURN(bulk_opstate_t<Self, Receiver>(self.pool_,
                                                            Shape(self.shape_),
                                                            static_cast<Self&&>(self).fun_,

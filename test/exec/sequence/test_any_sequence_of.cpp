@@ -65,7 +65,7 @@ namespace
 
     template <STDEXEC::__decays_to<ignore_all_sender>     Self,
               STDEXEC::receiver_of<completion_signatures> Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) noexcept
     {
       return STDEXEC::connect(static_cast<Self&&>(self).item_,
                               ignore_all_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr)});

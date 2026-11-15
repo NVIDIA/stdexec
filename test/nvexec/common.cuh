@@ -173,7 +173,7 @@ namespace
 
       template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
         requires STDEXEC::receiver_of<Receiver, __completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver&& rcvr)
         -> op_t<Self, Receiver>
       {
         return op_t<Self, Receiver>(static_cast<Self&&>(self).sndr_,
@@ -237,7 +237,7 @@ namespace
 
       template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
         requires STDEXEC::receiver_of<Receiver, _completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver&& rcvr)
         -> op_t<Self, Receiver>
       {
         return op_t<Self, Receiver>(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));

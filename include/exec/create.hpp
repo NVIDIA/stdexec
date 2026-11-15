@@ -71,7 +71,7 @@ namespace experimental::execution
         requires __callable<_Fun, __context<_Receiver, _Args>&>
               && __std::constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
               && __std::constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> __opstate<_Receiver, _Fun, _Args>
       {
         static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
