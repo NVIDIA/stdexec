@@ -16,6 +16,7 @@
  */
 
 #include "exec/sequence/iterate.hpp"
+#include "exec/variant_sender.hpp"
 #include "stdexec/execution.hpp"
 
 #include <array>
@@ -533,6 +534,101 @@ namespace
     sndr.reset();
     STDEXEC::start(op);
     CHECK(sum == 6);
+  }
+
+  // A sequence receiver whose next senders complete with set_value() even when
+  // the item was stopped, like those of `sum_receiver` above. After `max_items`
+  // items the next senders complete with set_stopped(), so that a sequence that
+  // would never end fails the test instead of hanging it.
+  struct stop_ignoring_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    static constexpr int max_items = 100;
+
+    template <class Item>
+    auto set_next(Item&& item) noexcept
+    {
+      auto handled = STDEXEC::upon_stopped(STDEXEC::then(static_cast<Item&&>(item),
+                                                         [stop_source = &stop_source_,
+                                                          stop_at = stop_at_](int value) noexcept
+                                                         {
+                                                           if (value == stop_at)
+                                                           {
+                                                             stop_source->request_stop();
+                                                           }
+                                                         }),
+                                           []() noexcept {});
+      using next_t = exec::variant_sender<decltype(handled), decltype(STDEXEC::just_stopped())>;
+      if (++items_ > max_items)
+      {
+        return next_t{STDEXEC::just_stopped()};
+      }
+      return next_t{std::move(handled)};
+    }
+
+    void set_value() noexcept
+    {
+      completed_ = true;
+    }
+
+    void set_stopped() noexcept
+    {
+      stopped_ = true;
+    }
+
+    void set_error(std::exception_ptr) noexcept {}
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop{STDEXEC::get_stop_token, stop_source_.get_token()};
+    }
+
+    STDEXEC::inplace_stop_source& stop_source_;
+    int                           stop_at_;
+    int&                          items_;
+    bool&                         completed_;
+    bool&                         stopped_;
+  };
+
+  TEST_CASE("iterate - stops when stop is requested, even if the next senders ignore it",
+            "[sequence_senders][iterate]")
+  {
+    std::array<int, 6>           array{0, 1, 2, 3, 4, 5};
+    STDEXEC::inplace_stop_source stop_source;
+    int                          items     = 0;
+    bool                         completed = false;
+    bool                         stopped   = false;
+
+    SECTION("stop is requested by an item")
+    {
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, 2, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 3);
+      CHECK(stopped);
+      CHECK_FALSE(completed);
+    }
+    SECTION("stop is requested before the sequence is started")
+    {
+      stop_source.request_stop();
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, -1, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 0);
+      CHECK(stopped);
+      CHECK_FALSE(completed);
+    }
+    SECTION("stop is requested by the last item")
+    {
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, 5, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 6);
+      CHECK(completed);
+      CHECK_FALSE(stopped);
+    }
   }
 
 }  // namespace

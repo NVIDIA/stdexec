@@ -234,6 +234,15 @@ namespace experimental::execution
           {
             STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
           }
+          else if (__stop_requested())
+          {
+            // Don't count on the next sender to report the stop request. An
+            // item that is stopped before it reads the iterator doesn't advance
+            // it, so if the next sender completed with set_value() anyway, the
+            // same element would be emitted again and again. Complete as
+            // `__next_receiver::set_stopped` does.
+            __set_value_unless_stopped(static_cast<_Receiver&&>(this->__rcvr_));
+          }
           else
           {
             STDEXEC::start(__op_.__emplace_from(
@@ -254,6 +263,19 @@ namespace experimental::execution
       constexpr void start() & noexcept
       {
         __start_next();
+      }
+
+      [[nodiscard]]
+      constexpr bool __stop_requested() const noexcept
+      {
+        if constexpr (unstoppable_token<stop_token_of_t<env_of_t<_Receiver>>>)
+        {
+          return false;
+        }
+        else
+        {
+          return get_stop_token(STDEXEC::get_env(this->__rcvr_)).stop_requested();
+        }
       }
 
       __optional<connect_result_t<__next_sender_t, __next_receiver_t>> __op_{};
