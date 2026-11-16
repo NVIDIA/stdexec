@@ -40,6 +40,7 @@ import stdexec;
 #    include <cstddef>
 #    include <cstdint>
 #    include <exception>
+#    include <optional>
 #    include <tuple>
 #    include <type_traits>
 #    include <utility>
@@ -496,14 +497,14 @@ namespace experimental::execution
       {
         std::visit([&](auto &tupl) -> void
                    { std::apply([&](auto &...args) -> void { f(args...); }, tupl); },
-                   data_);
+                   *data_);
       }
 
-      variant_t data_;
-      Receiver  rcvr_;
-      Shape     shape_;
-      Fun       fun_;
-      bool      parallelize_;
+      std::optional<variant_t> data_;
+      Receiver                 rcvr_;
+      Shape                    shape_;
+      Fun                      fun_;
+      bool                     parallelize_;
 
       STDEXEC::__std::atomic<std::uint32_t> finished_tasks_{0};
       STDEXEC::__std::atomic<std::uint32_t> task_with_exception_{0};
@@ -539,7 +540,7 @@ namespace experimental::execution
         {
           STDEXEC_TRY
           {
-            shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
+            shared_state_.data_.emplace(std::in_place_type<tuple_t>, static_cast<As &&>(as)...);
           }
           STDEXEC_CATCH_ALL
           {
@@ -549,7 +550,7 @@ namespace experimental::execution
         }
         else
         {
-          shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
+          shared_state_.data_.emplace(std::in_place_type<tuple_t>, static_cast<As &&>(as)...);
         }
 
         if (shared_state_.shape_)
