@@ -16,6 +16,7 @@
 
 #include "exec/fork_join.hpp"
 #include "exec/just_from.hpp"
+#include "exec/single_thread_context.hpp"
 #include "exec/static_thread_pool.hpp"
 #include "test_common/schedulers.hpp"
 #include "test_common/type_helpers.hpp"
@@ -126,7 +127,7 @@ namespace
   struct identifiable_domain : public STDEXEC::default_domain
   {};
 
-  TEST_CASE("fork_join completion domain and scheduler", "[adaptors][fork_join]")
+  TEST_CASE("fork_join completion domain and scheduler - on", "[adaptors][fork_join]")
   {
     basic_inline_scheduler<identifiable_domain<'A'>> sched_A;
     basic_inline_scheduler<identifiable_domain<'B'>> sched_B;
@@ -142,6 +143,51 @@ namespace
 
     auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
     static_assert(std::same_as<decltype(sched), decltype(sched_A)>);
+  }
+
+  TEST_CASE("fork_join completion domain and scheduler - continues_on", "[adaptors][fork_join]")
+  {
+    basic_inline_scheduler<identifiable_domain<'A'>> sched_A;
+    basic_inline_scheduler<identifiable_domain<'B'>> sched_B;
+    basic_inline_scheduler<identifiable_domain<'C'>> sched_C;
+
+    auto sndr = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
+              | exec::fork_join(STDEXEC::continues_on(sched_B) | STDEXEC::then(ForwardingThen{}),
+                                STDEXEC::continues_on(sched_C) | STDEXEC::then(ForwardingThen{}))
+              | STDEXEC::then(ForwardingThen{});
+
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    static_assert(std::same_as<decltype(domain), identifiable_domain<'A'>>);
+
+    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    static_assert(std::same_as<decltype(sched), decltype(sched_A)>);
+  }
+
+  TEST_CASE("fork_join completion domain and scheduler - runtime", "[adaptors][fork_join]")
+  {
+    exec::single_thread_context stc_a{}, stc_b{}, stc_c{};
+
+    std::thread::id who;
+
+    auto sndr = STDEXEC::schedule(stc_a.get_scheduler()) | STDEXEC::then(ForwardingThen{})
+              | exec::fork_join(STDEXEC::continues_on(stc_b.get_scheduler())
+                                  | STDEXEC::then(ForwardingThen{}),
+                                STDEXEC::continues_on(stc_c.get_scheduler())
+                                  | STDEXEC::then(ForwardingThen{}))
+              | STDEXEC::then([&who]() { who = std::this_thread::get_id(); });
+
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    static_assert(std::same_as<decltype(domain), STDEXEC::default_domain>);
+
+    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    CHECK(sched == stc_a.get_scheduler());
+
+    CHECK(stc_a.get_thread_id() != stc_b.get_thread_id());
+    CHECK(stc_a.get_thread_id() != stc_c.get_thread_id());
+
+    STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(who == stc_a.get_thread_id());
   }
 
   TEST_CASE("fork_join broadcasts results to multiple continuations", "[adaptors][fork_join]")
