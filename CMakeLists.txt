@@ -243,10 +243,15 @@ if(STDEXEC_BUILD_MODULES)
 endif()
 
 # Mark include directories as SYSTEM so consumers don't get warnings from
-# stdexec internals
+# stdexec internals. stdexec's own tests and examples see those warnings.
+if(STDEXEC_MAIN_PROJECT)
+  set(stdexec_system_include)
+else()
+  set(stdexec_system_include SYSTEM)
+endif()
 target_include_directories(
   stdexec
-  SYSTEM
+  ${stdexec_system_include}
   ${stdexec_scope}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>

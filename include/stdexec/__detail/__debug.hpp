@@ -147,18 +147,21 @@ namespace STDEXEC
   // ================
 
   // Utility to check whether a sender's actual completions match its declared
-  // completion signatures.
+  // completion signatures. The environment is taken by forwarding reference so
+  // that the sender is checked with the caller's environment type: an `_Env &`
+  // must not become an `_Env` by value, which may not be movable.
   template <class _Sigs, class _CvSender, class _Env = env<>>
-  constexpr void __debug_sender(_CvSender&& __sndr, _Env const & = {})
+  constexpr void __debug_sender(_CvSender&& __sndr, _Env&& = {})
   {
     if constexpr (!__is_debug_env<_Env>)
     {
       if constexpr (sender_in<_CvSender, _Env>)
       {
-        using __receiver_t  = __debug::__receiver_t<_CvSender, _Env, _Sigs>;
-        using __operation_t = connect_result_t<_CvSender, __receiver_t>;
+        using __receiver_t = __debug::__receiver_t<_CvSender, _Env, _Sigs>;
         //static_assert(receiver_of<__receiver_t, _Sigs>);
-        if constexpr (!__std::same_as<__operation_t, __debug::__opstate>)
+        // Skip senders that cannot be connected to the debug receiver, like the
+        // senders built around __sender_proxy that `on` uses for its attributes.
+        if constexpr (__callable<connect_t, _CvSender, __receiver_t>)
         {
           if (__mnever<_CvSender>)
           {
@@ -175,14 +178,15 @@ namespace STDEXEC
   }
 
   template <class _CvSender, class _Env = env<>>
-  constexpr void __debug_sender(_CvSender&& __sndr, _Env const & __env = {})
+  constexpr void __debug_sender(_CvSender&& __sndr, _Env&& __env = {})
   {
     if constexpr (!__is_debug_env<_Env>)
     {
       if constexpr (sender_in<_CvSender, _Env>)
       {
         using __completions_t = __completion_signatures_of_t<_CvSender, __debug::__env_t<_Env>>;
-        __debug_sender<__completions_t>(static_cast<_CvSender&&>(__sndr), __env);
+        __debug_sender<__completions_t>(static_cast<_CvSender&&>(__sndr),
+                                        static_cast<_Env&&>(__env));
       }
       else
       {

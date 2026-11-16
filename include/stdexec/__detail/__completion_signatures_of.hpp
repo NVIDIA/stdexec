@@ -44,7 +44,7 @@ namespace STDEXEC
   auto __checked_completion_signatures(_CvSender &&__sndr, _Env &&...__env) noexcept
   {
     using __completions_t = __completion_signatures_of_t<_CvSender, _Env...>;
-    STDEXEC::__debug_sender(static_cast<_CvSender &&>(__sndr), __env...);
+    STDEXEC::__debug_sender(static_cast<_CvSender &&>(__sndr), static_cast<_Env &&>(__env)...);
     return __completions_t{};
   }
 
