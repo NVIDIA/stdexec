@@ -316,7 +316,7 @@ namespace experimental::execution
         bulk_op_state<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>;
 
       template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self &&self, Receiver rcvr)
         noexcept(STDEXEC::__nothrow_constructible_from<bulk_op_state_t<Self, Receiver>,
                                                        libdispatch_queue &,
                                                        Shape,

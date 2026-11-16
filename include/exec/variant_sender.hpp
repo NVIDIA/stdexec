@@ -126,7 +126,7 @@ namespace experimental::execution
 
     template <STDEXEC::__decays_to<variant_sender> _Self, STDEXEC::receiver _Receiver>
       requires(STDEXEC::sender_to<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Receiver> && ...)
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
       noexcept((STDEXEC::__nothrow_connectable<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Receiver>
                 && ...)) -> __opstate_t<_Self, _Receiver>
     {

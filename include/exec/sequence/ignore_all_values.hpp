@@ -182,7 +182,7 @@ namespace experimental::execution
       template <__decays_to<__item_sender>                  _Self,
                 STDEXEC::receiver_of<completion_signatures> _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver>
       {
         return {__self.__parent_,

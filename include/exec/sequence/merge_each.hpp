@@ -249,7 +249,7 @@ namespace experimental::execution
       }
 
       template <class _Self, receiver _ErrorReceiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _ErrorReceiver&& __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _ErrorReceiver&& __rcvr)
         noexcept(__nothrow_move_constructible<_ErrorReceiver>) -> __error_op_t<_ErrorReceiver>
       {
         return __error_op_t<_ErrorReceiver>{static_cast<_ErrorReceiver&&>(__rcvr), __self.__op_};
@@ -635,7 +635,7 @@ namespace experimental::execution
       }
 
       template <class _Self, receiver _NestedValueReceiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _NestedValueReceiver&& __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _NestedValueReceiver&& __rcvr)
         noexcept(__nothrow_constructible_from<__nested_value_op_t<_NestedValueReceiver>,
                                               _NestedValueReceiver,
                                               _NestedValueSender,
@@ -1088,7 +1088,7 @@ namespace experimental::execution
       }
 
       template <class _Self, receiver _NextReceiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _NextReceiver&& __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _NextReceiver&& __rcvr)
         noexcept(__nothrow_constructible_from<__next_sequence_op_t<_NextReceiver>,
                                               _NextReceiver,
                                               _OperationBase*,

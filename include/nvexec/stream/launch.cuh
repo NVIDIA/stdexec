@@ -134,7 +134,7 @@ namespace nv::execution
       using receiver_t = _launch::receiver<Receiver, Fun>;
 
       template <__decays_to<launch_sender> Self, STDEXEC::receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
       {
         return stream_opstate<__copy_cvref_t<Self, Sender>>(

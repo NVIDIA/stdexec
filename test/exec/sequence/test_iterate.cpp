@@ -213,7 +213,7 @@ namespace
 
     template <STDEXEC::__decays_to<sum_sender>            Self,
               STDEXEC::receiver_of<completion_signatures> Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) noexcept
     {
       return STDEXEC::connect(static_cast<Self&&>(self).item_,
                               sum_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr), self.sum_});

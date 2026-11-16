@@ -124,7 +124,7 @@ namespace experimental::execution
       template <__decays_to<__when_empty_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
       [[nodiscard]]
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> __when_empty_opstate_t<_Self, _Receiver>
       {
         return __when_empty_opstate_t<_Self, _Receiver>{__self.__scope_,
@@ -250,7 +250,7 @@ namespace experimental::execution
       template <__decays_to<__nest_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver<_Receiver>>
       [[nodiscard]]
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> __nest_opstate<_Constrained, _Receiver>
       {
         return __nest_opstate<_Constrained, _Receiver>{__self.__scope_,
@@ -697,7 +697,7 @@ namespace experimental::execution
       }
 
       template <__decays_to<__future> _Self, receiver _Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> __future_opstate_t<_Receiver>
       {
         return __future_opstate_t<_Receiver>{static_cast<_Receiver&&>(__rcvr),

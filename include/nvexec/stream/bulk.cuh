@@ -141,7 +141,7 @@ namespace nv::execution::_strm
     using receiver_t = _bulk::receiver<Receiver, Shape, Fun>;
 
     template <__decays_to<bulk_sender> Self, receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
       return stream_opstate<__copy_cvref_t<Self, Sender>>(
@@ -366,7 +366,7 @@ namespace nv::execution::_strm
     using sender_concept = STDEXEC::sender_tag;
 
     template <__decays_to<multi_gpu_bulk_sender> Self, receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver&& rcvr)
       -> multi_gpu_bulk::opstate<__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>
     {
       auto    sch = STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(self.sndr_),

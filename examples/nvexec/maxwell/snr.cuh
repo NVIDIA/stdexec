@@ -212,7 +212,7 @@ namespace _repeat_n
     }
 
     template <ex::__decays_to<sender> Self, ex::receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver r)
       -> _repeat_n::opstate<Sender, Closure, Receiver>
     {
       return _repeat_n::opstate<Sender, Closure, Receiver>(static_cast<Self&&>(self).sndr_,
@@ -375,7 +375,7 @@ namespace nv::execution::_strm
 
       template <ex::__decays_to<sender> Self, ex::receiver Receiver>
         requires(ex::sender_to<Sender, Receiver>)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver r)
         -> nvexec::_strm::_repeat_n::opstate<Sender, Closure, Receiver>
       {
         return nvexec::_strm::_repeat_n::opstate<Sender, Closure, Receiver>(

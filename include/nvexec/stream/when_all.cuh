@@ -141,7 +141,7 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<when_all_sender> Self, receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
       -> opstate<__copy_cvref_t<Self, Receiver>>
     {
       return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};

@@ -50,7 +50,7 @@ namespace STDEXEC
             && __callable<__copy_cvref_t<_Self, _Fun0>,
                           __call_result_t<__copy_cvref_t<_Self, _Fun1>, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...__ts)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Ts &&...__ts)
       STDEXEC_AUTO_RETURN(
         static_cast<_Self &&>(__self).__fun0_(
           static_cast<_Self &&>(__self).__fun1_(static_cast<_Ts &&>(__ts)...)))
@@ -290,7 +290,7 @@ namespace STDEXEC
   {
     template <class _Self, class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...) noexcept
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Ts &&...) noexcept
       -> auto &&
     {
       return (static_cast<_Self &&>(__self).__value_);
@@ -365,7 +365,7 @@ namespace STDEXEC
     //! arguments.
     template <class _Self, class... _Args>
       requires __callable<__1st_fn_t<_Self, _Args...>, _Args...>
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Args &&...__args)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Args &&...__args)
       noexcept(__nothrow_callable<__1st_fn_t<_Self, _Args...>, _Args...>)
         -> __call_result_t<__1st_fn_t<_Self, _Args...>, _Args...>
     {
@@ -386,7 +386,7 @@ namespace STDEXEC
     template <class _Self, class... _Args>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self,
                                                            _Args &&...__args)  //
       noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>,
                                   _Args...,
@@ -461,7 +461,7 @@ namespace STDEXEC
     template <class _Self, class _T0, class _T1>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self,
                                                            _T0        &&__t0,
                                                            _T1        &&__t1)
       noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>)

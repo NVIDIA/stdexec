@@ -361,8 +361,8 @@ namespace STDEXEC
                                     _Receiver>;
 
       template <__decays_to<__sender> _Self, class _Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self,
-                                                _Receiver&&  __receiver) noexcept
+      auto
+      STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver&& __receiver) noexcept
         -> __opstate_t<_Self, _Receiver>
       {
         return __opstate_t<_Self, _Receiver>{static_cast<_Self&&>(__self).__initial_sndr_,

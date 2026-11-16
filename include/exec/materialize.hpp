@@ -82,7 +82,7 @@ namespace experimental::execution
       using sender_concept = STDEXEC::sender_tag;
 
       template <__decays_to<_sender> Self, class Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         noexcept(__nothrow_connectable<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>)
           -> connect_result_t<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
       {
@@ -193,7 +193,7 @@ namespace experimental::execution
 
       template <__decays_to<_sender> Self, class Receiver>
         requires sender_to<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         noexcept(__nothrow_connectable<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>)
           -> connect_result_t<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
       {

@@ -230,7 +230,7 @@ namespace nv::execution::_strm
       {}
 
       template <__decay_copyable Self, STDEXEC::receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver>
       {
         return STDEXEC::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
@@ -271,7 +271,7 @@ namespace nv::execution::_strm
     using opstate_t = _trnsfr::opstate<__copy_cvref_t<Self, source_sender_t>, Receiver>;
 
     template <__decays_to<continues_on_sender> Self, receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)  //
       -> opstate_t<Self, Receiver>
     {
       // Work before the transition keeps running on its own scheduler's stream.
