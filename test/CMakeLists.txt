@@ -263,11 +263,15 @@ if(NOT STDEXEC_BUILD_MODULES)
   # With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect reports a sender that
   # completes with a result it did not declare as a deprecation warning. When
   # stdexec is not the main project, its include directory is a SYSTEM one, and
-  # -Wsystem-headers is needed to see the warning.
+  # -Wsystem-headers is needed to see the warning. The test is built without a
+  # compiler launcher, because CI's sccache moves -Werror= before the other -W
+  # flags, and then -Wno-deprecated-declarations in CMAKE_CXX_FLAGS would win.
   if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     stdexec_add_build_failure_test(
       NAME test_connect_fail1 SOURCE stdexec/cpos/test_connect_fail1.cpp
       LIBRARIES stdexec)
+    set_target_properties(test_connect_fail1
+                          PROPERTIES CXX_COMPILER_LAUNCHER "")
     target_compile_definitions(test_connect_fail1
                                PRIVATE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
     target_compile_options(test_connect_fail1
