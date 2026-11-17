@@ -208,19 +208,23 @@ namespace experimental::execution
       {
         using __child_t = __child_of<_Sender>;
 
-        auto __completions = transform_completion_signatures(
+        auto __completions = exec::transform_completion_signatures(
           STDEXEC::get_completion_signatures<__bouncy_sndr_t<__child_t>, _Env...>(),
           // transform for set_value completions:
           []<class... _Args>()
           {
             if constexpr (sizeof...(_Args) == 0)
+            {
               return completion_signatures<set_value_t()>();
+            }
             else
-              return STDEXEC::__throw_compile_time_error<
+            {
+              return exec::throw_compile_time_error<
                 _WHAT_(_INVALID_ARGUMENT_),
                 _WHERE_(_IN_ALGORITHM_, repeat_n_t),
                 _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
                 _WITH_SENDER_<__child_t &>>();
+            }
           },
           // transform for set_error completions:
           decay_arguments<set_error_t, repeat_n_t>(),
@@ -235,10 +239,10 @@ namespace experimental::execution
             return __completions;  // NOLINT(bugprone-branch-clone)
           else if constexpr (sizeof...(_Env) == 0)
             return STDEXEC::__throw_dependent_sender_error<__child_t>();
-          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> || ...))
+          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> && ...))
             return __completions;
           else
-            return concat_completion_signatures(__completions, __eptr_completion_t());
+            return exec::concat_completion_signatures(__completions, __eptr_completion_t());
         }
       }
 

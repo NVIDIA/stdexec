@@ -179,11 +179,12 @@ namespace experimental::execution
       using __default_t = __if_c<__callable<_Query, _Env>, __ignore, _Default>;
 
       template <__decays_to<__sender> _Self, class _Receiver>
-      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-        noexcept(__nothrow_constructible_from<
-                 __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>,
-                 __default_t<env_of_t<_Receiver>>,
-                 _Receiver>) -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
+      constexpr auto
+      STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr) noexcept(
+        __nothrow_constructible_from<__opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>,
+                                     __default_t<env_of_t<_Receiver>>,
+                                     _Receiver>)
+        -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
         using __opstate_t = __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>;
         return __opstate_t{static_cast<_Self&&>(__self).__default_,
@@ -254,7 +255,7 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
-      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+      constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver __rcvr)
         -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver>
       {
         return STDEXEC::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));

@@ -32,35 +32,46 @@ import stdexec;
 #    include <functional>
 #  endif
 
+#  if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1900
+#    define STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS
+#  else
+#    define STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE(no_unique_address)
+#  endif
+
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Fun0, class _Fun1>
   struct __composed
   {
+    // clang-format off
     template <class _Self, class... _Ts>
       requires __callable<__copy_cvref_t<_Self, _Fun1>, _Ts...>
             && __callable<__copy_cvref_t<_Self, _Fun0>,
                           __call_result_t<__copy_cvref_t<_Self, _Fun1>, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...__ts)
-      STDEXEC_AUTO_RETURN(  //
-        static_cast<_Self &&>(__self).__t0_(
-          static_cast<_Self &&>(__self).__t1_(static_cast<_Ts &&>(__ts)...)))  //
-      STDEXEC_EXPLICIT_THIS_END(operator())
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Ts &&...__ts)
+      STDEXEC_AUTO_RETURN(
+        static_cast<_Self &&>(__self).__fun0_(
+          static_cast<_Self &&>(__self).__fun1_(static_cast<_Ts &&>(__ts)...)))
+    STDEXEC_EXPLICIT_THIS_END(operator())
 
-        STDEXEC_ATTRIBUTE(no_unique_address) _Fun0 __t0_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _Fun1 __t1_;
+    STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS _Fun0 __fun0_;
+    STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS _Fun1 __fun1_;
+    // clang-format on
   };
+
+  template <class _Fun0, class _Fun1>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __composed(_Fun0, _Fun1) -> __composed<_Fun0, _Fun1>;
 
   inline constexpr struct __compose_t
   {
     template <class _Fun0, class _Fun1>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_Fun0 __fun0, _Fun1 __fun1) const
-      noexcept(__nothrow_move_constructible<_Fun0, _Fun1>) -> __composed<_Fun0, _Fun1>
+    constexpr auto operator()(_Fun0 &&__fun0, _Fun1 &&__fun1) const
+      noexcept(__nothrow_decay_copyable<_Fun0, _Fun1>)
     {
-      return {static_cast<_Fun0 &&>(__fun0), static_cast<_Fun1 &&>(__fun1)};
+      return __composed{static_cast<_Fun0 &&>(__fun0), static_cast<_Fun1 &&>(__fun1)};
     }
   } __compose{};
 
@@ -279,7 +290,7 @@ namespace STDEXEC
   {
     template <class _Self, class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...) noexcept
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Ts &&...) noexcept
       -> auto &&
     {
       return (static_cast<_Self &&>(__self).__value_);
@@ -354,7 +365,7 @@ namespace STDEXEC
     //! arguments.
     template <class _Self, class... _Args>
       requires __callable<__1st_fn_t<_Self, _Args...>, _Args...>
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Args &&...__args)
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self, _Args &&...__args)
       noexcept(__nothrow_callable<__1st_fn_t<_Self, _Args...>, _Args...>)
         -> __call_result_t<__1st_fn_t<_Self, _Args...>, _Args...>
     {
@@ -375,7 +386,7 @@ namespace STDEXEC
     template <class _Self, class... _Args>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self,
                                                            _Args &&...__args)  //
       noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>,
                                   _Args...,
@@ -450,7 +461,7 @@ namespace STDEXEC
     template <class _Self, class _T0, class _T1>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
+    constexpr auto STDEXEC_EXPLICIT_THIS_BEGIN(operator())(this _Self &&__self,
                                                            _T0        &&__t0,
                                                            _T1        &&__t1)
       noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>)
@@ -486,5 +497,7 @@ namespace STDEXEC
     return __flipped{static_cast<_Fn &&>(__fn)};
   }
 }  // namespace STDEXEC
+
+#  undef STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS
 
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -16,30 +16,54 @@
 
 #pragma once
 
-#if __has_include(<dispatch/dispatch.h>)
+#include "../stdexec/__detail/__config.hpp"
 
-#  include <stdexec/execution.hpp>
-
-#  if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import std;
 import stdexec;
-#  else
+#else
+#  include "../stdexec/__detail/__bulk.hpp"
+#  include "../stdexec/__detail/__domain.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+#  include "../stdexec/__detail/__execution_legacy.hpp"  // IWYU pragma: keep
+#  include "../stdexec/__detail/__operation_states.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__schedulers.hpp"
+#  include "../stdexec/__detail/__stop_token.hpp"
+#  include "../stdexec/__detail/__transform_sender.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#    include <atomic>
+#    include <concepts>
+#    include <cstddef>
+#    include <cstdint>
+#    include <exception>
+#    include <optional>
+#    include <tuple>
+#    include <type_traits>
+#    include <utility>
+#    include <variant>
+#    include <vector>
+#  endif
+#endif
+
+#include "completion_signatures.hpp"
+#include "sender_for.hpp"
+
+#if !defined(STDEXEC_IN_MODULE_PURVIEW)
 // TODO: This is needed for libdispatch to compile with GCC. Need to look for
 // workaround.
-#    ifndef __has_feature
-#      define __has_feature(x) false
-#    endif
-#    ifndef __has_extension
-#      define __has_extension(x) false
-#    endif
+#  ifndef __has_feature
+#    define __has_feature(x) false
+#  endif
+#  ifndef __has_extension
+#    define __has_extension(x) false
+#  endif
 
-#    include "completion_signatures.hpp"
-#    include "sender_for.hpp"
-
-#    if !STDEXEC_USE_MODULES()
-#      include <dispatch/dispatch.h>
-#      include <utility>
-#      include <vector>
-#    endif
+#  include <dispatch/dispatch.h>
+#endif
 
 namespace experimental::execution
 {
@@ -62,10 +86,10 @@ namespace experimental::execution
     struct bulk_shared_state;
 
     template <class Fun, class Shape, class... Args>
-      requires STDEXEC::__callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
-    using bulk_non_throwing_t =
-      STDEXEC::__mbool<STDEXEC::__nothrow_callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
-                       && STDEXEC::__nothrow_decay_copyable<Args...>>;
+      requires STDEXEC::__callable<Fun &, Shape, Shape, STDEXEC::__decay_t<Args> &...>
+    using bulk_non_throwing_t = STDEXEC::__mbool<
+      STDEXEC::__nothrow_callable<Fun &, Shape, Shape, STDEXEC::__decay_t<Args> &...>
+      && STDEXEC::__nothrow_decay_copyable<Args...>>;
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct bulk_receiver;
@@ -293,7 +317,7 @@ namespace experimental::execution
         bulk_op_state<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>;
 
       template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self &&self, Receiver rcvr)
         noexcept(STDEXEC::__nothrow_constructible_from<bulk_op_state_t<Self, Receiver>,
                                                        libdispatch_queue &,
                                                        Shape,
@@ -473,14 +497,14 @@ namespace experimental::execution
       {
         std::visit([&](auto &tupl) -> void
                    { std::apply([&](auto &...args) -> void { f(args...); }, tupl); },
-                   data_);
+                   *data_);
       }
 
-      variant_t data_;
-      Receiver  rcvr_;
-      Shape     shape_;
-      Fun       fun_;
-      bool      parallelize_;
+      std::optional<variant_t> data_;
+      Receiver                 rcvr_;
+      Shape                    shape_;
+      Fun                      fun_;
+      bool                     parallelize_;
 
       STDEXEC::__std::atomic<std::uint32_t> finished_tasks_{0};
       STDEXEC::__std::atomic<std::uint32_t> task_with_exception_{0};
@@ -516,7 +540,7 @@ namespace experimental::execution
         {
           STDEXEC_TRY
           {
-            shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
+            shared_state_.data_.emplace(std::in_place_type<tuple_t>, static_cast<As &&>(as)...);
           }
           STDEXEC_CATCH_ALL
           {
@@ -526,7 +550,7 @@ namespace experimental::execution
         }
         else
         {
-          shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
+          shared_state_.data_.emplace(std::in_place_type<tuple_t>, static_cast<As &&>(as)...);
         }
 
         if (shared_state_.shape_)
@@ -597,6 +621,3 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-
-#  endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
-#endif    // __has_include(<dispatch/dispatch.h>)

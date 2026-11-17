@@ -91,8 +91,7 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept  //
-        -> decltype(__env::__join(__env_, STDEXEC::get_env(__rcvr_)))
+      constexpr auto get_env() const noexcept -> __join_env_t<_Env2 const &, env_of_t<_Receiver>>
       {
         return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
       }
@@ -107,8 +106,8 @@ namespace STDEXEC
       // compute the result of calling submit with the result of executing _Fun
       // with _Args. if the result is void, substitute with __ignore.
       template <class... _Args>
-      using __f =
-        submit_result<__invoke_result_t<_Fun, __decay_t<_Args>&...>, __rcvr_env<_Receiver, _Env2>>;
+      using __f = __submit_result<__invoke_result_t<_Fun, __decay_t<_Args>&...>,
+                                  __rcvr_env<_Receiver, _Env2>>;
     };
 
     // A metafunction to check whether the predecessor's completion results are
@@ -129,8 +128,8 @@ namespace STDEXEC
 
     template <class _SetTag, class _Child, class _Fn, class _Env>
     using __has_nothrow_completions_t = __gather_completion_signatures_t<
-      completion_signatures_of_t<_Child, _Env>,
       _SetTag,
+      completion_signatures_of_t<_Child, _Env>,
       __has_nothrow_completions_fn<_Fn, __result_env_t<_SetTag, _Child, _Env>>,
       __qq<__mand_t>>;
 
@@ -141,21 +140,22 @@ namespace STDEXEC
     {
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
+      using __start_next_t  = void (*)(__opstate_base&);
 
       template <class _Sender>
       constexpr explicit __opstate_base(_SetTag,
                                         _Sender const & __sndr,
                                         _Fun            __fn,
-                                        _Receiver&&     __rcvr) noexcept
+                                        _Receiver&&     __rcvr,
+                                        __start_next_t  __start_next) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
         , __env2_(__mk_secondary_env_t<_SetTag>()(__sndr, STDEXEC::get_env(__rcvr_)))
+        , __start_next_(__start_next)
       {}
 
       STDEXEC_IMMOVABLE(__opstate_base);
-
-      constexpr virtual void __start_next() = 0;
 
       template <class _Tag, class... _Args>
       constexpr void __impl(_Tag, _Args&&... __args) noexcept
@@ -163,17 +163,18 @@ namespace STDEXEC
         if constexpr (__same_as<_SetTag, _Tag>)
         {
           using __sender_t = __invoke_result_t<_Fun, __decay_t<_Args>&...>;
-          using __submit_t = submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
+          using __submit_t = __submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
 
-          constexpr bool __nothrow_store  = (__nothrow_decay_copyable<_Args> && ...);
-          constexpr bool __nothrow_invoke = __nothrow_invocable<_Fun, __decay_t<_Args>&...>;
-          constexpr bool __nothrow_submit =
+          STDEXEC_CONSTEXPR_LOCAL bool __nothrow_store = (__nothrow_decay_copyable<_Args> && ...);
+          STDEXEC_CONSTEXPR_LOCAL bool __nothrow_invoke =
+            __nothrow_invocable<_Fun, __decay_t<_Args>&...>;
+          STDEXEC_CONSTEXPR_LOCAL bool __nothrow_submit =
             __nothrow_constructible_from<__submit_t, __sender_t, __second_rcvr_t>;
 
           STDEXEC_TRY
           {
             __args_.__emplace_from(__mktuple, static_cast<_Args&&>(__args)...);
-            __start_next();
+            __start_next_(*this);
           }
           STDEXEC_CATCH_ALL
           {
@@ -197,6 +198,7 @@ namespace STDEXEC
       //! Variant to hold the child sender's results before passing them to the
       //! function:
       __variant<_Tuples...> __args_{__no_init};
+      __start_next_t        __start_next_;
     };
 
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
@@ -247,7 +249,7 @@ namespace STDEXEC
     {
       decltype(auto) __sndr = STDEXEC::__apply(__mk_result_sndr, __tupl, __fn);
       using __sender_t      = decltype(__sndr);
-      using __submit_t      = submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
+      using __submit_t      = __submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
       __second_rcvr_t __rcvr2{__rcvr, static_cast<_Env2&&>(__env2)};
 
@@ -259,7 +261,7 @@ namespace STDEXEC
     //! The core of the operation state for `let_*`. This gets bundled up into a
     //! larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _CvChild, class _Fun, class _Receiver, class... _Tuples>
-    struct __opstate final
+    struct __opstate
       : __opstate_base<_SetTag,
                        _Fun,
                        _Receiver,
@@ -280,7 +282,8 @@ namespace STDEXEC
         : __opstate::__opstate_base(_SetTag(),
                                     __child,
                                     static_cast<_Fun&&>(__fn),
-                                    static_cast<_Receiver&&>(__rcvr))
+                                    static_cast<_Receiver&&>(__rcvr),
+                                    &__opstate::__start_next)
       {
         __storage_.__emplace_from(STDEXEC::connect,
                                   static_cast<_CvChild&&>(__child),
@@ -293,17 +296,18 @@ namespace STDEXEC
         STDEXEC::start(__var::__get<0>(__storage_));
       };
 
-      constexpr void __start_next() final
+      static constexpr void __start_next(typename __opstate::__opstate_base& __base)
       {
-        STDEXEC_ASSERT(__storage_.index() == 0);
+        auto& __self = static_cast<__opstate&>(__base);
+        STDEXEC_ASSERT(__self.__storage_.index() == 0);
         if constexpr (sizeof...(_Tuples) != 0)
         {
           STDEXEC::__visit(__start_next_fn,
-                           this->__args_,
-                           this->__fn_,
-                           this->__rcvr_,
-                           this->__env2_,
-                           __storage_);
+                           __self.__args_,
+                           __self.__fn_,
+                           __self.__rcvr_,
+                           __self.__env2_,
+                           __self.__storage_);
         }
       }
 
@@ -312,172 +316,386 @@ namespace STDEXEC
       __op_state_variant_t __storage_{__no_init};
     };
 
-    // // The set_value completions of:
-    // //
-    // //   * a let_value sender are:
-    // //       * the value completions of the secondary senders
-    // //
-    // //   * a let_error sender are:
-    // //       * the value completions of the predecessor sender
-    // //       * the value completions of the secondary senders
-    // //
-    // //   * a let_stopped sender are:
-    // //       * the value completions of the predecessor sender
-    // //       * the value completions of the secondary sender
-    // //
-    // // The set_error completions of:
-    // //
-    // //   * a let_value sender are:
-    // //       * the error completions of the predecessor sender
-    // //       * the error completions of the secondary senders
-    // //       * the value completions of the predecessor sender if decay copying the arguments can throw
-    // //
-    // //   * a let_error sender are:
-    // //       * the error completions of the secondary senders
-    // //       * the error completions of the predecessor sender if decay copying the errors can throw
-    // //
-    // //   * a let_stopped sender are:
-    // //       * the error completions of the predecessor sender
-    // //       * the error completions of the secondary senders
-    // //
-    // // The set_stopped completions of:
-    // //
-    // //   * a let_value sender are:
-    // //       * the stopped completions of the predecessor sender
-    // //       * the stopped completions of the secondary senders
-    // //
-    // //   * a let_error sender are:
-    // //       * the stopped completions of the predecessor sender
-    // //       * the stopped completions of the secondary senders
-    // //
-    // //   * a let_stopped sender are:
-    // //       * the stopped completions of the secondary sender
-    // //
-    // template <class _SetTag, class _Fun, class... _JoinEnv2>
-    // struct __result_completion_behavior_fn
-    // {
-    //   template <class... _Ts>
-    //   [[nodiscard]]
-    //   static constexpr auto __impl() noexcept
-    //   {
-    //     using __sndr_t =
-    //       __minvoke_or_q<__invoke_result_t, __not_a_sender<>, _Fun, __decay_t<_Ts>&...>;
-    //     return STDEXEC::__get_completion_behavior<_SetTag, __sndr_t, _JoinEnv2...>();
-    //   }
+    // The set_value completions of:
+    //
+    //   * a let_value sender are:
+    //       * the value completions of the secondary senders
+    //
+    //   * a let_error sender are:
+    //       * the value completions of the predecessor sender
+    //       * the value completions of the secondary senders
+    //
+    //   * a let_stopped sender are:
+    //       * the value completions of the predecessor sender
+    //       * the value completions of the secondary sender
+    //
+    // The set_error completions of:
+    //
+    //   * a let_value sender are:
+    //       * the error completions of the predecessor sender
+    //       * the error completions of the secondary senders
+    //       * the value completions of the predecessor sender if decay copying the arguments can throw
+    //
+    //   * a let_error sender are:
+    //       * the error completions of the secondary senders
+    //       * the error completions of the predecessor sender if decay copying the errors can throw
+    //
+    //   * a let_stopped sender are:
+    //       * the error completions of the predecessor sender
+    //       * the error completions of the secondary senders
+    //
+    // The set_stopped completions of:
+    //
+    //   * a let_value sender are:
+    //       * the stopped completions of the predecessor sender
+    //       * the stopped completions of the secondary senders
+    //
+    //   * a let_error sender are:
+    //       * the stopped completions of the predecessor sender
+    //       * the stopped completions of the secondary senders
+    //
+    //   * a let_stopped sender are:
+    //       * the stopped completions of the secondary sender
+    //
+    template <class _SetTag, class _Fun, class... _JoinEnv2>
+    struct __result_completion_behavior_fn
+    {
+      template <class... _Ts>
+      [[nodiscard]]
+      static constexpr auto __impl() noexcept
+      {
+        using __sndr_t =
+          __minvoke_or_q<__invoke_result_t, __not_a_sender<>, _Fun, __decay_t<_Ts>&...>;
+        return STDEXEC::__get_completion_behavior<_SetTag, __sndr_t, _JoinEnv2...>();
+      }
 
-    //   template <class... _Ts>
-    //   using __f = decltype(__impl<_Ts...>());
-    // };
+      template <class... _Ts>
+      using __f = decltype(__impl<_Ts...>());
+    };
 
-    // template <class _SetTag, class _Fun, class _Sender, class... _Env>
-    // struct __domain_transform_fn
-    // {
-    //   template <class... _As>
-    //   using __f = __completion_domain_of_t<_SetTag,
-    //                                        __invoke_result_t<_Fun, __decay_t<_As>&...>,
-    //                                        __result_env_t<_SetTag, _Sender, _Env>...>;
-    // };
+    //! @tparam _LetSetTag The completion tag of the let_ sender's own channel (e.g.
+    //! `set_value_t` for let_value). The secondary senders are started from the predecessor's
+    //! `_LetSetTag` completions, so that determines their environment.
+    //! @tparam _SetTag The completion channel whose domain is being computed.
+    template <class _LetSetTag, class _SetTag, class _Fun, class _Sender, class... _Env>
+    struct __domain_transform_fn
+    {
+      template <class... _As>
+      using __f = __completion_domain_of_t<_SetTag,
+                                           __invoke_result_t<_Fun, __decay_t<_As>&...>,
+                                           __result_env_t<_LetSetTag, _Sender, _Env>...>;
+    };
 
-    // //! @tparam _LetTag The tag type for the let_ operation.
-    // //! @tparam _SetTag The completion signal of the let_ sender itself that is being
-    // //! queried. For example, you may be querying a let_value sender for its set_error
-    // //! completion domain.
-    // template <class _LetTag, class _SetTag, class _Sndr, class _Fun, class... _Env>
-    // [[nodiscard]]
-    // consteval auto __get_completion_domain() noexcept
-    // {
-    //   if constexpr (sender_in<_Sndr, _Env...>)
-    //   {
-    //     using __domain_transform_fn = __let::__domain_transform_fn<_SetTag, _Fun, _Sndr, _Env...>;
-    //     return __minvoke_or_q<__gather_completion_signatures_t,
-    //                           indeterminate_domain<>,
-    //                           __t<_LetTag>,
-    //                           __completion_signatures_of_t<_Sndr, _Env...>,
-    //                           __domain_transform_fn,
-    //                           __qq<__common_domain_t>>();
-    //   }
-    //   else
-    //   {
-    //     return indeterminate_domain<>{};
-    //   }
-    // }
+    //! @tparam _LetTag The tag type for the let_ operation.
+    //! @tparam _SetTag The completion signal of the let_ sender itself that is being
+    //! queried. For example, you may be querying a let_value sender for its set_error
+    //! completion domain.
+    template <class _LetTag, class _SetTag, class _Sndr, class _Fun, class... _Env>
+    [[nodiscard]]
+    consteval auto __get_completion_domain() noexcept
+    {
+      if constexpr (sender_in<_Sndr, _Env...>)
+      {
+        using __domain_transform_fn =
+          __let::__domain_transform_fn<__t<_LetTag>, _SetTag, _Fun, _Sndr, _Env...>;
+        return __minvoke_or_q<__gather_completion_signatures_t,
+                              indeterminate_domain<>,
+                              __t<_LetTag>,
+                              __completion_signatures_of_t<_Sndr, _Env...>,
+                              __domain_transform_fn,
+                              __qq<__common_domain_t>>();
+      }
+      else
+      {
+        return indeterminate_domain<>{};
+      }
+    }
 
-    // template <class _LetTag, class _SetTag, class _Sndr, class _Fun, class... _Env>
-    // using __let_completion_domain_t = __unless_one_of_t<
-    //   __result_of<__let::__get_completion_domain<_LetTag, _SetTag, _Sndr, _Fun, _Env...>>,
-    //   indeterminate_domain<>>;
+    template <class _LetTag, class _SetTag, class _Sndr, class _Fun, class... _Env>
+    using __let_completion_domain_t = __unless_one_of_t<
+      decltype(__let::__get_completion_domain<_LetTag, _SetTag, _Sndr, _Fun, _Env...>()),
+      indeterminate_domain<>>;
 
-    // template <class _LetTag, class _Sndr, class _Fun>
-    // struct __attrs
-    // {
-    //   using __set_tag_t = STDEXEC::__t<_LetTag>;
+    //! For a given let_ sender and completion tag, summarizes the senders that the let_
+    //! function can return: whether any of them can complete with `_Tag`, and whether all
+    //! of those complete on the execution context on which they were started.
+    template <bool _Sends, bool _Affine>
+    struct __secondary_summary
+    {
+      static constexpr bool __sends  = _Sends;
+      static constexpr bool __affine = _Affine;
+    };
 
-    //   template <class _Tag>
-    //   constexpr auto query(get_completion_scheduler_t<_Tag>) const = delete;
+    template <class... _Summaries>
+    using __combine_summaries =
+      __secondary_summary<(_Summaries::__sends || ...), (_Summaries::__affine && ...)>;
 
-    //   template <class... _Env>
-    //   [[nodiscard]]
-    //   constexpr auto query(get_completion_domain_t<__set_tag_t>, _Env const &...) const noexcept
-    //     -> __ensure_valid_domain_t<
-    //       __let_completion_domain_t<_LetTag, __set_tag_t, _Sndr, _Fun, _Env...>>
-    //   {
-    //     return {};
-    //   }
+    template <class _Tag, class _SetTag, class _Fun, class _Sender, class... _Env>
+    struct __secondary_summary_fn
+    {
+      template <class... _As>
+      [[nodiscard]]
+      static consteval auto __impl() noexcept
+      {
+        using __sndr_t =
+          __minvoke_or_q<__invoke_result_t, __not_a_sender<>, _Fun, __decay_t<_As>&...>;
+        if constexpr (__sends<_Tag, __sndr_t, __result_env_t<_SetTag, _Sender, _Env>...>)
+        {
+          constexpr auto __cb =
+            STDEXEC::__get_completion_behavior<_Tag,
+                                               __sndr_t,
+                                               __result_env_t<_SetTag, _Sender, _Env>...>();
+          return __secondary_summary<true, __completion_behavior::__is_affine(__cb)>();
+        }
+        else
+        {
+          return __secondary_summary<false, true>();
+        }
+      }
 
-    //   template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
-    //     requires(__has_nothrow_completions_t<__set_tag_t, _Sndr, _Fun, _Env>::value && ...)
-    //   [[nodiscard]]
-    //   constexpr auto query(get_completion_domain_t<_Tag>, _Env const &...) const noexcept
-    //     -> __ensure_valid_domain_t<
-    //       __common_domain_t<__completion_domain_of_t<_Tag, _Sndr, __fwd_env_t<_Env>...>,
-    //                         __let_completion_domain_t<_LetTag, _Tag, _Sndr, _Fun, _Env...>>>
-    //   {
-    //     return {};
-    //   }
+      template <class... _As>
+      using __f = decltype(__impl<_As...>());
+    };
 
-    //   template <class _Env>
-    //     requires(!__has_nothrow_completions_t<__set_tag_t, _Sndr, _Fun, _Env>::value)
-    //   [[nodiscard]]
-    //   constexpr auto query(get_completion_domain_t<set_error_t>, _Env const &) const noexcept
-    //     -> __ensure_valid_domain_t<
-    //       __common_domain_t<__completion_domain_of_t<__set_tag_t, _Sndr, __fwd_env_t<_Env>>,
-    //                         __completion_domain_of_t<set_error_t, _Sndr, __fwd_env_t<_Env>>,
-    //                         __let_completion_domain_t<_LetTag, set_error_t, _Sndr, _Fun, _Env>>>
-    //   {
-    //     return {};
-    //   }
+    template <class _Tag, class _SetTag, class _Fun, class _Sender, class... _Env>
+    using __secondary_summary_t =
+      __minvoke_or_q<__gather_completion_signatures_t,
+                     __secondary_summary<true, false>,  // unknown => conservative
+                     _SetTag,
+                     __completion_signatures_of_t<_Sender, _Env...>,
+                     __secondary_summary_fn<_Tag, _SetTag, _Fun, _Sender, _Env...>,
+                     __qq<__combine_summaries>>;
 
-    //   template <class... _Env>
-    //   [[nodiscard]]
-    //   constexpr auto query(__get_completion_behavior_t<__set_tag_t>, _Env const &...) const noexcept
-    //   {
-    //     if constexpr (sender_in<_Sndr, __fwd_env_t<_Env>...>)
-    //     {
-    //       // The completion behavior of let_value(sndr, fn) is the union of the completion
-    //       // behavior of sndr and all the senders that fn can potentially produce. (MSVC
-    //       // needs the constexpr computation broken up, hence the local variables.)
-    //       using __transform_fn =
-    //         __result_completion_behavior_fn<__set_tag_t,
-    //                                         _Fun,
-    //                                         __result_env_t<__set_tag_t, _Sndr, _Env>...>;
-    //       using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
+    template <class _LetTag, class _Sndr, class _Fun>
+    struct __attrs
+    {
+      using __set_tag_t = STDEXEC::__t<_LetTag>;
 
-    //       constexpr auto __pred_behavior =
-    //         STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
-    //       constexpr auto __result_behaviors = __gather_completion_signatures_t<
-    //         __set_tag_t,
-    //         __completions_t,
-    //         __transform_fn,
-    //         __mbind_front_q<__call_result_t, __completion_behavior::__common_t>>();
+     private:
+      //! True if invoking the function and connecting the resulting senders cannot throw,
+      //! for each of the environments (or for the empty environment if there are none). If
+      //! the predecessor's completions cannot be determined in an environment, we
+      //! conservatively assume that they can throw.
+      template <class _Env>
+      [[nodiscard]]
+      static consteval auto __nothrow_completions_in() noexcept -> bool
+      {
+        if constexpr (sender_in<_Sndr, _Env>)
+        {
+          return __has_nothrow_completions_t<__set_tag_t, _Sndr, _Fun, _Env>::value;
+        }
+        else
+        {
+          return false;
+        }
+      }
 
-    //       return __pred_behavior | __result_behaviors;
-    //     }
-    //     else
-    //     {
-    //       return __completion_behavior::__unknown;
-    //     }
-    //   }
-    // };
+      template <class... _Env>
+      [[nodiscard]]
+      static consteval auto __nothrow_completions() noexcept -> bool
+      {
+        if constexpr (sizeof...(_Env) == 0)
+        {
+          return __nothrow_completions_in<env<>>();
+        }
+        else
+        {
+          return (__nothrow_completions_in<_Env>() && ...);
+        }
+      }
+
+      //! Where do `_Tag` completions of the let_ sender happen? Completions can come from:
+      //! - the predecessor, passed through unchanged (only for tags other than the let_ tag).
+      //!   These happen on the predecessor's `_Tag` completion scheduler.
+      //! - the secondary senders (and, for `set_error_t`, exceptions thrown while invoking
+      //!   the function or connecting the secondary sender). These are started on the
+      //!   predecessor's `__set_tag_t` completion scheduler, so if the secondary senders
+      //!   complete on the context they were started on, they too complete there.
+      //!
+      //! Completion schedulers are runtime values, so we can only report one when there is
+      //! exactly one source of `_Tag` completions. The answer depends on the environment (it
+      //! determines the completion behavior and domain of the secondary senders), so no
+      //! completion scheduler is reported when queried without one.
+      //!
+      //! @return 0 if there is no `_Tag` completion, 1 if `_Tag` completions come from the
+      //! predecessor's `_Tag` completions, 2 if they come from the predecessor's
+      //! `__set_tag_t` completion scheduler, and 3 if the source is ambiguous or unknown.
+      template <class _Tag, class... _Env>
+      [[nodiscard]]
+      static consteval auto __scheduler_source() noexcept -> int
+      {
+        constexpr bool __pass = !__same_as<_Tag, __set_tag_t>
+                             && __sends<_Tag, _Sndr, __fwd_env_t<_Env>...>;
+
+        bool __invoked = false;
+        if constexpr (__sends<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>)
+        {
+          using __summary_t       = __secondary_summary_t<_Tag, __set_tag_t, _Fun, _Sndr, _Env...>;
+          constexpr bool __throws = __same_as<_Tag, set_error_t>
+                                 && !__nothrow_completions<_Env...>();
+          if constexpr (__summary_t::__sends && !__summary_t::__affine)
+          {
+            return 3;
+          }
+          __invoked = __summary_t::__sends || __throws;
+        }
+
+        return (__pass && __invoked) ? 3 : __pass ? 1 : __invoked ? 2 : 0;
+      }
+
+     public:
+      constexpr explicit __attrs(_Sndr const & __sndr) noexcept
+        : __sndr_(__sndr)
+      {}
+
+      //! The predecessor's completions are passed through unchanged.
+      template <class _Tag, class... _Env>
+        requires(sizeof...(_Env) != 0) && (__scheduler_source<_Tag, _Env...>() == 1)
+      [[nodiscard]]
+      constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const &... __env) const noexcept
+        -> __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sndr>, __fwd_env_t<_Env>...>
+      {
+        return get_completion_scheduler<_Tag>(STDEXEC::get_env(__sndr_), __fwd_env(__env)...);
+      }
+
+      //! The completions come from senders started from the predecessor's `__set_tag_t`
+      //! completion, which all complete on the context they were started on.
+      template <class _Tag, class... _Env>
+        requires(sizeof...(_Env) != 0) && (__scheduler_source<_Tag, _Env...>() == 2)
+      [[nodiscard]]
+      constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const &... __env) const noexcept
+        -> __call_result_t<get_completion_scheduler_t<__set_tag_t>,
+                           env_of_t<_Sndr>,
+                           __fwd_env_t<_Env>...>
+      {
+        return get_completion_scheduler<__set_tag_t>(STDEXEC::get_env(__sndr_),
+                                                     __fwd_env(__env)...);
+      }
+
+      template <class... _Env>
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<__set_tag_t>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __let_completion_domain_t<_LetTag, __set_tag_t, _Sndr, _Fun, _Env...>>
+      {
+        return {};
+      }
+
+      template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
+        requires(__nothrow_completions<_Env...>())
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __common_domain_t<__completion_domain_of_t<_Tag, _Sndr, __fwd_env_t<_Env>...>,
+                            __let_completion_domain_t<_LetTag, _Tag, _Sndr, _Fun, _Env...>>>
+      {
+        return {};
+      }
+
+      template <class... _Env>
+        requires(!__nothrow_completions<_Env...>())
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<set_error_t>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __common_domain_t<__completion_domain_of_t<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>,
+                            __completion_domain_of_t<set_error_t, _Sndr, __fwd_env_t<_Env>...>,
+                            __let_completion_domain_t<_LetTag, set_error_t, _Sndr, _Fun, _Env...>>>
+      {
+        return {};
+      }
+
+      // The value completions of a let_error or let_stopped sender are the value
+      // completions of the predecessor, passed through unchanged, plus the value
+      // completions of the secondary senders (which only exist if the predecessor can
+      // complete with the let_ sender's own completion tag). For let_value, the value
+      // channel is handled by the first overload above.
+      template <__same_as<set_value_t> _Tag, class... _Env>
+        requires(!__same_as<__set_tag_t, set_value_t>)
+             && __sends<set_value_t, _Sndr, __fwd_env_t<_Env>...>
+             && __never_sends<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __completion_domain_of_t<set_value_t, _Sndr, __fwd_env_t<_Env>...>>
+      {
+        return {};
+      }
+
+      //! @overload
+      template <__same_as<set_value_t> _Tag, class... _Env>
+        requires(!__same_as<__set_tag_t, set_value_t>)
+             && __sends<set_value_t, _Sndr, __fwd_env_t<_Env>...>
+             && (!__never_sends<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>)
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __common_domain_t<__completion_domain_of_t<set_value_t, _Sndr, __fwd_env_t<_Env>...>,
+                            __let_completion_domain_t<_LetTag, set_value_t, _Sndr, _Fun, _Env...>>>
+      {
+        return {};
+      }
+
+      //! @overload
+      //! The predecessor never sends values, so only the secondary senders contribute.
+      template <__same_as<set_value_t> _Tag, class... _Env>
+        requires(!__same_as<__set_tag_t, set_value_t>)
+             && (!__sends<set_value_t, _Sndr, __fwd_env_t<_Env>...>)
+             && (!__never_sends<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>)
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env const &...) const noexcept
+        -> __ensure_valid_domain_t<
+          __let_completion_domain_t<_LetTag, set_value_t, _Sndr, _Fun, _Env...>>
+      {
+        return {};
+      }
+
+      // This overload is needed so that let_stopped will look for customizations based on
+      // the set_stopped completion domain of the predecessor sender, not the set_value
+      // completion domain of the predecessor sender. Likewise for let_error and the
+      // set_error completion domain of the predecessor sender.
+      template <class... _Env>
+        requires __callable<get_completion_domain_t<__set_tag_t>, env_of_t<_Sndr>, _Env const &...>
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<>, _Env const &...) const noexcept
+        -> __call_result_t<get_completion_domain_t<__set_tag_t>, env_of_t<_Sndr>, _Env const &...>
+      {
+        return {};
+      }
+
+      template <class... _Env>
+      [[nodiscard]]
+      constexpr auto query(__get_completion_behavior_t<__set_tag_t>, _Env const &...) const noexcept
+      {
+        if constexpr (sender_in<_Sndr, __fwd_env_t<_Env>...>)
+        {
+          // The completion behavior of let_value(sndr, fn) is the union of the completion
+          // behavior of sndr and all the senders that fn can potentially produce. (MSVC
+          // needs the constexpr computation broken up, hence the local variables.)
+          using __transform_fn =
+            __result_completion_behavior_fn<__set_tag_t,
+                                            _Fun,
+                                            __result_env_t<__set_tag_t, _Sndr, _Env>...>;
+          using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
+
+          STDEXEC_CONSTEXPR_LOCAL auto __pred_behavior =
+            STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
+          STDEXEC_CONSTEXPR_LOCAL auto __result_behaviors = __gather_completion_signatures_t<
+            __set_tag_t,
+            __completions_t,
+            __transform_fn,
+            __mbind_front_q<__call_result_t, __completion_behavior::__common_t>>();
+
+          return __pred_behavior | __result_behaviors;
+        }
+        else
+        {
+          return __completion_behavior::__unknown;
+        }
+      }
+
+     private:
+      _Sndr const & __sndr_;
+    };
 
     //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g.,
     //! `set_value_t` for `let_value`.
@@ -587,11 +805,10 @@ namespace STDEXEC
       }
 
      public:
-      static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept -> decltype(auto)
+      static constexpr auto __get_attrs =                                                      //
+        []<class _Fun, class _Child>(__ignore, _Fun const &, _Child const & __child) noexcept  //
       {
-        // TODO(ericniebler): this needs a proper implementation
-        return __fwd_env(STDEXEC::get_env(__child));
+        return __let::__attrs<_LetTag, _Child, _Fun>(__child);
       };
 
       template <class _CvSender, class... _Env>

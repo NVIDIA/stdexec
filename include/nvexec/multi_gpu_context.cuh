@@ -29,7 +29,8 @@ namespace nv::execution
 {
   namespace _strm
   {
-    struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler>
+    struct multi_gpu_stream_scheduler
+      : private stream_scheduler_attrs<multi_gpu_stream_scheduler, set_error_t>
     {
       using scheduler_concept = STDEXEC::scheduler_tag;
 
@@ -49,7 +50,7 @@ namespace nv::execution
         return sender{num_devices_, ctx_};
       }
 
-      using stream_scheduler_env::query;
+      using stream_scheduler_attrs::query;
 
      private:
       template <class Receiver>
@@ -110,12 +111,37 @@ namespace nv::execution
 
       struct sender : stream_sender_base
       {
+       private:
+        struct attrs
+        {
+          template <STDEXEC::__one_of<set_value_t, set_error_t> CompletionSignal>
+          [[nodiscard]]
+          auto query(get_completion_scheduler_t<CompletionSignal>) const noexcept
+            -> multi_gpu_stream_scheduler
+          {
+            return multi_gpu_stream_scheduler{num_devices_, ctx_};
+          }
+
+          template <STDEXEC::__one_of<set_value_t, set_error_t> CompletionSignal>
+          [[nodiscard]]
+          auto query(get_completion_domain_t<CompletionSignal>) const noexcept -> stream_domain
+          {
+            return {};
+          }
+
+          int     num_devices_;
+          context ctx_;
+        };
+
+        attrs attrs_;
+
+       public:
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender(int num_devices, context ctx) noexcept
-          : env_{.num_devices_ = num_devices, .ctx_ = ctx}
+          : attrs_{.num_devices_ = num_devices, .ctx_ = ctx}
         {}
 
         template <class Receiver>
@@ -126,27 +152,10 @@ namespace nv::execution
         }
 
         [[nodiscard]]
-        auto get_env() const noexcept -> decltype(auto)
+        auto get_env() const noexcept -> attrs const &
         {
-          return (env_);
+          return attrs_;
         }
-
-       private:
-        struct attrs
-        {
-          template <class CPO>
-          [[nodiscard]]
-          auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
-            -> multi_gpu_stream_scheduler
-          {
-            return multi_gpu_stream_scheduler{num_devices_, ctx_};
-          }
-
-          int     num_devices_;
-          context ctx_;
-        };
-
-        attrs env_;
       };
 
      public:
@@ -154,14 +163,6 @@ namespace nv::execution
       int     num_devices_{};
       context ctx_;
     };
-
-    template <>
-    STDEXEC_ATTRIBUTE(nodiscard)
-    inline auto stream_scheduler_env<multi_gpu_stream_scheduler>::query(
-      get_completion_scheduler_t<set_value_t>) const noexcept -> multi_gpu_stream_scheduler
-    {
-      return STDEXEC::__c_downcast<multi_gpu_stream_scheduler>(*this);
-    }
   }  // namespace _strm
 
   using _strm::multi_gpu_stream_scheduler;

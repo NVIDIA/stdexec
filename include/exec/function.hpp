@@ -19,7 +19,6 @@
 #include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__domain.hpp"
 #include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
@@ -490,13 +489,13 @@ namespace experimental::execution
     //! Itanium C++ ABI a pointer to member function is two pointers, but under
     //! the Microsoft ABI its size depends on the class's inheritance model, and
     //! the general representation is larger.
-    inline constexpr std::size_t __factory_storage_size = std::max(
-      {sizeof(__fn_ptr_t), sizeof(__general_pmf_t), sizeof(__general_pmd_t)});
+    inline constexpr std::size_t __factory_storage_size =
+      (std::max) ({sizeof(__fn_ptr_t), sizeof(__general_pmf_t), sizeof(__general_pmd_t)});
 
     //! The alignment required to store any factory __function accepts: an
     //! empty callable, a pointer to function, or a pointer to member.
-    inline constexpr std::size_t __factory_storage_align = std::max(
-      {alignof(__fn_ptr_t), alignof(__general_pmf_t), alignof(__general_pmd_t)});
+    inline constexpr std::size_t __factory_storage_align =
+      (std::max) ({alignof(__fn_ptr_t), alignof(__general_pmf_t), alignof(__general_pmd_t)});
 
     //! Satisfied when _Ty is a pointer-to-function or pointer-to-member
     template <class _Ty>
@@ -945,12 +944,12 @@ namespace experimental::execution
       constexpr auto connect(_Receiver __rcvr) && noexcept(__nothrow_connect<_Receiver>)  //
         -> __opstate_t<_Receiver>
       {
-        auto __factory = [this]<class _RcvrRef>(_RcvrRef __rcvr)
+        auto __factory = [this]<class _RcvrRef>(_RcvrRef __rcvr_ref)
         {
           return __apply(__make_opstate_,
                          static_cast<__tuple<_Args...> &&>(__args_),
                          __make_sender_,
-                         static_cast<_RcvrRef &&>(__rcvr));
+                         static_cast<_RcvrRef &&>(__rcvr_ref));
         };
         return __opstate_t<_Receiver>{static_cast<_Receiver &&>(__rcvr), __factory};
       }

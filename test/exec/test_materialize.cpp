@@ -124,7 +124,7 @@ namespace
       set_equivalent<completion_signatures_of_t<decltype(sndr)>,
                      completion_signatures<set_value_t(set_error_t, noncopyable_error&)>>);
 
-    auto op = connect(std::move(sndr), error_receiver{&error, &called});
+    auto op = ex::connect(std::move(sndr), error_receiver{&error, &called});
     start(op);
     CHECK(called);
   }

@@ -146,7 +146,7 @@ namespace nv::execution
       {}
 
       template <__decays_to<schedule_from_sender> Self, STDEXEC::receiver Receiver>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
         -> opstate_t<Self, Receiver>
       {
         return opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,

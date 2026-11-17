@@ -144,7 +144,7 @@ namespace nv::execution::_strm
       STDEXEC_ATTRIBUTE(no_unique_address)
       Env env_;
       STDEXEC_ATTRIBUTE(no_unique_address)
-      submit_result<CvSender, receiver<CvSender, Env>> op_data_;
+      __submit_result<CvSender, receiver<CvSender, Env>> op_data_;
     };
 
     template <class CvSender, class Env>
@@ -169,8 +169,7 @@ namespace nv::execution::_strm
       {
         // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
         // for the operation. We can just call submit and return.
-        STDEXEC::__submit::__submit(static_cast<CvSender&&>(sndr),
-                                    _start_detached::submit_receiver{});
+        STDEXEC::__submit(static_cast<CvSender&&>(sndr), _start_detached::submit_receiver{});
       }
       else
 #endif

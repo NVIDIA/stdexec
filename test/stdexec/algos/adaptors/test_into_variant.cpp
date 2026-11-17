@@ -162,4 +162,23 @@ namespace
     check_sends_stopped<true>(ex::just_stopped() | ex::into_variant());
   }
 
+  // [exec.adapt.obj]/4: a pipeable sender adaptor object that accepts only one
+  // argument is a pipeable sender adaptor closure object.
+  TEST_CASE("into_variant is a sender adaptor closure object", "[adaptors][into_variant]")
+  {
+    STATIC_REQUIRE(ex::__sender_adaptor_closure<ex::into_variant_t>);
+    STATIC_REQUIRE(std::same_as<decltype(ex::into_variant()), ex::into_variant_t>);
+
+    ex::sender auto snd = ex::just(11) | ex::into_variant;
+    wait_for_value(std::move(snd), std::variant<std::tuple<int>>{11});
+  }
+
+  TEST_CASE("into_variant composes with other closures without parentheses",
+            "[adaptors][into_variant]")
+  {
+    auto            clsur = ex::into_variant | ex::then([](auto var) { return var.index(); });
+    ex::sender auto snd   = ex::just(3, 0.1415) | clsur;
+    wait_for_value(std::move(snd), std::size_t{0});
+  }
+
 }  // namespace

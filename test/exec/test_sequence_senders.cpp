@@ -151,4 +151,44 @@ namespace
     STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
     STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
   }
+
+  struct tagged_operation
+  {
+    int tag;
+
+    void start() & noexcept {}
+  };
+
+  template <__completion_signature... _Sigs>
+  struct static_subscribe_sequence_of : some_sequence_sender_of<_Sigs...>
+  {
+    template <class Self, receiver R>
+    static auto __static_subscribe(Self&&, R&&) noexcept -> tagged_operation
+    {
+      return {1};
+    }
+
+    template <receiver R>
+    auto subscribe(R&&) const -> tagged_operation
+    {
+      return {2};
+    }
+  };
+
+  TEST_CASE("sequence_senders - __subscribe hooks", "[sequence_senders]")
+  {
+    using next_receiver_t = next_receiver<set_value_t(int), set_stopped_t()>;
+    using member_seq_t    = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
+    using static_seq_t    = static_subscribe_sequence_of<set_value_t(int), set_stopped_t()>;
+
+    STATIC_REQUIRE(__subscribable<member_seq_t, next_receiver_t>);
+    STATIC_REQUIRE(__same_as<__subscribe_result_t<member_seq_t, next_receiver_t>, nop_operation>);
+    STATIC_REQUIRE_FALSE(__subscribable<int, next_receiver_t>);
+
+    // the static hook wins over the member function
+    STATIC_REQUIRE(__subscribable<static_seq_t, next_receiver_t>);
+    STATIC_REQUIRE(noexcept(STDEXEC::__subscribe(static_seq_t{}, next_receiver_t{})));
+    CHECK(STDEXEC::__subscribe(static_seq_t{}, next_receiver_t{}).tag == 1);
+    CHECK(exec::subscribe(static_seq_t{}, next_receiver_t{}).tag == 1);
+  }
 }  // namespace

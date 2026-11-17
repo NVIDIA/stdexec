@@ -79,7 +79,7 @@ namespace STDEXEC
 
     template <class _Self, class _Receiver>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(void __complete)(this _Self&& __self,
+    constexpr void STDEXEC_EXPLICIT_THIS_BEGIN(__complete)(this _Self&& __self,
                                                            _Receiver&   __rcvr) noexcept
     {
       __visit(__detail::__visitor(), static_cast<_Self&&>(__self), __rcvr);

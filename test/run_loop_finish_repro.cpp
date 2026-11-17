@@ -2,7 +2,7 @@
 
 #include <thread>
 
-namespace ex = STDEXEC_NAMESPACE;
+namespace ex = STDEXEC;
 
 void run_once()
 {

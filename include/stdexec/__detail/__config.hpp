@@ -743,19 +743,16 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
-// BUGBUG fix support for constexpr exceptions
-#define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
-
-// #if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
-// #  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-// // https://wg21.link/p3068
-// #    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
-// #  else
-// #    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
-// #  endif
-// #else
-// #  define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
-// #endif
+#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+// https://wg21.link/p3068
+#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
+#  else
+#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
+#  endif
+#else
+#  define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
+#endif
 
 // We need to treat host and device separately
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__) && !STDEXEC_NVHPC()
@@ -890,7 +887,7 @@ namespace STDEXEC
 ///
 /// @code
 /// template <__std::same_as<self_t> Self, class Receiver>
-/// STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) {
+/// auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) {
 ///   return ...;
 /// }
 /// STDEXEC_EXPLICIT_THIS_END(connect)
@@ -915,16 +912,12 @@ namespace STDEXEC
                                   _NAME))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
-    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN()
+    (STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__))
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
-    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
-                             STDEXEC_PP_RPAREN()) STDEXEC_PP_LPAREN() STDEXEC_EXPLICIT_THIS_ARGS
+    static STDEXEC_EXPLICIT_THIS_MANGLE(__VA_ARGS__) STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \

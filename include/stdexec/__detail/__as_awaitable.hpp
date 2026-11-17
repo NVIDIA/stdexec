@@ -92,9 +92,6 @@ namespace STDEXEC
     using __adapted_sender_t =
       __remove_rvalue_reference_t<__call_result_t<__adapt_completion_t<_Sender>, _Sender>>;
 
-    struct __void
-    {};
-
     template <class _Value>
     using __value_or_void_t = __if_c<__same_as<_Value, void>, __void, _Value>;
 

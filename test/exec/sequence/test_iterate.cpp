@@ -16,12 +16,17 @@
  */
 
 #include "exec/sequence/iterate.hpp"
+#include "exec/variant_sender.hpp"
 #include "stdexec/execution.hpp"
 
 #include <array>
+#include <cstddef>
+#include <exception>
 #include <initializer_list>
+#include <iterator>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <test_common/catch2.hpp>
 #include <utility>
 #include <vector>
@@ -48,6 +53,120 @@ namespace
     }
 
     std::array<int, 1> values{0};
+  };
+
+  struct iterator_failure
+  {};
+
+  enum class iterator_failure_point
+  {
+    dereference,
+    increment,
+    postincrement,
+    comparison,
+    comparison_after_first
+  };
+
+  struct throwing_forward_iterator
+  {
+    using iterator_concept = std::forward_iterator_tag;
+    using value_type       = int;
+    using difference_type  = std::ptrdiff_t;
+
+    int*                   current_{};
+    iterator_failure_point failure_point_{};
+
+    int& operator*() const
+    {
+      if (failure_point_ == iterator_failure_point::dereference)
+      {
+        throw iterator_failure{};
+      }
+      return *current_;
+    }
+
+    auto operator++() -> throwing_forward_iterator&
+    {
+      if (failure_point_ == iterator_failure_point::increment)
+      {
+        throw iterator_failure{};
+      }
+      ++current_;
+      return *this;
+    }
+
+    auto operator++(int) -> throwing_forward_iterator
+    {
+      if (failure_point_ == iterator_failure_point::postincrement)
+      {
+        throw iterator_failure{};
+      }
+      auto previous = *this;
+      ++*this;
+      return previous;
+    }
+
+    friend auto operator==(throwing_forward_iterator const & left,
+                           throwing_forward_iterator const & right) -> bool
+    {
+      if (left.failure_point_ == iterator_failure_point::comparison
+          || right.failure_point_ == iterator_failure_point::comparison)
+      {
+        throw iterator_failure{};
+      }
+      if (left.current_ == right.current_
+          && (left.failure_point_ == iterator_failure_point::comparison_after_first
+              || right.failure_point_ == iterator_failure_point::comparison_after_first))
+      {
+        throw iterator_failure{};
+      }
+      return left.current_ == right.current_;
+    }
+  };
+
+  struct throwing_forward_range
+  {
+    int                    value_{42};
+    iterator_failure_point failure_point_;
+
+    auto begin() noexcept -> throwing_forward_iterator
+    {
+      return {&value_, failure_point_};
+    }
+
+    auto end() noexcept -> throwing_forward_iterator
+    {
+      return {&value_ + 1, failure_point_};
+    }
+  };
+
+  struct throwing_comparison_sentinel
+  {
+    int* end_{};
+
+    friend bool operator==(int* current, throwing_comparison_sentinel sentinel)
+    {
+      if (current == sentinel.end_)
+      {
+        throw iterator_failure{};
+      }
+      return false;
+    }
+  };
+
+  struct throwing_comparison_range
+  {
+    int value_{42};
+
+    auto begin() noexcept -> int*
+    {
+      return &value_;
+    }
+
+    auto end() noexcept -> throwing_comparison_sentinel
+    {
+      return {&value_ + 1};
+    }
   };
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -94,7 +213,7 @@ namespace
 
     template <STDEXEC::__decays_to<sum_sender>            Self,
               STDEXEC::receiver_of<completion_signatures> Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr) noexcept
     {
       return STDEXEC::connect(static_cast<Self&&>(self).item_,
                               sum_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr), self.sum_});
@@ -128,6 +247,18 @@ namespace
       return env_;
     }
   };
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct error_capture_receiver : sum_receiver<>
+  {
+    void set_error(std::exception_ptr error) noexcept
+    {
+      error_ = std::move(error);
+    }
+
+    std::exception_ptr& error_;
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   struct move_only_sum_receiver : sum_receiver<>
   {
@@ -225,6 +356,60 @@ namespace
 
     STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
+  }
+
+  TEST_CASE("iterate - item error signatures depend on iterator access",
+            "[sequence_senders][iterate]")
+  {
+    using throwing_item    = exec::__iterate::__sender<throwing_forward_range>;
+    using nonthrowing_item = exec::__iterate::__sender<std::array<int, 1>>;
+    using comparison_item  = exec::__iterate::__sender<throwing_comparison_range>;
+    using error_signature  = STDEXEC::set_error_t(std::exception_ptr);
+
+    STATIC_REQUIRE(throwing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(nonthrowing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(comparison_item::completion_signatures::__contains<error_signature>());
+  }
+
+  TEST_CASE("iterate - forwards iterator operation exceptions", "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_forward_range>);
+
+    for (auto failure_point: {iterator_failure_point::dereference,
+                              iterator_failure_point::increment,
+                              iterator_failure_point::postincrement,
+                              iterator_failure_point::comparison,
+                              iterator_failure_point::comparison_after_first})
+    {
+      int                sum = 0;
+      std::exception_ptr error;
+      auto               sequence = exec::iterate(throwing_forward_range{42, failure_point});
+
+      auto op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+      STDEXEC::start(op);
+
+      REQUIRE(error);
+      CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+      CHECK(sum == (failure_point == iterator_failure_point::comparison_after_first ? 42 : 0));
+    }
+  }
+
+  TEST_CASE("iterate - forwards comparison error after nonthrowing item access",
+            "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_comparison_range>);
+
+    int                sum = 0;
+    std::exception_ptr error;
+    auto               sequence = exec::iterate(throwing_comparison_range{});
+    auto               op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+    STDEXEC::start(op);
+
+    REQUIRE(error);
+    CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+    CHECK(sum == 42);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -349,6 +534,101 @@ namespace
     sndr.reset();
     STDEXEC::start(op);
     CHECK(sum == 6);
+  }
+
+  // A sequence receiver whose next senders complete with set_value() even when
+  // the item was stopped, like those of `sum_receiver` above. After `max_items`
+  // items the next senders complete with set_stopped(), so that a sequence that
+  // would never end fails the test instead of hanging it.
+  struct stop_ignoring_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    static constexpr int max_items = 100;
+
+    template <class Item>
+    auto set_next(Item&& item) noexcept
+    {
+      auto handled = STDEXEC::upon_stopped(STDEXEC::then(static_cast<Item&&>(item),
+                                                         [stop_source = &stop_source_,
+                                                          stop_at = stop_at_](int value) noexcept
+                                                         {
+                                                           if (value == stop_at)
+                                                           {
+                                                             stop_source->request_stop();
+                                                           }
+                                                         }),
+                                           []() noexcept {});
+      using next_t = exec::variant_sender<decltype(handled), decltype(STDEXEC::just_stopped())>;
+      if (++items_ > max_items)
+      {
+        return next_t{STDEXEC::just_stopped()};
+      }
+      return next_t{std::move(handled)};
+    }
+
+    void set_value() noexcept
+    {
+      completed_ = true;
+    }
+
+    void set_stopped() noexcept
+    {
+      stopped_ = true;
+    }
+
+    void set_error(std::exception_ptr) noexcept {}
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop{STDEXEC::get_stop_token, stop_source_.get_token()};
+    }
+
+    STDEXEC::inplace_stop_source& stop_source_;
+    int                           stop_at_;
+    int&                          items_;
+    bool&                         completed_;
+    bool&                         stopped_;
+  };
+
+  TEST_CASE("iterate - stops when stop is requested, even if the next senders ignore it",
+            "[sequence_senders][iterate]")
+  {
+    std::array<int, 6>           array{0, 1, 2, 3, 4, 5};
+    STDEXEC::inplace_stop_source stop_source;
+    int                          items     = 0;
+    bool                         completed = false;
+    bool                         stopped   = false;
+
+    SECTION("stop is requested by an item")
+    {
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, 2, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 3);
+      CHECK(stopped);
+      CHECK_FALSE(completed);
+    }
+    SECTION("stop is requested before the sequence is started")
+    {
+      stop_source.request_stop();
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, -1, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 0);
+      CHECK(stopped);
+      CHECK_FALSE(completed);
+    }
+    SECTION("stop is requested by the last item")
+    {
+      auto op = exec::subscribe(exec::iterate(std::views::all(array)),
+                                stop_ignoring_receiver{stop_source, 5, items, completed, stopped});
+      STDEXEC::start(op);
+      CHECK(items == 6);
+      CHECK(completed);
+      CHECK_FALSE(stopped);
+    }
   }
 
 }  // namespace

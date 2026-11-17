@@ -547,4 +547,120 @@ namespace
     ex::start(op);
   }
 #endif
+
+  struct my_query_t : public STDEXEC::__query<my_query_t>
+  {
+    using STDEXEC::__query<my_query_t>::operator();
+  };
+
+  inline constexpr my_query_t my_query{};
+
+  template <typename ParentOp>
+  struct Receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    void set_value() && noexcept {}
+
+    [[nodiscard]]
+    constexpr auto
+    get_env() const noexcept -> STDEXEC::prop<my_query_t, typename ParentOp::my_query_result_t>
+    {
+      return STDEXEC::prop{my_query, my_query(*parent_op)};
+    }
+
+    ParentOp* parent_op;
+  };
+
+  template <STDEXEC::sender Sndr>
+  struct OpState
+  {
+    using my_query_result_t = int;
+
+    using inner_op_state_t = STDEXEC::connect_result_t<Sndr, Receiver<OpState>>;
+
+    [[nodiscard]]
+    constexpr auto query(my_query_t) const noexcept -> my_query_result_t
+    {
+      return 42;
+    }
+  };
+
+  consteval bool test_receiver_may_refer_to_opstate_of_incomplete_type()
+  {
+    using sndr_t = decltype(STDEXEC::just()
+                            | STDEXEC::let_value([]() noexcept { return STDEXEC::just(); }));
+
+    static_assert(STDEXEC::operation_state<typename OpState<sndr_t>::inner_op_state_t>);
+
+    return true;
+  }
+
+  TEST_CASE("receiver_may_refer_to_opstate_of_incomplete_type", "[adaptors][let_value]")
+  {
+    STATIC_CHECK(test_receiver_may_refer_to_opstate_of_incomplete_type());
+  }
+
+  template <class Sender, class Tag>
+  concept has_completion_scheduler_for = requires(Sender const & snd) {
+    ex::get_completion_scheduler<Tag>(ex::get_env(snd), ex::env<>{});
+  };
+
+  TEST_CASE("let_value reports the predecessor's value scheduler when the secondary senders "
+            "complete inline",
+            "[adaptors][let_value]")
+  {
+    runtime_id_scheduler sch{42};
+    auto                 snd = ex::let_value(ex::continues_on(ex::just(1), sch),
+                             [](int) noexcept { return ex::just(2); });
+    auto csch = ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env<>{});
+    CHECK(csch.id_ == 42);
+  }
+
+  TEST_CASE("let_value has no completion scheduler when the secondary senders may complete "
+            "elsewhere",
+            "[adaptors][let_value]")
+  {
+    runtime_id_scheduler sch{42};
+    impulse_scheduler    other{};
+    auto                 snd = ex::let_value(ex::continues_on(ex::just(1), sch),
+                             [other](int) noexcept { return ex::schedule(other); });
+    static_assert(!has_completion_scheduler_for<decltype(snd), ex::set_value_t>);
+    (void) snd;
+  }
+
+  TEST_CASE("let_value forwards the predecessor's error scheduler when only the predecessor "
+            "can fail",
+            "[adaptors][let_value]")
+  {
+    runtime_id_scheduler sch{42};
+    // the predecessor has no value completions, so the function is never invoked
+    auto snd  = ex::let_value(ex::continues_on(ex::just_error(1), sch),
+                             []() noexcept { return ex::just(2); });
+    auto csch = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd), ex::env<>{});
+    CHECK(csch.id_ == 42);
+    static_assert(!has_completion_scheduler_for<decltype(snd), ex::set_value_t>);
+  }
+
+  TEST_CASE("let_value has no error completion scheduler when the predecessor's errors and the "
+            "function's exceptions come from different places",
+            "[adaptors][let_value]")
+  {
+    runtime_id_scheduler sch{42};
+    // This predecessor can complete with a value or an error.
+    auto pred = ex::continues_on(ex::just(1) | ex::then([](int i) { return i; }), sch);
+
+    // The function is nothrow and the secondary sender cannot fail, so errors can only come
+    // from the predecessor.
+    auto nothrow_snd = ex::let_value(pred, [](int) noexcept { return ex::just(2); });
+    auto csch        = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(nothrow_snd),
+                                                              ex::env<>{});
+    CHECK(csch.id_ == 42);
+
+    // The function is potentially-throwing, so error completions can come from both the
+    // predecessor and from the invocation of the function.
+    auto throwing_snd = ex::let_value(pred, [](int) { return ex::just(2); });
+    static_assert(!has_completion_scheduler_for<decltype(throwing_snd), ex::set_error_t>);
+    static_assert(has_completion_scheduler_for<decltype(throwing_snd), ex::set_value_t>);
+  }
 }  // namespace

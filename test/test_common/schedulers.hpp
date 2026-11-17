@@ -45,7 +45,7 @@ namespace
   template <class Scheduler, ex::__completion_tag... Tags>
   struct sched_attrs
   {
-    sched_attrs(Scheduler sched, Tags...)
+    explicit sched_attrs(Scheduler sched, Tags...)
       : scheduler_(std::move(sched))
     {}
 
@@ -131,6 +131,13 @@ namespace
     }
 
     auto operator==(impulse_scheduler const &) const noexcept -> bool = default;
+
+    template <ex::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept
+    {
+      return *this;
+    }
 
    private:
     //! Command type that can store the action of firing up a sender
@@ -221,13 +228,19 @@ namespace
   {
     using scheduler_concept = ex::scheduler_tag;
 
+    auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
+
     [[nodiscard]]
     auto schedule() const noexcept
     {
       return sender{};
     }
 
-    auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+    {
+      return *this;
+    }
 
     [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
@@ -248,6 +261,23 @@ namespace
       Receiver rcvr_;
     };
 
+    // The schedule sender's attributes mirror the scheduler's completion queries.
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+      {
+        return basic_inline_scheduler();
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
+        requires(!std::same_as<Domain, void>)
+      {
+        return {};
+      }
+    };
+
     struct sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -263,10 +293,86 @@ namespace
       [[nodiscard]]
       auto get_env() const noexcept
       {
-        return sched_attrs(basic_inline_scheduler(), ex::set_value);
+        return attrs{};
       }
     };
   };
+
+  //! A scheduler with a runtime identity, whose schedule sender completes inline with a
+  //! value. Its completion scheduler for the value (and, if `Errors` is true, the error)
+  //! channel is itself. Useful for checking *which* scheduler a completion scheduler query
+  //! returns.
+  struct runtime_id_scheduler;
+
+  struct runtime_id_scheduler_attrs
+  {
+    [[nodiscard]]
+    auto
+      query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> runtime_id_scheduler;
+
+    int id_;
+  };
+
+  template <class Receiver>
+  struct runtime_id_scheduler_opstate : immovable
+  {
+    void start() & noexcept
+    {
+      ex::set_value(static_cast<Receiver &&>(rcvr_));
+    }
+
+    Receiver rcvr_;
+  };
+
+  struct runtime_id_scheduler_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Receiver>
+    [[nodiscard]]
+    auto connect(Receiver rcvr) const -> runtime_id_scheduler_opstate<Receiver>
+    {
+      return {{}, static_cast<Receiver &&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> runtime_id_scheduler_attrs
+    {
+      return {id_};
+    }
+
+    int id_;
+  };
+
+  struct runtime_id_scheduler
+  {
+    using scheduler_concept = ex::scheduler_tag;
+
+    int id_;
+
+    auto operator==(runtime_id_scheduler const &) const noexcept -> bool = default;
+
+    [[nodiscard]]
+    auto
+    query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> runtime_id_scheduler
+    {
+      return *this;
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> runtime_id_scheduler_sender
+    {
+      return {id_};
+    }
+  };
+
+  inline auto
+  runtime_id_scheduler_attrs::query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+    -> runtime_id_scheduler
+  {
+    return runtime_id_scheduler{id_};
+  }
 
   using STDEXEC::inline_scheduler;
 

@@ -18,7 +18,6 @@
 #include <test_common/catch2.hpp>
 
 #include <cuda/std/tuple>
-#include <thrust/universal_vector.h>
 
 #include <cstddef>
 #include <new>
@@ -109,8 +108,13 @@ namespace
   TEST_CASE("nvexec variant emplaces alternative from GPU", "[cuda][stream][containers][variant]")
   {
     using variant_t = variant_t<int, double>;
-    thrust::universal_vector<variant_t> variant_storage(1);
-    variant_t*                          v = thrust::raw_pointer_cast(variant_storage.data());
+    // Note: avoid thrust::universal_vector here. Its default-construction kernel has
+    // `&cudaFree` as a template argument, which clang-cuda mangles differently in the
+    // host and device compilation passes, so the kernel cannot be found at runtime
+    // (cudaErrorSymbolNotFound).
+    variant_t* v = nullptr;
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(reinterpret_cast<void**>(&v), sizeof(variant_t)));
+    ::new (static_cast<void*>(v)) variant_t();
 
     REQUIRE(v->index_ == 0);
 
@@ -123,6 +127,9 @@ namespace
     STDEXEC_TRY_CUDA_API(cudaDeviceSynchronize());
 
     visit([](auto alt) { REQUIRE(alt == 42); }, *v);
+
+    v->~variant_t();
+    STDEXEC_TRY_CUDA_API(cudaFree(v));
   }
 
   TEST_CASE("nvexec variant works with cuda tuple", "[cuda][stream][containers][variant]")

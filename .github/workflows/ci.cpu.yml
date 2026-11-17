@@ -58,9 +58,10 @@ jobs:
           # See the note on the Clang TSan job above.
           - { name: "CPU (gcc 15, Debug, TSAN)",     build: "Debug",   tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 15, Release, TSAN)",   build: "Release", tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 16, Release, c++26)",  build: "Release", tag: gcc16-cuda13.5,  cxxstd: "26", cxxflags: "", }
     container:
       options: -u root --cap-add SYS_PTRACE --security-opt label=disable --security-opt seccomp=unconfined
-      image: rapidsai/devcontainers:26.08-cpp-${{ matrix.tag }}
+      image: rapidsai/devcontainers:latest-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout

@@ -35,6 +35,7 @@ import stdexec;
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
+#  include "../stdexec/__detail/__subscribe.hpp"
 #  include "../stdexec/__detail/__transform_sender.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
 #  include "../stdexec/__detail/__utility.hpp"
@@ -107,7 +108,7 @@ namespace experimental::execution
   {};
 
   STDEXEC_MODULE_EXPORT
-  struct sequence_sender_tag : STDEXEC::sender_tag
+  struct sequence_sender_tag : STDEXEC::__sequence_sender_tag
   {};
 
   using sequence_tag
@@ -213,9 +214,7 @@ namespace experimental::execution
   }  // namespace __sequence_sndr
 
   template <class _Sequence>
-  concept __enable_sequence_sender =
-    requires { typename _Sequence::sender_concept; }  //
-    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_tag>;
+  concept __enable_sequence_sender = STDEXEC::__sequence_sender_tagged<_Sequence>;
 
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
@@ -395,6 +394,26 @@ namespace experimental::execution
     concept __with_consteval_static_member =
       __minvocable_q<__consteval_static_member_result_t, _Sequence, _Env...>;
 
+    // A sequence sender whose items are the items of another sender, in some
+    // environment, names that sender and environment with a nested
+    // __item_types_from_t<_Sequence, _Env...> = __mlist<_Sender, _SenderEnv...>.
+    template <class _Sequence, class... _Env>
+    using __item_types_from_t =
+      STDEXEC::__decay_t<_Sequence>::template __item_types_from_t<_Sequence, _Env...>;
+
+    template <class _Sequence, class... _Env>
+    concept __with_item_types_from = enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>
+                                  && __minvocable_q<__item_types_from_t, _Sequence, _Env...>;
+
+    template <class _Sender, class... _Env>
+    consteval auto __get_item_types_helper();
+
+    template <class _Sender, class... _Env>
+    consteval auto __get_item_types_from(__mlist<_Sender, _Env...>*)
+    {
+      return __get_item_types_helper<_Sender, _Env...>();
+    }
+
     template <class _Sequence, class... _Env>
     [[nodiscard]]
     consteval auto __get_item_types_helper()
@@ -424,6 +443,11 @@ namespace experimental::execution
       else if constexpr (__with_consteval_static_member<_Sequence>)
       {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
+      }
+      else if constexpr (__with_item_types_from<_Sequence, _Env...>)
+      {
+        return __get_item_types_from(
+          static_cast<__item_types_from_t<_Sequence, _Env...>*>(nullptr));
       }
       else if constexpr (__transparent_sequence_adaptor<_Sequence>)
       {
@@ -473,7 +497,8 @@ namespace experimental::execution
       template <class _Sequence, class _Env>
       constexpr auto operator()(_Sequence&&, _Env const &) const noexcept
       {
-        using __new_sequence_t = transform_sender_result_t<_Sequence, _Env>;
+        using __new_sequence_t =
+          STDEXEC::__remove_rvalue_reference_t<transform_sender_result_t<_Sequence, _Env>>;
         static_assert(!STDEXEC::__merror<__new_sequence_t>);
         return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
       }
@@ -493,7 +518,8 @@ namespace experimental::execution
   [[nodiscard]]
   consteval auto get_item_types()
   {
-    using __new_sequence_t = STDEXEC::transform_sender_result_t<_Sequence, _Env>;
+    using __new_sequence_t =
+      STDEXEC::__remove_rvalue_reference_t<STDEXEC::transform_sender_result_t<_Sequence, _Env>>;
     static_assert(!STDEXEC::__merror<__new_sequence_t>);
     return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
   }
@@ -641,7 +667,7 @@ namespace experimental::execution
     }
     else
     {
-      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), __env...);
+      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...);
     }
     return __completions_t{};
   }
@@ -878,18 +904,6 @@ namespace experimental::execution
       && sequence_receiver_of<_Receiver, item_types<STDEXEC::__decay_t<_Sender>>>
       && sender_to<next_sender_of_t<_Receiver, _Sender>, __stopped_means_break<_Receiver>>;
 
-    template <class _Sequence, class _Receiver>
-    using __subscribe_member_result_t = decltype(__declval<_Sequence>().subscribe(
-      __declval<_Receiver>()));
-
-    template <class _Sequence, class _Receiver>
-    concept __subscribable_with_member =
-      __minvocable_q<__subscribe_member_result_t, _Sequence, _Receiver>;
-
-    template <class _Sequence, class _Receiver>
-    using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
-
     // Receiver wrapper used to subscribe to the child of a transparent
     // sequence adaptor (see `__sequence_adaptor_traits` above): it forwards
     // all completions and `set_next` calls to the wrapped receiver, but
@@ -936,10 +950,6 @@ namespace experimental::execution
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env      __env_;
     };
-
-    template <class _Sequence, class _Receiver>
-    concept __subscribable_with_static_member =
-      __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
     struct subscribe_t
     {
@@ -1028,21 +1038,12 @@ namespace experimental::execution
           return __declfn<__result_t,
                           __nothrow_subscribe && __nothrow_child_env && __nothrow_tfx_seq>();
         }
-        else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
+        else if constexpr (STDEXEC::__subscribable<__tfx_seq_t, _Receiver>)
         {
-          using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+          using __result_t = STDEXEC::__subscribe_result_t<__tfx_seq_t, _Receiver>;
           __check_operation_state<__result_t>();
-          constexpr bool __nothrow_subscribe = noexcept(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
-          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
-        }
-        else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
-        {
-          using __result_t = decltype(__declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
-          __check_operation_state<__result_t>();
-          constexpr bool __nothrow_subscribe = noexcept(
-            __declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
+          constexpr bool __nothrow_subscribe =
+            __nothrow_callable<decltype(STDEXEC::__subscribe), __tfx_seq_t, _Receiver>;
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
         else if constexpr (__is_debug_env<env_of_t<_Receiver>>)
@@ -1101,14 +1102,10 @@ namespace experimental::execution
                            __xform_t{}(static_cast<decltype(__env)&&>(__env),
                                        STDEXEC::__forward_like<__tfx_seq_t>(__data))});
         }
-        else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
-        {  // NOLINT(bugprone-branch-clone)
-          return __tfx_seq.__static_subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
-                                              static_cast<_Receiver&&>(__rcvr));
-        }
-        else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
+        else if constexpr (STDEXEC::__subscribable<__tfx_seq_t, _Receiver>)
         {
-          return static_cast<__tfx_seq_t&&>(__tfx_seq).subscribe(static_cast<_Receiver&&>(__rcvr));
+          return STDEXEC::__subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
+                                      static_cast<_Receiver&&>(__rcvr));
         }
         else if constexpr (enable_sequence_sender<STDEXEC::__decay_t<__tfx_seq_t>>)
         {

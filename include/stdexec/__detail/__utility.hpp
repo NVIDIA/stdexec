@@ -219,7 +219,7 @@ namespace STDEXEC
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
-    requires __decays_to<_Tp, _Tp>
+    requires __decayed<_Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));
     return (__copy_cvref_t<_Up&&, _Tp>) static_cast<_Up&&>(u);
@@ -230,7 +230,7 @@ namespace STDEXEC
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
-    requires __decays_to<_Tp, _Tp>
+    requires __decayed<_Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(__decay_t<_Up>, _Tp));
     return (__copy_cvref_t<_Up&&, _Tp>) static_cast<_Up&&>(u);

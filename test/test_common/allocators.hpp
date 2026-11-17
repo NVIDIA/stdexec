@@ -31,29 +31,28 @@ namespace ex = STDEXEC;
 
 namespace
 {
-
   template <class T>
   struct test_allocator
   {
     using value_type = T;
 
-    explicit test_allocator(size_t* bytes) noexcept
+    explicit test_allocator(size_t *bytes) noexcept
       : bytes_(bytes)
     {}
 
     template <class Other>
-    test_allocator(test_allocator<Other> const & other) noexcept
+    test_allocator(test_allocator<Other> const &other) noexcept
       : bytes_(other.bytes_)
     {}
 
-    T* allocate(std::size_t n)
+    T *allocate(std::size_t n)
     {
       if (bytes_ != nullptr)
         *bytes_ += n * sizeof(T);
-      return static_cast<T*>(::operator new(n * sizeof(T)));
+      return static_cast<T *>(::operator new(n * sizeof(T)));
     }
 
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T *p, std::size_t n)
     {
       if (bytes_ != nullptr)
         *bytes_ -= n * sizeof(T);
@@ -70,7 +69,34 @@ namespace
     template <class>
     friend struct test_allocator;
 
-    size_t* bytes_ = nullptr;
+    size_t *bytes_ = nullptr;
   };
 
+  constinit std::size_t g_default_allocator_bytes = 0;
+
+  template <class T>
+  struct counting_allocator
+  {
+    using value_type = T;
+
+    counting_allocator() = default;
+
+    template <class Other>
+    counting_allocator(counting_allocator<Other> const &) noexcept
+    {}
+
+    auto allocate(std::size_t n) -> T *
+    {
+      g_default_allocator_bytes += n * sizeof(T);
+      return static_cast<T *>(::operator new(n * sizeof(T)));
+    }
+
+    void deallocate(T *p, std::size_t n)
+    {
+      g_default_allocator_bytes -= n * sizeof(T);
+      ::operator delete(p);
+    }
+
+    auto operator==(counting_allocator const &) const -> bool = default;
+  };
 }  // namespace

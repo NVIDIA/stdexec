@@ -34,13 +34,12 @@ import stdexec;
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-
-  //////////////////////////////////////////////////////////////////////////////
-  // A very simple std::declval replacement that doesn't handle void
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, bool _Noexcept = true>
   using __declfn_t = auto (*)() noexcept(_Noexcept) -> _Tp;
 
+  //////////////////////////////////////////////////////////////////////////////
+  // A lightweight std::declval replacement
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, class...>
   extern __declfn_t<_Tp &&> __declval;

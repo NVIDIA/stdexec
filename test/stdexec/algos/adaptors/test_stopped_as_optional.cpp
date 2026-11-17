@@ -69,6 +69,23 @@ namespace
     wait_for_value(std::move(snd), std::optional<int>{11});
   }
 
+  // [exec.adapt.obj]/4: a pipeable sender adaptor object that accepts only one
+  // argument is a pipeable sender adaptor closure object.
+  TEST_CASE("stopped_as_optional is a sender adaptor closure object",
+            "[adaptors][stopped_as_optional]")
+  {
+    STATIC_REQUIRE(ex::__sender_adaptor_closure<ex::stopped_as_optional_t>);
+    STATIC_REQUIRE(std::same_as<decltype(ex::stopped_as_optional()), ex::stopped_as_optional_t>);
+
+    ex::sender auto snd = ex::just(11) | ex::stopped_as_optional;
+    wait_for_value(std::move(snd), std::optional<int>{11});
+
+    stopped_scheduler sched;
+    auto stopped_snd = ex::just(11) | (ex::continues_on(sched) | ex::stopped_as_optional);
+    auto op = ex::connect(std::move(stopped_snd), expect_value_receiver{std::optional<int>{}});
+    ex::start(op);
+  }
+
   TEST_CASE("stopped_as_optional works with multi-value senders", "[adaptors][stopped_as_optional]")
   {
     auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();

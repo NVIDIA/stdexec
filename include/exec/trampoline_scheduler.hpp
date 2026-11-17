@@ -134,10 +134,10 @@ namespace experimental::execution
       {
         using __execute_fn = void(__opstate_base*) noexcept;
 
-        constexpr explicit __opstate_base(__execute_fn* __execute,
+        constexpr explicit __opstate_base(__execute_fn* __exec_fn,
                                           std::size_t   __max_size,
                                           std::size_t   __max_depth) noexcept
-          : __execute_(__execute)
+          : __execute_(__exec_fn)
           , __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth)
         {}
@@ -177,6 +177,13 @@ namespace experimental::execution
             {
               // Exceeded recursion limit.
 
+              // GCC may warn that this stores the address of a local operation
+              // state into thread-local storage. That is a false positive: an
+              // enclosing origin schedule frame owns the state and drains the
+              // queue before this operation state's lifetime ends.
+              STDEXEC_PRAGMA_PUSH()
+              STDEXEC_PRAGMA_IGNORE_GNU("-Wdangling-pointer")
+
               // push this recursive schedule to list tail
               __prev_ = std::exchange(__current_state->__tail_, static_cast<__opstate_base*>(this));
               if (__prev_ != nullptr)
@@ -189,6 +196,8 @@ namespace experimental::execution
                 // was empty
                 __current_state->__head_ = static_cast<__opstate_base*>(this);
               }
+
+              STDEXEC_PRAGMA_POP()
             }
           }
         }

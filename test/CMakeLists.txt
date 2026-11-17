@@ -30,6 +30,7 @@ endfunction()
 
 set(stdexec_test_sources
     test_main.cpp
+    stdexec/algos/adaptors/test_affine.cpp
     stdexec/algos/adaptors/test_associate.cpp
     stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
@@ -113,8 +114,7 @@ set_target_properties(
 target_include_directories(common_test_settings
                            INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_definitions(
-  common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution
-                                 $<$<PLATFORM_ID:Windows>:NOMINMAX>)
+  common_test_settings INTERFACE $<$<PLATFORM_ID:Windows>:NOMINMAX>)
 target_compile_options(
   common_test_settings
   INTERFACE
@@ -123,6 +123,9 @@ target_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted
                                                        # from stdlib headers,
                                                        # why?
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-subobject-linkage> # stdexec class templates
+                                                     # used with test types from
+                                                     # anonymous namespaces
     $<$<CXX_COMPILER_ID:Clang>:-Wno-unknown-warning-option
     -Wno-gnu-line-marker
     -Wno-unused-function
@@ -162,7 +165,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 target_link_libraries(
   test.stdexec
-  PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
+  PUBLIC STDEXEC::stdexec STDEXEC::parallel_scheduler stdexec_executable_flags
+         Catch2::Catch2WithMain
   PRIVATE common_test_settings)
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
@@ -255,6 +259,27 @@ if(NOT STDEXEC_BUILD_MODULES)
   stdexec_add_build_failure_test(
     NAME test_when_all_fail1 SOURCE
     stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
+
+  # With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect reports a sender that
+  # completes with a result it did not declare as a deprecation warning. When
+  # stdexec is not the main project, its include directory is a SYSTEM one, and
+  # -Wsystem-headers is needed to see the warning. The test is built without a
+  # compiler launcher, because CI's sccache moves -Werror= before the other -W
+  # flags, and then -Wno-deprecated-declarations in CMAKE_CXX_FLAGS would win.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    stdexec_add_build_failure_test(
+      NAME test_connect_fail1 SOURCE stdexec/cpos/test_connect_fail1.cpp
+      LIBRARIES stdexec)
+    set_target_properties(test_connect_fail1
+                          PROPERTIES CXX_COMPILER_LAUNCHER "")
+    target_compile_definitions(test_connect_fail1
+                               PRIVATE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+    target_compile_options(test_connect_fail1
+                           PRIVATE -Werror=deprecated-declarations)
+    if(NOT STDEXEC_MAIN_PROJECT)
+      target_compile_options(test_connect_fail1 PRIVATE -Wsystem-headers)
+    endif()
+  endif()
 
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)

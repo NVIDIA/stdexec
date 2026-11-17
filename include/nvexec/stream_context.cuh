@@ -48,26 +48,31 @@ namespace nv::execution
   {
     struct stream_scheduler;
 
-    template <class StreamScheduler>
-    struct stream_scheduler_env
-    {  // NOLINT(bugprone-crtp-constructor-accessibility)
+    template <class StreamScheduler, class... Tags>
+    struct stream_scheduler_attrs
+    {
       STDEXEC_ATTRIBUTE(nodiscard)
       static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee
       {
         return forward_progress_guarantee::weakly_parallel;
       }
 
+      template <STDEXEC::__one_of<set_value_t, Tags...> CompletionSignal>
       STDEXEC_ATTRIBUTE(nodiscard)
-      auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> StreamScheduler;
+      auto query(get_completion_scheduler_t<CompletionSignal>) const noexcept -> StreamScheduler
+      {
+        return STDEXEC::__c_downcast<StreamScheduler>(*this);
+      }
 
+      template <STDEXEC::__one_of<set_value_t, Tags...> CompletionSignal>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain
+      auto query(get_completion_domain_t<CompletionSignal>) const noexcept -> stream_domain
       {
         return {};
       }
     };
 
-    struct stream_scheduler : private stream_scheduler_env<stream_scheduler>
+    struct stream_scheduler : private stream_scheduler_attrs<stream_scheduler>
     {
       using scheduler_concept = STDEXEC::scheduler_tag;
 
@@ -85,7 +90,7 @@ namespace nv::execution
         return sender{ctx_};
       }
 
-      using stream_scheduler_env::query;
+      using stream_scheduler_attrs::query;
 
      private:
       template <class Receiver>
@@ -103,7 +108,6 @@ namespace nv::execution
        private:
         friend stream_context;
         cudaStream_t stream_{};
-        cudaError_t  status_{cudaSuccess};
       };
 
       struct sender : stream_sender_base
@@ -114,40 +118,38 @@ namespace nv::execution
           context ctx_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
-          auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept
-            -> stream_scheduler
+          auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler
           {
             return stream_scheduler{ctx_};
           }
 
           STDEXEC_ATTRIBUTE(nodiscard)
-          constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain
+          auto query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain
           {
             return {};
           }
         };
 
-        attrs env_;
+        attrs attrs_;
 
        public:
-        using completion_signatures =
-          STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
+        using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender(context ctx) noexcept
-          : env_{ctx}
+          : attrs_{ctx}
         {}
 
         template <class Receiver>
         auto connect(Receiver rcvr) const & noexcept -> opstate<Receiver>
         {
-          return opstate<Receiver>(static_cast<Receiver&&>(rcvr), env_.ctx_);
+          return opstate<Receiver>(static_cast<Receiver&&>(rcvr), attrs_.ctx_);
         }
 
         STDEXEC_ATTRIBUTE(nodiscard)
         auto get_env() const noexcept -> attrs const &
         {
-          return (env_);
+          return attrs_;
         }
       };
 
@@ -155,14 +157,6 @@ namespace nv::execution
       // private: TODO
       context ctx_;
     };
-
-    template <>
-    STDEXEC_ATTRIBUTE(nodiscard)
-    inline auto stream_scheduler_env<stream_scheduler>::query(
-      get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler
-    {
-      return STDEXEC::__c_downcast<stream_scheduler>(*this);
-    }
   }  // namespace _strm
 
   using _strm::stream_scheduler;

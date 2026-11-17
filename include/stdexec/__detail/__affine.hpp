@@ -27,6 +27,7 @@ import stdexec;
 #  include "__completion_behavior.hpp"
 #  include "__finally.hpp"
 #  include "__schedulers.hpp"
+#  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 #  include "__unstoppable.hpp"
 
@@ -62,7 +63,9 @@ namespace STDEXEC
                        && __already_affine<set_stopped_t, _Sender, _Env>;
   }  // namespace __affine
 
-  struct affine_t
+  // affine takes only one argument, so it is a sender adaptor closure object
+  // ([exec.adapt.obj]/4) and `sndr | affine` works.
+  struct affine_t : sender_adaptor_closure<affine_t>
   {
     template <sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
@@ -70,9 +73,10 @@ namespace STDEXEC
       return __sexpr{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
-    constexpr auto operator()() const noexcept
+    // Keeps the older spelling `sndr | affine()` working.
+    constexpr auto operator()() const noexcept -> affine_t
     {
-      return __closure(*this);
+      return *this;
     }
 
     template <class _Sender, class _Env>

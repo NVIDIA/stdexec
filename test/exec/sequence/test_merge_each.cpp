@@ -35,6 +35,7 @@
 #include <array>
 #include <exception>
 #include <optional>
+#include <stdexcept>
 
 using namespace std::chrono_literals;
 using namespace exec;
@@ -488,7 +489,134 @@ namespace
     CHECK_FALSE(state.stopped_);
   }
 
+  // A sender of a nested sequence that can also complete without producing one
+  template <class Completion>
+  using maybe_nested_sequence_t = variant_sender<decltype(ex::just(ex::just(0))), Completion>;
+
+  TEST_CASE("merge_each - completes when the sender of a nested sequence fails",
+            "[sequence_senders][merge_each]")
+  {
+    using nested_sequence_sender_t = maybe_nested_sequence_t<decltype(ex::just_error(0))>;
+
+    error_state state{};
+    int         count  = 0;
+    auto        merged = merge_each(range(0, 3)
+                             | exec::transform_each(ex::let_value(
+                               [](int i) noexcept -> nested_sequence_sender_t
+                               {
+                                 if (i == 1)
+                                 {
+                                   return ex::just_error(42);
+                                 }
+                                 return ex::just(ex::just(i));
+                               })))
+                | then_each([&count](int) noexcept { ++count; });
+    auto op = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(count == 1);
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  TEST_CASE("merge_each - continues when the sender of a nested sequence is stopped",
+            "[sequence_senders][merge_each]")
+  {
+    using nested_sequence_sender_t = maybe_nested_sequence_t<decltype(ex::just_stopped())>;
+
+    error_state state{};
+    int         count  = 0;
+    auto        merged = merge_each(range(0, 3)
+                             | exec::transform_each(ex::let_value(
+                               [](int i) noexcept -> nested_sequence_sender_t
+                               {
+                                 if (i == 1)
+                                 {
+                                   return ex::just_stopped();
+                                 }
+                                 return ex::just(ex::just(i));
+                               })))
+                | then_each([&count](int) noexcept { ++count; });
+    auto op = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(count == 2);
+    CHECK_FALSE(state.nested_error_.has_value());
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+  TEST_CASE("merge_each - completes with stopped when stop is requested between nested sequences",
+            "[sequence_senders][merge_each]")
+  {
+    ex::inplace_stop_source stop_source;
+    int                     count    = 0;
+    bool                    executed = false;
+    auto merged = merge_each(range(0, 3) | then_each([](int) noexcept { return range(0, 3); }))
+                | then_each(
+                    [&](int) noexcept
+                    {
+                      if (++count == 4)
+                      {
+                        stop_source.request_stop();
+                      }
+                    })
+                | ignore_all_values() | with_stop_token_from(stop_source);
+    auto op = ex::connect(std::move(merged), expect_stopped_receiver_ex{executed});
+
+    ex::start(op);
+
+    CHECK(count == 4);
+    CHECK(executed);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throwing_subscribe_sequence
+  {
+    using sender_concept        = sequence_sender_tag;
+    using item_types            = exec::item_types<>;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <ex::receiver Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver&&>(receiver_));
+      }
+
+      Receiver receiver_;
+    };
+
+    template <ex::receiver Receiver>
+    auto subscribe(Receiver receiver) && -> operation<Receiver>
+    {
+      if (throws_)
+      {
+        throw std::runtime_error("subscribe failed");
+      }
+      return {static_cast<Receiver&&>(receiver)};
+    }
+
+    bool throws_ = true;
+  };
+
+  TEST_CASE("merge_each - completes when subscribing to a nested sequence throws",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(ex::just(throwing_subscribe_sequence{}));
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
   TEST_CASE("merge_each - preserves errors from the outer sequence",
             "[sequence_senders][merge_each]")
   {

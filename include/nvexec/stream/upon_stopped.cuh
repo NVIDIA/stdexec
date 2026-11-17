@@ -149,7 +149,7 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<upon_stopped_sender> Self, STDEXEC::receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, _receiver_t<Receiver>, Receiver>
     {
       return stream_opstate<__copy_cvref_t<Self, Sender>>(
@@ -167,7 +167,7 @@ namespace nv::execution::_strm
         STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
         {},
         {},
-        STDEXEC::__transform_upon_completion<Fun, STDEXEC::upon_stopped_t>(),
+        STDEXEC::__upon::__transform_completion<Fun, STDEXEC::upon_stopped_t>(),
         _cuda_error_completion_t());
     }
 

@@ -151,9 +151,10 @@ namespace STDEXEC
           requires __callable<get_completion_scheduler_t<set_value_t>, _Sch const &, _Env...>
         [[nodiscard]]
         constexpr auto
-        query(get_completion_scheduler_t<set_value_t>, _Env const &... __env) const noexcept
+        query(get_completion_scheduler_t<set_value_t>, _Env const &... __envs) const noexcept
         {
-          return get_completion_scheduler<set_value_t>(__sch_, static_cast<_Env const &>(__env)...);
+          return get_completion_scheduler<set_value_t>(__sch_,
+                                                       static_cast<_Env const &>(__envs)...);
         }
 
         _Sch const & __sch_;

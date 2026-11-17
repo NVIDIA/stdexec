@@ -148,6 +148,9 @@ namespace STDEXEC
     }
 
    public:
+    // There is no ';' after STDEXEC_AUTO_RETURN(...), because -Wpedantic flags it
+    // as extra. Without the ';', clang-format runs the two overloads together.
+    // clang-format off
     //! @brief Obtain a schedule-sender by calling @c __sched.schedule().
     //!
     //! @tparam _Scheduler A type whose lvalue has a member function
@@ -165,13 +168,14 @@ namespace STDEXEC
       requires __has_schedule_member<_Scheduler> && __has_scheduler_concept<__decay_t<_Scheduler>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     auto operator()(_Scheduler &&__sched) const
-      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)))
 
     template <class _Scheduler>
       requires __has_schedule_member<_Scheduler>
     [[deprecated("The scheduler must define the schedule_concept tag.")]]
     STDEXEC_ATTRIBUTE(host, device, always_inline) auto operator()(_Scheduler &&__sched) const
-      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)))
+    // clang-format on
   };
 
   //! @brief The customization point object for the @c schedule sender factory.

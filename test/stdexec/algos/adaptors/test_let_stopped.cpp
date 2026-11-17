@@ -15,6 +15,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 #include <stdexec/execution.hpp>
 
 #include <exec/env.hpp>
@@ -232,11 +233,64 @@ namespace
 
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]")
   {
-    basic_inline_scheduler<let_stopped_test_domain> sched;
+    auto attrs = ex::prop{ex::get_completion_domain<ex::set_stopped_t>, let_stopped_test_domain{}};
 
     // The customization will return a different stopped
-    auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
+    auto snd = ex::schedule(ex::get_parallel_scheduler())  //
+             | exec::write_attrs(attrs)                    //
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
+  }
+
+  struct let_stopped_value_domain
+  {};
+
+  TEST_CASE("let_stopped has a value completion domain", "[adaptors][let_stopped]")
+  {
+    // The value completions of a let_stopped sender are the predecessor's value completions,
+    // passed through, plus the value completions of the secondary senders. They all
+    // complete on sch, so that is the domain of the let_stopped sender's value channel.
+    basic_inline_scheduler<let_stopped_value_domain> sch{};
+    auto                                             pred = ex::continues_on(ex::just(1), sch);
+    auto snd    = ex::let_stopped(pred, [sch] { return ex::continues_on(ex::just(1), sch); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_stopped_value_domain>);
+  }
+
+  TEST_CASE("let_stopped value completion domain includes the secondary senders'",
+            "[adaptors][let_stopped]")
+  {
+    // Here the predecessor can complete with the let_stopped tag, so the secondary senders
+    // can be invoked and also contribute value completions.
+    basic_inline_scheduler<let_stopped_value_domain> sch{};
+    auto pred   = ex::continues_on(ex::just_stopped(), sch);
+    auto snd    = ex::let_stopped(pred, [sch] { return ex::continues_on(ex::just(1), sch); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_stopped_value_domain>);
+  }
+
+  TEST_CASE("let_stopped reports the predecessor's value scheduler when the secondary senders "
+            "complete inline and the predecessor never completes with the let_stopped tag",
+            "[adaptors][let_stopped]")
+  {
+    runtime_id_scheduler sch{42};
+    auto                 snd = ex::let_stopped(ex::continues_on(ex::just(1), sch),
+                               []() noexcept { return ex::just(2); });
+    auto csch = ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env<>{});
+    CHECK(csch.id_ == 42);
+  }
+
+  TEST_CASE("let_stopped secondary senders are started in the environment of the predecessor's "
+            "let_stopped completion",
+            "[adaptors][let_stopped]")
+  {
+    // The predecessor has no value completions. just(2) is started from the predecessor's
+    // let_stopped completion, which happens on sch, so its (and the let_stopped sender's) value
+    // domain is sch's domain.
+    basic_inline_scheduler<let_stopped_value_domain> sch{};
+    auto snd    = ex::let_stopped(ex::continues_on(ex::just_stopped(), sch),
+                               []() noexcept { return ex::just(2); });
+    auto domain = ex::get_env(snd).query(ex::get_completion_domain<ex::set_value_t>, ex::env<>{});
+    static_assert(std::same_as<decltype(domain), let_stopped_value_domain>);
   }
 }  // namespace

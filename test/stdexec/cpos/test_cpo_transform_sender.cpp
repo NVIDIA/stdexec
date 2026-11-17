@@ -90,6 +90,151 @@ namespace
     }
   }
 
+  TEST_CASE("transform_sender returns a sender it doesn't transform by reference",
+            "[cpo][cpo_transform_sender]")
+  {
+    STATIC_REQUIRE(
+      std::same_as<decltype(ex::transform_sender(std::declval<just_sender_t>(), ex::env<>{})),
+                   just_sender_t &&>);
+    STATIC_REQUIRE(
+      std::same_as<decltype(ex::transform_sender(std::declval<just_sender_t &>(), ex::env<>{})),
+                   just_sender_t &>);
+    STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<just_sender_t>(), ex::env<>{})));
+
+    // A sender a domain transforms into a new one is returned by value, even
+    // when the new sender is then left as it is.
+    auto env = ex::prop(ex::get_domain, then_to_just_domain<true>{});
+    STATIC_REQUIRE(std::same_as<decltype(ex::transform_sender(std::declval<then_sender_t>(), env)),
+                                just_sender_t>);
+  }
+
+  //! A sender that counts how often it's moved.
+  struct counted_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    explicit counted_sender(int &moves) noexcept
+      : moves_(&moves)
+    {}
+
+    counted_sender(counted_sender &&other) noexcept
+      : moves_(other.moves_)
+    {
+      ++*moves_;
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+
+    int *moves_;
+  };
+
+  struct empty_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value() noexcept {}
+  };
+
+  TEST_CASE("connect doesn't move a sender it doesn't transform", "[cpo][cpo_transform_sender]")
+  {
+    int  moves = 0;
+    auto op    = ex::connect(counted_sender(moves), empty_receiver{});
+    CHECK(moves == 0);
+    (void) op;
+  }
+
+  template <class CompletionDomain = void>
+  struct marker_sender;
+
+  //! A domain that transforms a marker_sender into a counted_sender, returning
+  //! it by value.
+  template <class OpTag>
+  struct marker_to_counted_domain
+  {
+    template <class Sndr, class Env>
+      requires(!std::same_as<std::remove_cvref_t<Sndr>, counted_sender>)
+    auto transform_sender(OpTag, Sndr &&sndr, Env const &) const noexcept -> counted_sender
+    {
+      return counted_sender(*sndr.moves_);
+    }
+  };
+
+  //! A sender that's only ever transformed into a counted_sender, by
+  //! CompletionDomain if it's given, or else by the domain in the environment.
+  template <class CompletionDomain>
+  struct marker_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    struct attrs
+    {
+      template <class... Env>
+      [[nodiscard]]
+      constexpr auto
+      query(ex::get_completion_domain_t<ex::set_value_t>, Env const &...) const noexcept
+        -> CompletionDomain
+      {
+        return {};
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+      requires(!std::is_void_v<CompletionDomain>)
+    {
+      return {};
+    }
+
+    int *moves_;
+  };
+
+  TEST_CASE("transform_sender doesn't move a new sender it then leaves as it is",
+            "[cpo][cpo_transform_sender]")
+  {
+    SECTION("a new sender from the domain where the operation starts")
+    {
+      int  moves = 0;
+      auto env   = ex::prop(ex::get_domain, marker_to_counted_domain<ex::start_t>{});
+      STATIC_REQUIRE(
+        std::same_as<decltype(ex::transform_sender(std::declval<marker_sender<>>(), env)),
+                     counted_sender>);
+      STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<marker_sender<>>(), env)));
+      auto sndr = ex::transform_sender(marker_sender<>{&moves}, env);
+      CHECK(moves == 0);
+      (void) sndr;
+    }
+
+    SECTION("a new sender from the domain where the sender completes")
+    {
+      using marker_t = marker_sender<marker_to_counted_domain<ex::set_value_t>>;
+      int moves      = 0;
+      STATIC_REQUIRE(
+        std::same_as<decltype(ex::transform_sender(std::declval<marker_t>(), ex::env<>{})),
+                     counted_sender>);
+      STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<marker_t>(), ex::env<>{})));
+      auto sndr = ex::transform_sender(marker_t{&moves}, ex::env<>{});
+      CHECK(moves == 0);
+      (void) sndr;
+    }
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by a transformation propagates out of connect",
             "[cpo][cpo_transform_sender]")
@@ -98,4 +243,75 @@ namespace
     REQUIRE_THROWS_AS(ex::connect(std::move(sndr), receiver<false>{}), std::runtime_error);
   }
 #endif
+
+  //! A value that counts how often it's moved.
+  struct move_counter
+  {
+    explicit move_counter(int &moves) noexcept
+      : moves_(&moves)
+    {}
+
+    move_counter(move_counter &&other) noexcept
+      : moves_(other.moves_)
+    {
+      ++*moves_;
+    }
+
+    int *moves_;
+  };
+
+  //! A tag whose transform_sender and apply_sender are static member
+  //! functions, each returning a new move_counter by value.
+  struct static_tag
+  {
+    template <class Sndr, class Env>
+    static auto transform_sender(ex::set_value_t, Sndr &&sndr, Env const &) noexcept -> move_counter
+    {
+      auto &[tag, moves] = sndr;
+      return move_counter(*moves);
+    }
+
+    template <class Sndr>
+    static auto apply_sender(Sndr &&sndr) noexcept -> move_counter
+    {
+      auto &[tag, moves] = sndr;
+      return move_counter(*moves);
+    }
+  };
+
+  //! A sender whose tag is static_tag, holding where to count moves.
+  struct static_tag_sender : ex::__tuple<static_tag, int *>
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+  };
+
+  TEST_CASE("default_domain doesn't move what a tag's static member function returns",
+            "[cpo][cpo_transform_sender]")
+  {
+    STATIC_REQUIRE(std::same_as<ex::tag_of_t<static_tag_sender>, static_tag>);
+
+    SECTION("transform_sender")
+    {
+      int  moves  = 0;
+      auto result = ex::default_domain().transform_sender(ex::set_value,
+                                                          static_tag_sender{
+                                                            {{}, &moves}
+      },
+                                                          ex::env<>{});
+      CHECK(moves == 0);
+      (void) result;
+    }
+
+    SECTION("apply_sender")
+    {
+      int  moves  = 0;
+      auto result = ex::default_domain().apply_sender(
+        static_tag{
+      },
+        static_tag_sender{{{}, &moves}});
+      CHECK(moves == 0);
+      (void) result;
+    }
+  }
 }  // namespace

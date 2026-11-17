@@ -198,8 +198,8 @@ namespace experimental::execution
     {
       if constexpr (STDEXEC::__callable<Fn, _probe_fn>)
       {
-        using _completions = STDEXEC::__call_result_t<Fn, _probe_fn>;
-        static_assert(STDEXEC::__is_instance_of<_completions, STDEXEC::completion_signatures>,
+        using _completions_t = STDEXEC::__call_result_t<Fn, _probe_fn>;
+        static_assert(STDEXEC::__is_instance_of<_completions_t, STDEXEC::completion_signatures>,
                       "The function passed to just_from, just_error_from, and just_stopped_from "
                       "must return an instance of a specialization of " STDEXEC_PP_STRINGIZE(
                         STDEXEC) "::completion_signatures<>.");

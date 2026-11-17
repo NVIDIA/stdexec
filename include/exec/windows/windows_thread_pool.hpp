@@ -1014,7 +1014,7 @@ namespace experimental::execution::__win32
     {}
 
     template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Rcvr>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Rcvr rcvr) -> bulk_op_t<Self, Rcvr>
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self &&self, Rcvr rcvr) -> bulk_op_t<Self, Rcvr>
     {
       return bulk_op_t<Self, Rcvr>{*self.pool_,
                                    self.shape_,

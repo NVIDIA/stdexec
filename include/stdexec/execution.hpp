@@ -63,6 +63,7 @@ import stdexec;
 #  include "__detail/__stopped_as_error.hpp"
 #  include "__detail/__stopped_as_optional.hpp"
 #  include "__detail/__submit.hpp"
+#  include "__detail/__subscribe.hpp"
 #  include "__detail/__sync_wait.hpp"
 #  include "__detail/__task.hpp"
 #  include "__detail/__task_scheduler.hpp"

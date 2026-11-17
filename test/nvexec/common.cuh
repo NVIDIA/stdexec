@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "../../include/exec/env.hpp"
 #include "../../include/exec/receiver_adaptor.hpp"
 #include "../../include/nvexec/detail/throw_on_cuda_error.cuh"
 #include "../../include/stdexec/execution.hpp"
@@ -172,7 +173,7 @@ namespace
 
       template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
         requires STDEXEC::receiver_of<Receiver, __completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver&& rcvr)
         -> op_t<Self, Receiver>
       {
         return op_t<Self, Receiver>(static_cast<Self&&>(self).sndr_,
@@ -236,7 +237,7 @@ namespace
 
       template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
         requires STDEXEC::receiver_of<Receiver, _completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver&& rcvr)
         -> op_t<Self, Receiver>
       {
         return op_t<Self, Receiver>(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
@@ -363,6 +364,30 @@ namespace
   };
 
   static_assert(!std::is_trivially_copyable_v<move_only_t>);
+
+  // The completion scheduler of a let_value/let_error/let_stopped sender is not known, since
+  // it depends on the sender returned by the user's function. This proclaims that the value
+  // (or other `SetTag`) completions of the sender it is piped from will happen on `sch`, which
+  // lets the stream scheduler's customizations (e.g. sync_wait) be selected.
+  template <class SetTag, class Sch>
+  struct _proclaimed_attrs
+    : STDEXEC::env<
+        STDEXEC::prop<STDEXEC::get_completion_scheduler_t<SetTag>, Sch>,
+        STDEXEC::prop<
+          STDEXEC::get_completion_domain_t<SetTag>,
+          STDEXEC::__call_result_t<STDEXEC::get_completion_domain_t<STDEXEC::set_value_t>, Sch>>>
+  {};
+
+  template <class SetTag = STDEXEC::set_value_t, class Sch>
+  auto _proclaim_completes_on(Sch sch)
+  {
+    using domain_t =
+      STDEXEC::__call_result_t<STDEXEC::get_completion_domain_t<STDEXEC::set_value_t>, Sch>;
+    return exec::write_attrs(_proclaimed_attrs<SetTag, Sch>{
+      STDEXEC::env{STDEXEC::prop{STDEXEC::get_completion_scheduler<SetTag>, sch},
+                   STDEXEC::prop{STDEXEC::get_completion_domain<SetTag>, domain_t{}}}
+    });
+  }
 }  // namespace
 
 STDEXEC_PRAGMA_POP()

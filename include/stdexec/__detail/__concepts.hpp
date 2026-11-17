@@ -86,6 +86,10 @@ namespace STDEXEC
   template <class _Ty, class _Up>
   concept __not_decays_to = !__decays_to<_Ty, _Up>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class... _Ts>
+  concept __decayed = (__decays_to<_Ts, _Ts> && ...);
+
   template <bool _TrueOrFalse>
   concept __satisfies = _TrueOrFalse;
 
@@ -93,12 +97,13 @@ namespace STDEXEC
   concept __true = true;
 
   template <class _Cp>
-  concept __class = __true<int _Cp::*> && (!__same_as<_Cp const, _Cp>);
+  concept __class = __true<int _Cp::*> && __decayed<_Cp>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class... _As>
   concept __one_of = (__same_as<_Ty, _As> || ...);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class... _Us>
   concept __all_of = (__same_as<_Ty, _Us> && ...);
 
@@ -116,6 +121,7 @@ namespace STDEXEC
   template <class _Ay, template <class...> class _Ty>
   concept __is_instance_of = __is_instance_of_<_Ay, _Ty>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ay, template <class...> class _Ty>
   concept __is_not_instance_of = !__is_instance_of<_Ay, _Ty>;
 
@@ -126,6 +132,7 @@ namespace STDEXEC
   {
     template <auto>
     using __is_nttp = void;
+
     template <class _Ty, template <_Ty> class>
     using __nttp_test = void;
   }  // namespace __detail
@@ -133,11 +140,8 @@ namespace STDEXEC
   template <class _Ty>
   concept __structural = requires { typename __detail::__nttp_test<_Ty, __detail::__is_nttp>; };
 
-  static_assert(__structural<int>);
-
   namespace __std
   {
-
     // Make sure we're using a same_as concept that doesn't instantiate a class
     // template (i.e., std::is_same)
     STDEXEC_MODULE_EXPORT_AUTHORING
@@ -155,6 +159,7 @@ namespace STDEXEC
 
 #  else
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class T>
     concept integral = std::is_integral_v<T>;
 
@@ -168,6 +173,7 @@ namespace STDEXEC
     concept convertible_to = STDEXEC_IS_CONVERTIBLE_TO(_From, _To)
                           && requires(__declfn_t<_From> __fun) { static_cast<_To>(__fun()); };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ty>
     concept equality_comparable = requires(__cref_t<_Ty> __t) {
       { __t == __t } -> convertible_to<bool>;

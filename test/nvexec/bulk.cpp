@@ -1,8 +1,12 @@
 #include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include <test_common/catch2.hpp>
 
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 #include <cuda/std/span>
 
@@ -12,7 +16,6 @@ using nvexec::is_on_gpu;
 
 namespace
 {
-
   TEST_CASE("nvexec bulk returns a sender", "[cuda][stream][adaptors][bulk]")
   {
     nvexec::stream_context stream_ctx{};

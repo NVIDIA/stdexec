@@ -152,7 +152,8 @@ namespace
                    }
 
                    return ex::schedule(sch);
-                 });
+                 })
+             | ::_proclaim_completes_on(sch);
     STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -165,7 +166,7 @@ namespace
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
-    auto snd = ex::schedule(sch) | ex::let_value([] { return nvexec::get_stream(); })
+    auto snd = ex::starts_on(sch, nvexec::get_stream())
              | ex::then(
                  [flags](cudaStream_t stream)
                  {

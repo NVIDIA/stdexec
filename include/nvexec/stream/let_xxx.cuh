@@ -287,7 +287,7 @@ namespace nv::execution::_strm
     }
 
     template <class Self, receiver Receiver>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
       -> _opstate_t<Self, Receiver>
     {
       return _opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,

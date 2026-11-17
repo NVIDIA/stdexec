@@ -92,10 +92,11 @@ namespace experimental::execution
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
       {
         __coro_.promise().__parent_                   = __parent;
-        __coro_.promise().__get_disposition_callback_ = [](void* __parent) noexcept
+        __coro_.promise().__get_disposition_callback_ = [](void* __parent_addr) noexcept
         {
-          _Promise& __promise = __std::coroutine_handle<_Promise>::from_address(__parent).promise();
-          return __promise.disposition();
+          _Promise& __parent_promise =
+            __std::coroutine_handle<_Promise>::from_address(__parent_addr).promise();
+          return __parent_promise.disposition();
         };
         __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());

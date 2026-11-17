@@ -17,6 +17,11 @@
 
 #include <stdexec/__detail/__config.hpp>
 
+// Before the includes, so that it also covers the stdexec headers. Clang 16
+// warns about their `if consteval` when test_consteval() below uses them.
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
+
 #if STDEXEC_USE_MODULES()
 import std;
 import stdexec;
@@ -27,8 +32,6 @@ import stdexec;
 #endif
 
 // NOLINTBEGIN(modernize-use-override)
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 
 namespace any = STDEXEC::__any;
 

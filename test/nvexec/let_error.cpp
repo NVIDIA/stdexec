@@ -1,9 +1,12 @@
-#include <exec/env.hpp>
 #include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include <test_common/catch2.hpp>
 
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 namespace ex = STDEXEC;
 
@@ -11,7 +14,6 @@ using nvexec::is_on_gpu;
 
 namespace
 {
-
   TEST_CASE("nvexec let_error returns a sender", "[cuda][stream][adaptors][let_error]")
   {
     nvexec::stream_context stream_ctx{};
@@ -38,10 +40,9 @@ namespace
                      flags.set();
                    }
 
-                   return ex::just()
-                        | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
+                   return ex::just();
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -56,15 +57,14 @@ namespace
 
     auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::let_error(
-                 [flags](int err)
+                 [flags, sch = stream_ctx.get_scheduler()](int err)
                  {
                    if (is_on_gpu() && err == 42)
                    {
                      flags.set(0);
                    }
 
-                   return ex::just()
-                        | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
+                   return ex::just();
                  })
              | a_sender(
                  [flags]
@@ -74,7 +74,7 @@ namespace
                      flags.set(1);
                    }
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -97,8 +97,9 @@ namespace
                    }
 
                    return ex::schedule(sch);
-                 });
-    STDEXEC::sync_wait(std::move(snd));
+                 })
+             | ::_proclaim_completes_on(sch);
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }

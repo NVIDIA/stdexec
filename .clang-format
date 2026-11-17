@@ -96,8 +96,6 @@ Macros: [
   'STDEXEC_EXPLICIT_THIS_END(...)=',
   'STDEXEC_ATTRIBUTE(...)=__attribute__((__VA_ARGS__))',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
-  'STDEXEC_MISSING_MEMBER(X,Y)=true',
-  'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
   'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
 ]
 MaxEmptyLinesToKeep: 1

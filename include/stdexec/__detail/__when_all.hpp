@@ -713,13 +713,13 @@ namespace STDEXEC
         constexpr bool __uses_stop_source = __children_of<_Self, __uses_stop_source_fn>();
         constexpr bool __sends_stopped    = __cmplsigs_t::__count(set_stopped) != 0;
 
-        using __state_t = __state<__errors_variant_t,
-                                  __values_tuple_t,
-                                  _Receiver,
-                                  __sends_stopped,
-                                  __uses_stop_source>;
+        using __shared_state_t = __state<__errors_variant_t,
+                                         __values_tuple_t,
+                                         _Receiver,
+                                         __sends_stopped,
+                                         __uses_stop_source>;
 
-        return __state_t{static_cast<_Receiver&&>(__rcvr), __nbr_children_of<_Self>};
+        return __shared_state_t{static_cast<_Receiver&&>(__rcvr), __nbr_children_of<_Self>};
       };
 
       static constexpr auto __start =
