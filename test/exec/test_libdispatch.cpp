@@ -198,6 +198,37 @@ namespace
     CHECK(indices == std::vector<int>{0, 1, 2, 3});
   }
 
+  TEST_CASE("libdispatch bulk accepts values without a default constructor")
+  {
+    struct value
+    {
+      value() = delete;
+      explicit value(int n)
+        : n(n)
+      {}
+      int n;
+    };
+
+    exec::libdispatch_queue queue;
+    auto                    check = [&](auto policy)
+    {
+      for (int shape: {0, 3})
+      {
+        std::atomic<int> calls{0};
+        auto sender = STDEXEC::just(value{42}) | STDEXEC::continues_on(queue.get_scheduler())
+                    | STDEXEC::bulk(policy,
+                                    shape,
+                                    [&](int, value &v) noexcept { calls.fetch_add(v.n); });
+        auto result = STDEXEC::sync_wait(std::move(sender));
+        REQUIRE(result.has_value());
+        CHECK(std::get<0>(*result).n == 42);
+        CHECK(calls.load() == shape * 42);
+      }
+    };
+    check(STDEXEC::par);
+    check(STDEXEC::seq);
+  }
+
   TEST_CASE("libdispatch bulk accepts lvalue-only callbacks")
   {
     struct callback
