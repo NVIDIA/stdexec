@@ -129,37 +129,9 @@ namespace
     CHECK(bytes == 0);
   }
 
-  constinit std::size_t g_default_allocator_bytes = 0;
-
-  template <class T>
-  struct default_counting_allocator
-  {
-    using value_type = T;
-
-    default_counting_allocator() = default;
-
-    template <class Other>
-    default_counting_allocator(default_counting_allocator<Other> const &) noexcept
-    {}
-
-    auto allocate(std::size_t n) -> T *
-    {
-      g_default_allocator_bytes += n * sizeof(T);
-      return static_cast<T *>(::operator new(n * sizeof(T)));
-    }
-
-    void deallocate(T *p, std::size_t n)
-    {
-      g_default_allocator_bytes -= n * sizeof(T);
-      ::operator delete(p);
-    }
-
-    auto operator==(default_counting_allocator const &) const -> bool = default;
-  };
-
   struct default_allocator_env : ex::env<>
   {
-    using allocator_type = default_counting_allocator<std::byte>;
+    using allocator_type = counting_allocator<std::byte>;
   };
 
   auto test_task_default_allocator() -> ex::task<void, default_allocator_env>
@@ -179,6 +151,61 @@ namespace
     CHECK(g_default_allocator_bytes > 0);
     ex::sync_wait(std::move(t));
     CHECK(g_default_allocator_bytes == 0);
+  }
+
+  // A start scheduler that is neither default constructible nor constructible from the
+  // parent's scheduler. It can only be built from the task's allocator (see P4453).
+  struct alloc_only_scheduler : ex::inline_scheduler
+  {
+    explicit alloc_only_scheduler(counting_allocator<std::byte> const &) noexcept
+      : from_allocator(true)
+    {}
+
+    bool from_allocator = false;
+  };
+
+  struct alloc_only_scheduler_env : ex::env<>
+  {
+    using allocator_type       = counting_allocator<std::byte>;
+    using start_scheduler_type = alloc_only_scheduler;
+  };
+
+  TEST_CASE("static assertions for alloc_only_scheduler", "[types][task]")
+  {
+    STATIC_REQUIRE(!std::default_initializable<alloc_only_scheduler>);
+    STATIC_REQUIRE(!std::constructible_from<alloc_only_scheduler, ex::run_loop::scheduler>);
+    STATIC_REQUIRE(ex::__task::__has_compatible_scheduler<ex::env<>,
+                                                          alloc_only_scheduler,
+                                                          counting_allocator<std::byte>>);
+    STATIC_REQUIRE(!ex::__task::__has_compatible_scheduler<ex::env<>,
+                                                           alloc_only_scheduler,
+                                                           std::allocator<std::byte>>);
+  }
+
+  auto test_task_scheduler_from_allocator() -> ex::task<bool, alloc_only_scheduler_env>
+  {
+    auto sch = co_await ex::read_env(ex::get_start_scheduler);
+    STATIC_REQUIRE(std::same_as<decltype(sch), alloc_only_scheduler>);
+    co_return sch.from_allocator;
+  }
+
+  TEST_CASE("task constructs its start scheduler from its allocator when connected",
+            "[types][task]")
+  {
+    auto [from_allocator] = ex::sync_wait(test_task_scheduler_from_allocator()).value();
+    CHECK(from_allocator);
+  }
+
+  auto test_task_awaits_scheduler_from_allocator() -> ex::task<bool>
+  {
+    co_return co_await test_task_scheduler_from_allocator();
+  }
+
+  TEST_CASE("task constructs its start scheduler from its allocator when co_awaited",
+            "[types][task]")
+  {
+    auto [from_allocator] = ex::sync_wait(test_task_awaits_scheduler_from_allocator()).value();
+    CHECK(from_allocator);
   }
 
   auto test_task_awaits_just_sender() -> ex::task<int>
@@ -711,7 +738,7 @@ namespace
   auto nested() -> ex::task<int>
   {
     auto sched = co_await ex::read_env(ex::get_scheduler);
-    static_assert(std::same_as<decltype(sched), ex::task_scheduler>);
+    STATIC_REQUIRE(std::same_as<decltype(sched), ex::task_scheduler>);
     co_await ex::schedule(sched);
     co_return 42;
   }
@@ -995,9 +1022,12 @@ namespace
     void set_stopped() noexcept {}
   };
 
-  static_assert(!ex::sender_in<ex::task<void>, ex::env<>>);
-  static_assert(!ex::sender_to<ex::task<void>, sink>);
-  static_assert(ex::sender_in<ex::task<void>, ex::__sync_wait::__env>);
+  TEST_CASE("static assertions for task sender properties", "[types][task]")
+  {
+    STATIC_REQUIRE(!ex::sender_in<ex::task<void>, ex::env<>>);
+    STATIC_REQUIRE(!ex::sender_to<ex::task<void>, sink>);
+    STATIC_REQUIRE(ex::sender_in<ex::task<void>, ex::__sync_wait::__env>);
+  }
 
   auto await_stopped_sender(bool complete_inline) -> ex::task<void>
   {
