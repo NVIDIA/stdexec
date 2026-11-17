@@ -242,10 +242,12 @@ namespace STDEXEC
       _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc...);
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _ParentEnv, class _Scheduler, class _Alloc>
     concept __has_compatible_scheduler =
       __has_scheduler_compatible_with<_ParentEnv, _Scheduler, _Alloc>
       || __has_scheduler_compatible_with<_ParentEnv, _Scheduler>
+      || __std::constructible_from<_Scheduler, _Alloc const &>
       || __std::default_initializable<_Scheduler>;
 
     template <class _StopSource, class _StopToken>
@@ -332,8 +334,8 @@ namespace STDEXEC
       using __allocator_t       = __allocator_type<_TaskEnv>;
       using __start_scheduler_t = __start_scheduler_type<_TaskEnv>;
 
-      // NOT TO SPEC: try constructing the scheduler with the allocator if
-      // possible.
+      // NOT TO SPEC: try constructing the scheduler with a scheduler and an
+      // allocator if possible. See https://wg21.link/P4453 for details.
       if constexpr (__task::__has_scheduler_compatible_with<_Env,
                                                             __start_scheduler_t,
                                                             __allocator_t>)
@@ -343,6 +345,12 @@ namespace STDEXEC
       else if constexpr (__task::__has_scheduler_compatible_with<_Env, __start_scheduler_t>)
       {
         return __start_scheduler_t(get_start_scheduler(__env));
+      }
+      // NOT TO SPEC: try constructing the scheduler with an allocator if
+      // possible. See https://wg21.link/P4453 for details.
+      else if constexpr (__std::constructible_from<__start_scheduler_t, __allocator_t const &>)
+      {
+        return __start_scheduler_t(__alloc);
       }
       else if constexpr (__std::default_initializable<__start_scheduler_t>)
       {
@@ -547,8 +555,10 @@ namespace STDEXEC
 
       STDEXEC_IMMOVABLE(__awaiter_base);
 
+      [[nodiscard]]
       virtual auto __completed() noexcept -> __std::coroutine_handle<> = 0;
-      virtual auto __canceled() noexcept -> __std::coroutine_handle<>  = 0;
+      [[nodiscard]]
+      virtual auto __canceled() noexcept -> __std::coroutine_handle<> = 0;
 
       [[nodiscard]]
       constexpr auto __get_allocator() const noexcept -> allocator_type const &
