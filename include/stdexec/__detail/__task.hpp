@@ -242,6 +242,7 @@ namespace STDEXEC
       _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc...);
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _ParentEnv, class _Scheduler, class _Alloc>
     concept __has_compatible_scheduler =
       __has_scheduler_compatible_with<_ParentEnv, _Scheduler, _Alloc>

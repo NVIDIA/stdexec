@@ -50,6 +50,15 @@ namespace experimental::execution
     {
       using scheduler_concept = scheduler_tag;
 
+      struct __attrs
+      {
+        [[nodiscard]]
+        constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler
+        {
+          return __scheduler{};
+        }
+      };
+
       struct __sender
       {
         using sender_concept = sender_tag;
@@ -70,9 +79,9 @@ namespace experimental::execution
         }
 
         [[nodiscard]]
-        constexpr auto get_env() const noexcept
+        constexpr auto get_env() const noexcept -> __attrs
         {
-          return STDEXEC::prop{get_completion_scheduler<set_value_t>, __scheduler()};
+          return {};
         }
       };
 
