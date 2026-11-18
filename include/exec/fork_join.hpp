@@ -266,7 +266,7 @@ namespace experimental::execution
           {
             using _sndr_t =
               _fork_join::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-            return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+            return STDEXEC::get_completion_signatures<_sndr_t, __fwd_env_t<Env>...>();
           }
         }
         else if constexpr (sizeof...(Env) == 0)
