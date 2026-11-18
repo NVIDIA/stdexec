@@ -49,10 +49,23 @@ namespace experimental::execution
           exec::decay_arguments<set_error_t, when_any_t>())...);
     }
 
+    // The results storage is computed from the children's *undecayed*
+    // completions: whether storing a result can throw (and so needs an
+    // exception_ptr alternative) depends on the actual argument types, e.g.,
+    // copying an lvalue reference can be nothrow where moving the decayed
+    // value is not.
+    template <class... _Env, class... _CvSenders>
+    consteval auto __mk_storage_completions(__mlist_ptr<_CvSenders...>)
+    {
+      return exec::concat_completion_signatures(
+        STDEXEC::completion_signatures<set_stopped_t()>(),
+        STDEXEC::get_completion_signatures<_CvSenders, __env_t<_Env>...>()...);
+    }
+
     template <class _Env, class... _CvSenders>
-    using __results_storage_t =
-      __mapply_q<__results_storage,
-                 decltype(__when_any::__mk_completions<_Env>(__mlist_ptr<_CvSenders...>()))>;
+    using __results_storage_t = __mapply_q<__results_storage,
+                                           decltype(__when_any::__mk_storage_completions<_Env>(
+                                             __mlist_ptr<_CvSenders...>()))>;
 
     // Forwards stop requests on the receiver's token to __stop_source_.
     template <class _Receiver, class _ResultVariant>

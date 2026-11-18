@@ -304,6 +304,22 @@ namespace STDEXEC
 
       constexpr void __start_next() noexcept
       {
+        // __start_next is virtual, so it is instantiated even when _CvSender1 never
+        // completes with set_value. In that case the successor is never started, and
+        // the completions of _Sender2 are not among the declared completions.
+        if constexpr (!__sends<set_value_t, _CvSender1, __fwd_env_t<env_of_t<_Receiver>>>)
+        {
+          __std::unreachable();
+        }
+        else
+        {
+          __start_next_impl();
+        }
+      }
+
+     private:
+      constexpr void __start_next_impl() noexcept
+      {
         STDEXEC_TRY
         {
           auto &__op =  //
@@ -319,7 +335,6 @@ namespace STDEXEC
         }
       }
 
-     private:
       using __env2_t     = __seq::__env2_t<_CvSender1, env_of_t<_Receiver>>;
       using __rcvr1_t    = __rcvr1<_Receiver, __env2_t>;
       using __rcvr2_t    = __rcvr2<_Receiver, __env2_t>;

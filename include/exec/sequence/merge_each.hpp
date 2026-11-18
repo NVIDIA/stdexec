@@ -1269,11 +1269,16 @@ namespace experimental::execution
       struct __completions_fn
       {
         template <class... _Sequences>
-        using __f =
-          __minvoke_q<__concat_completion_signatures_t,
-                      completion_signatures<set_stopped_t()>,
-                      __sequence_aware_completion_signatures_of_t<__child_of<_Self>, _Env...>,
-                      __sequence_aware_completion_signatures_of_t<_Sequences, _Env...>...>;
+        using __f = __minvoke_q<
+          __concat_completion_signatures_t,
+          // merge_each can always complete with set_value() (when
+          // all the nested sequences complete normally), with
+          // set_stopped(), and with an exception_ptr (errors from
+          // the sequence of sequences and failures to connect or
+          // start the error item are stored as one).
+          completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>,
+          __sequence_aware_completion_signatures_of_t<__child_of<_Self>, _Env...>,
+          __sequence_aware_completion_signatures_of_t<_Sequences, _Env...>...>;
       };
 
       template <class _Self, class... _Env>

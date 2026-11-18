@@ -72,7 +72,9 @@ namespace STDEXEC
   concept __has_validation = requires { _Query::template __validate<_Env, _Args...>(); };
 
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Query, auto _Default = __no_default, class _Transform = __q1<__midentity>>
+  template <class _Query,
+            auto _Default    = __no_default,
+            class _Transform = __q1<__midentity>>
   struct __query  // NOLINT(bugprone-crtp-constructor-accessibility)
     : __query<_Query, __no_default, _Transform>
   {

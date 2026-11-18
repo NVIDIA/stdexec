@@ -35,7 +35,6 @@ import stdexec;
 STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
-
   class xorshift
   {
    public:

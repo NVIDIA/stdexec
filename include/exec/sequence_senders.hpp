@@ -691,7 +691,7 @@ namespace experimental::execution
   }
 
   template <class _Sequence, class... _Env>
-    requires sequence_sender<_Sequence, _Env...>
+    requires sequence_sender_in<_Sequence, _Env...>
   using item_types_of_t = decltype(exec::__checked_item_types(STDEXEC::__declval<_Sequence>(),
                                                               STDEXEC::__declval<_Env>()...));
 #  else

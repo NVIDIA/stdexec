@@ -35,7 +35,8 @@ import stdexec;
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
-  STDEXEC_MODULE_EXPORT template <class _Promise>
+  STDEXEC_MODULE_EXPORT
+  template <class _Promise>
   struct with_awaitable_senders;
 
   namespace __detail

@@ -122,8 +122,14 @@ namespace STDEXEC
     template <class _Scheduler, class _Sender, class _Receiver>
     using __state_t = __state<_Scheduler,
                               __secondary_env_t<_Sender, env_of_t<_Receiver>, set_value_t>,
-                              __storage_for_t<_Sender, env_of_t<_Receiver>>,
+                              __storage_for_t<_Sender, __fwd_env_t<env_of_t<_Receiver>>>,
                               _Receiver>;
+
+    //! The environment of the receiver to which the scheduler's sender is
+    //! connected. This must match @c __receiver2::get_env().
+    template <class _Child, class _Env>
+    using __sch_sndr_env_t =
+      __join_env_t<__secondary_env_t<_Child, _Env, set_value_t> const &, _Env>;
 
     //! @brief The @c continues_on sender's attributes.
     template <class _Scheduler, class _Sender>
@@ -134,6 +140,10 @@ namespace STDEXEC
       using __env2_t = __secondary_env_t<_Sender, _Env, set_value_t>;
       template <class _Env>
       using __sch_env_t = __join_env_t<__env2_t<_Env>, _Env>;
+      // The environment of the receiver to which the schedule sender is
+      // connected; see __receiver2.
+      template <class _Env>
+      using __sch_sndr_env_t = __trnsfr::__sch_sndr_env_t<_Sender, _Env>;
 
       template <class _Env>
       constexpr auto __mk_sch_env(_Env&& __env) const noexcept -> __sch_env_t<_Env>
@@ -156,9 +166,9 @@ namespace STDEXEC
         {
           if constexpr (__sends<set_value_t, _Sender, __fwd_env_t<_Env>...>)
           {
-            return !__cmplsigs::__partitions_of_t<completion_signatures_of_t<
-              _Sender,
-              __fwd_env_t<_Env>...>>::__nothrow_decay_copyable::__values::value;
+            using __completions_t = completion_signatures_of_t<_Sender, __fwd_env_t<_Env>...>;
+            return !__cmplsigs::__partitions_of_t<
+              __completions_t>::__nothrow_decay_copyable::__values::value;
           }
         }
         return false;
@@ -182,27 +192,27 @@ namespace STDEXEC
         // `void`) that the query would reject. Bail out before touching anything
         // that could hard-error.
         if constexpr (!__one_of<_SetTag, set_error_t, set_stopped_t>)
-        {
+        {  // NOLINT(bugprone-branch-clone)
           return indeterminate_domain<>();
         }
         else if constexpr (__forwards_completion<_SetTag, _Env...>())
         {
-          constexpr bool __own = __sends<_SetTag, _SchSndr, __env2_t<_Env>...>;
-          using _Fwd           = __completion_domain_of_t<set_value_t, _SchSndr, __env2_t<_Env>...>;
+          constexpr bool __own = __sends<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>;
+          using _Fwd = __completion_domain_of_t<set_value_t, _SchSndr, __sch_sndr_env_t<_Env>...>;
           if constexpr (__own)
           {
             return __common_domain_t<
               _Fwd,
-              __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>>();
+              __completion_domain_of_t<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>>();
           }
           else
           {
             return _Fwd();
           }
         }
-        else if constexpr (__sends<_SetTag, _SchSndr, __env2_t<_Env>...>)
+        else if constexpr (__sends<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>)
         {
-          return __completion_domain_of_t<_SetTag, _SchSndr, __env2_t<_Env>...>();
+          return __completion_domain_of_t<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>();
         }
         else
         {
@@ -215,7 +225,7 @@ namespace STDEXEC
       template <class _SetTag, class... _Env>
       static consteval bool __sch_sends() noexcept
       {
-        return __sends<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>;
+        return __sends<_SetTag, schedule_result_t<_Scheduler>, __sch_sndr_env_t<_Env>...>;
       }
 
       _Scheduler      __sch_;
@@ -284,8 +294,9 @@ namespace STDEXEC
       template <__same_as<set_value_t> _SetTag, class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
-        -> __ensure_valid_domain_t<
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>>
+        -> __ensure_valid_domain_t<__completion_domain_of_t<_SetTag,
+                                                            schedule_result_t<_Scheduler>,
+                                                            __sch_sndr_env_t<_Env>...>>
       {
         return {};
       }
@@ -298,7 +309,7 @@ namespace STDEXEC
       //! domain contributes too.
       template <__one_of<set_error_t, set_stopped_t> _SetTag, class... _Env>
         requires(__forwards_completion<_SetTag, _Env...>()
-                 || __sends<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>)
+                 || __sends<_SetTag, schedule_result_t<_Scheduler>, __sch_sndr_env_t<_Env>...>)
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
         -> __ensure_valid_domain_t<decltype(__forwarded_domain<_SetTag, _Env...>())>
@@ -317,7 +328,7 @@ namespace STDEXEC
       {
         using _SchSender = schedule_result_t<_Scheduler>;
         constexpr auto cb_sched =
-          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __env2_t<_Env>...>();
+          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __sch_sndr_env_t<_Env>...>();
         constexpr auto cb_sndr =
           STDEXEC::__get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
         return cb_sched | cb_sndr;
@@ -353,13 +364,15 @@ namespace STDEXEC
           __decay_arguments<set_error_t, continues_on_t>());
       }
 
-      template <class _Scheduler, class... _Env>
+      template <class _Child, class _Scheduler, class... _Env>
       static consteval auto __get_scheduler_completions()
       {
         // The scheduler contributes only error and stopped completions; we
-        // ignore value completions here
+        // ignore value completions here. The schedule sender is connected to a
+        // receiver whose environment is __sch_sndr_env_t, not __fwd_env_t<_Env>.
         return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>(),
+          STDEXEC::get_completion_signatures<schedule_result_t<_Scheduler>,
+                                             __sch_sndr_env_t<_Child, _Env>...>(),
           __ignore_completion());
       }
 
@@ -385,10 +398,17 @@ namespace STDEXEC
         auto __child_completions = __get_child_completions<__child_t, _Env...>();
         return STDEXEC::__concat_completion_signatures(
           __child_completions,
-          __get_scheduler_completions<__scheduler_t, _Env...>(),
+          __get_scheduler_completions<__child_t, __scheduler_t, _Env...>(),
           __eptr_completion_unless_t<
             __nothrow_decay_copyable_results_t<decltype(__child_completions)>>());
       }
+
+      // The child's completions are computed with __fwd_env_t<_Env>, so the child
+      // must be connected to a receiver whose environment is likewise forwarded.
+      static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+      {
+        return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
+      };
 
       static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(

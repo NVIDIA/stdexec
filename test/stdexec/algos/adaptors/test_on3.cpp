@@ -19,6 +19,7 @@
 #include <stdexec/execution.hpp>
 
 #include <exec/async_scope.hpp>
+#include <exec/completion_signatures.hpp>
 #include <exec/ensure_started.hpp>
 #include <exec/split.hpp>
 #include <exec/start_detached.hpp>
@@ -75,11 +76,12 @@ namespace
     template <ex::__decays_to<get_env_sender> Self, class Env>
     static consteval auto get_completion_signatures()
     {
-      return ex::__transform_completion_signatures_of_t<
-        ex::__copy_cvref_t<Self, Sndr>,
-        Env,
-        ex::completion_signatures<ex::set_value_t(Env)>,
-        ex::__mconst<ex::completion_signatures<>>::__f>{};
+      return exec::transform_completion_signatures(
+        ex::get_completion_signatures<ex::__copy_cvref_t<Self, Sndr>, Env>(),
+        exec::ignore_completion(),
+        {},
+        {},
+        ex::completion_signatures<ex::set_value_t(Env)>());
     }
   };
 
