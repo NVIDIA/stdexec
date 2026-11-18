@@ -50,10 +50,12 @@ namespace experimental::execution::asio
     concept error_code_like =
       ::STDEXEC::__one_of<std::remove_cvref_t<Ty>, error_code, std::error_code>;
 
+#if STDEXEC_ASIO_USES_BOOST
     inline bool is_cancelled(std::error_code ec) noexcept
     {
       return ec == std::errc::operation_canceled;
     }
+#endif
 
     inline bool is_cancelled(error_code ec) noexcept
     {
