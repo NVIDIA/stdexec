@@ -227,7 +227,8 @@ namespace STDEXEC
     //! @return The result of reducing the transformed signatures.
     template <class _Transform, class _Reduce>
     [[nodiscard]]
-    static consteval auto __transform_reduce(_Transform __transform, _Reduce __reduce)
+    static consteval auto
+    __transform_reduce([[maybe_unused]] _Transform __transform, _Reduce __reduce)
       -> __call_result_t<_Reduce, __call_result_t<_Transform, _Sigs*>...>
     {
       return __reduce(__transform(static_cast<_Sigs*>(nullptr))...);

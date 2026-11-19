@@ -842,11 +842,7 @@ namespace experimental::execution
   consteval auto __sequence_completion_signatures_of()
   {
     auto __item_types = get_item_types<_Sequence, _Env...>();
-    if constexpr (STDEXEC::__merror<decltype(__item_types)>)
-    {
-      return exec::__invalid_item_types(__item_types);
-    }
-    else
+    STDEXEC_IF_OK(__item_types)
     {
       return exec::concat_completion_signatures(
         exec::__sequence_completion_signatures<_Sequence, _Env...>(),
