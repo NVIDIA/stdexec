@@ -19,6 +19,7 @@
 
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = STDEXEC;
@@ -55,5 +56,39 @@ namespace
     // The receiver checks that it's called
     // we also check that the function was invoked
     CHECK(called);
+  }
+
+  TEST_CASE("upon_stopped reports the completion scheduler of the child channel that feeds each "
+            "channel",
+            "[adaptors][upon_stopped]")
+  {
+    ex::run_loop loop1, loop2, loop3;
+    auto         sch1 = loop1.get_scheduler();
+    auto         sch2 = loop2.get_scheduler();
+    auto         sch3 = loop3.get_scheduler();
+    auto         sndr = make_per_channel_scheduler_sender(sch1, sch2, sch3);
+
+    SECTION("with a function that does not throw")
+    {
+      auto snd = sndr | ex::upon_stopped([]() noexcept { return 0; });
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_value_t, decltype(snd)>);
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd)) == sch2);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_stopped_t, decltype(snd)>);
+    }
+
+    SECTION("with a function that may throw")
+    {
+      auto snd = sndr | ex::upon_stopped([]() { return 0; });
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_value_t, decltype(snd)>);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_error_t, decltype(snd)>);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_stopped_t, decltype(snd)>);
+    }
+
+    SECTION("with a child that only completes with stopped")
+    {
+      ex::prop env{ex::get_start_scheduler, sch1};
+      auto     snd = ex::just_stopped() | ex::upon_stopped([]() noexcept { return 1; });
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), env) == sch1);
+    }
   }
 }  // namespace

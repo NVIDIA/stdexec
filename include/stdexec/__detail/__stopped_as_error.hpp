@@ -33,6 +33,7 @@ import stdexec;
 #  include "__just.hpp"
 #  include "__let.hpp"
 #  include "__queries.hpp"
+#  include "__remap_attrs.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 
@@ -191,13 +192,35 @@ namespace STDEXEC
   //! @hideinitializer
   inline constexpr stopped_as_error_t stopped_as_error{};
 
+  namespace __sae
+  {
+    // A stopped completion of the child becomes an error completion. Value and
+    // error completions are passed through unchanged.
+    struct __channel_map
+    {
+      template <class _Tag, class _From, class _Child, class... _Env>
+      [[nodiscard]]
+      static consteval auto __feeds() noexcept -> bool
+      {
+        if constexpr (__same_as<_From, set_stopped_t>)
+        {
+          return __same_as<_Tag, set_error_t>;
+        }
+        else
+        {
+          return __same_as<_Tag, _From>;
+        }
+      }
+    };
+  }  // namespace __sae
+
   template <>
   struct __sexpr_impl<stopped_as_error_t> : __sexpr_defaults
   {
     static constexpr auto __get_attrs =
       []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
     {
-      return __sync_attrs{__child};
+      return __remap_attrs<__sae::__channel_map, _Child>{__child};
     };
 
     template <class _Sender, class... _Env>
