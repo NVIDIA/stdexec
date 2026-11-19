@@ -20,6 +20,7 @@
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>  // IWYU pragma: keep
+#include <test_common/type_helpers.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -30,6 +31,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -185,6 +187,57 @@ TEST_CASE("bulk on static_thread_pool executes on multiple threads", "[types][st
                                            }));
   ex::sync_wait(std::move(sender));
   REQUIRE(thread_ids.size() == num_of_threads);
+}
+
+TEST_CASE("bulk on static_thread_pool accepts potentially throwing copies",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{2};
+
+  SECTION("successful copy")
+  {
+    std::vector<int> values(4, 0);
+    auto             sender = ex::schedule(pool.get_scheduler())
+                | ex::then([&]() noexcept -> std::vector<int>& { return values; })
+                | ex::bulk(ex::par,
+                           4,
+                           [](int i, std::vector<int>& data) noexcept { data[i] = i + 1; });
+
+    STATIC_REQUIRE(set_equivalent<ex::completion_signatures_of_t<decltype(sender), ex::env<>>,
+                                  ex::completion_signatures<ex::set_value_t(std::vector<int>),
+                                                            ex::set_error_t(std::exception_ptr)>>);
+
+    auto result = ex::sync_wait(std::move(sender));
+    REQUIRE(result);
+    CHECK(std::get<0>(*result) == std::vector<int>{1, 2, 3, 4});
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  SECTION("copy failure")
+  {
+    struct throwing_value
+    {
+      throwing_value() = default;
+
+      throwing_value(throwing_value const &)
+      {
+        throw std::runtime_error{"copy failed"};
+      }
+    };
+
+    throwing_value   value;
+    std::atomic<int> calls{0};
+    auto const       shape  = GENERATE(0, 4);
+    auto             sender = ex::schedule(pool.get_scheduler())
+                | ex::then([&]() noexcept -> throwing_value& { return value; })
+                | ex::bulk(ex::par,
+                           shape,
+                           [&](int, throwing_value&) noexcept { calls.fetch_add(1); });
+
+    CHECK_THROWS_AS(ex::sync_wait(std::move(sender)), std::runtime_error);
+    CHECK(calls.load() == 0);
+  }
+#endif
 }
 
 TEST_CASE("schedule_all on static_thread_pool handles empty ranges", "[types][static_thread_pool]")
