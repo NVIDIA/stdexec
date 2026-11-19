@@ -406,6 +406,7 @@ namespace STDEXEC
       // The child's completions are computed with __fwd_env_t<_Env>, so the child
       // must be connected to a receiver whose environment is likewise forwarded.
       static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+        -> __fwd_env_t<env_of_t<decltype(__state.__rcvr_)>>
       {
         return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
       };
