@@ -740,9 +740,9 @@ namespace STDEXEC
                  "get_delegation_scheduler_t")]] = get_delegation_scheduler_t;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
-  inline constexpr auto &get_delegatee_scheduler [[deprecated("get_delegatee_scheduler has been "
-                                                              "renamed get_delegation_scheduler")]]
-  = get_delegation_scheduler;
+  inline constexpr auto &get_delegatee_scheduler  //
+    [[deprecated("get_delegatee_scheduler has been renamed get_delegation_scheduler")]]
+    = get_delegation_scheduler;
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

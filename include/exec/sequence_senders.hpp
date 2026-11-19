@@ -691,7 +691,7 @@ namespace experimental::execution
   }
 
   template <class _Sequence, class... _Env>
-    requires sequence_sender<_Sequence, _Env...>
+    requires sequence_sender_in<_Sequence, _Env...>
   using item_types_of_t = decltype(exec::__checked_item_types(STDEXEC::__declval<_Sequence>(),
                                                               STDEXEC::__declval<_Env>()...));
 #  else
@@ -842,11 +842,7 @@ namespace experimental::execution
   consteval auto __sequence_completion_signatures_of()
   {
     auto __item_types = get_item_types<_Sequence, _Env...>();
-    if constexpr (STDEXEC::__merror<decltype(__item_types)>)
-    {
-      return exec::__invalid_item_types(__item_types);
-    }
-    else
+    STDEXEC_IF_OK(__item_types)
     {
       return exec::concat_completion_signatures(
         exec::__sequence_completion_signatures<_Sequence, _Env...>(),

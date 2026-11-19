@@ -137,12 +137,15 @@ namespace experimental::execution::__shared
   //////////////////////////////////////////////////////////////////////////////
   struct __local_state_base
   {
-    constexpr virtual void __notify() noexcept
+    using __notify_fn_t = void (*)(__local_state_base&) noexcept;
+
+    constexpr void __notify() noexcept
     {
-      // should never be called
+      __notify_fn_(*this);
     }
 
-    __local_state_base* __next_ = nullptr;
+    __notify_fn_t       __notify_fn_ = nullptr;
+    __local_state_base* __next_      = nullptr;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -152,7 +155,7 @@ namespace experimental::execution::__shared
   // split-sender's `connect` fn returns. It holds a ref count to the shared
   // state.
   template <class _Tag, class _CvChild, class _Env, class _Receiver>
-  struct __local_state final
+  struct __local_state
     : __local_state_base
     , stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>,
                            __local_state<_Tag, _CvChild, _Env, _Receiver>>
@@ -163,7 +166,7 @@ namespace experimental::execution::__shared
     static_assert(__one_of<_Tag, split_t, ensure_started_t>);
 
     constexpr explicit __local_state(__sh_state_ptr_t __sh_state, _Receiver __rcvr) noexcept
-      : __local_state::__local_state_base{}
+      : __local_state::__local_state_base{&__local_state::__notify_impl}
       , __rcvr_(static_cast<_Receiver&&>(__rcvr))
       , __sh_state_(std::move(__sh_state))
     {}
@@ -247,15 +250,16 @@ namespace experimental::execution::__shared
     // operation completes; or, if it has already completed when start is
     // called, it is called from start: __notify cannot race with
     // on_stop_requested(). See comment in on_stop_requested().
-    constexpr void __notify() noexcept final
+    static constexpr void __notify_impl(__local_state_base& __base) noexcept
     {
+      auto& __self = static_cast<__local_state&>(__base);
       // The split algorithm sends by T const&. ensure_started sends by T&&.
       constexpr bool __is_split = __std::same_as<split_t, _Tag>;
-      using __variant_t         = decltype(__sh_state_->__results_);
+      using __variant_t         = decltype(__self.__sh_state_->__results_);
       using __cv_variant_t      = __if_c<__is_split, __variant_t const &, __variant_t>;
 
-      this->deregister_stoppable();
-      static_cast<__cv_variant_t&&>(__sh_state_->__results_).__complete(__rcvr_);
+      __self.deregister_stoppable();
+      static_cast<__cv_variant_t&&>(__self.__sh_state_->__results_).__complete(__self.__rcvr_);
     }
 
     _Receiver        __rcvr_;

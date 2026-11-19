@@ -180,7 +180,8 @@ namespace STDEXEC
   //! @see stdexec::get_env   — the CPO that exposes the merged environment
   //!
   //! @hideinitializer
-  STDEXEC_MODULE_EXPORT inline constexpr __write_env_t write_env{};
+  STDEXEC_MODULE_EXPORT
+  inline constexpr __write_env_t write_env{};
 
   template <>
   struct __sexpr_impl<__write_env_t> : __write::__write_env_impl

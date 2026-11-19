@@ -537,7 +537,7 @@ namespace experimental::execution
     {
       return []<class... Args>()
       {
-        if constexpr (!__nothrow_decay_copyable<Args...>)
+        if constexpr (!__decay_copyable<Args...>)
         {
           return exec::throw_compile_time_error<  //
             _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
@@ -553,7 +553,8 @@ namespace experimental::execution
             _WITH_FUNCTION_(Fun&),
             _WITH_ARGUMENTS_(Shape, Shape, __decay_t<Args> & ...)>();
         }
-        else if constexpr (__nothrow_callable<Fun&, Shape, Shape, __decay_t<Args>&...>)
+        else if constexpr (__nothrow_callable<Fun&, Shape, Shape, __decay_t<Args>&...>
+                           && __nothrow_decay_copyable<Args...>)
         {
           return completion_signatures<set_value_t(__decay_t<Args>...)>();
         }

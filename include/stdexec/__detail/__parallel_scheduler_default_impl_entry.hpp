@@ -55,8 +55,8 @@ namespace STDEXEC::parallel_scheduler_replacement
   //! Can be used to replace the parallel scheduler at runtime.
   //! NOT TO SPEC
   extern STDEXEC_PARALLEL_SCHEDULER_INLINE  //
-    auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
-      -> __parallel_scheduler_backend_factory_t
+  auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
+    -> __parallel_scheduler_backend_factory_t
   {
     return STDEXEC::__parallel_scheduler_default_impl::__parallel_scheduler_backend_singleton
       .__set_backend_factory(__new_factory);

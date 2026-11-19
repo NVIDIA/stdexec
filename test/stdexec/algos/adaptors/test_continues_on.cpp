@@ -79,6 +79,54 @@ namespace
     operator==(potentially_throwing_connect_scheduler const &) const noexcept -> bool = default;
   };
 
+  // A scheduler whose schedule sender's completion signatures depend on the
+  // environment: it can additionally fail with `int` iff the environment it is
+  // connected to has a start scheduler.
+  struct env_sensitive_scheduler
+  {
+    using scheduler_concept = ex::scheduler_tag;
+
+    struct sender
+    {
+      using sender_concept = ex::sender_tag;
+
+      template <class Receiver>
+      struct opstate
+      {
+        void start() & noexcept
+        {
+          ex::set_value(static_cast<Receiver &&>(receiver_));
+        }
+
+        Receiver receiver_;
+      };
+
+      template <class Self, class Env>
+      static consteval auto get_completion_signatures()
+      {
+        if constexpr (ex::__callable<ex::get_start_scheduler_t, Env const &>)
+          return ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>();
+        else
+          return ex::completion_signatures<ex::set_value_t()>();
+      }
+
+      template <class Receiver>
+      [[nodiscard, maybe_unused]]
+      auto connect(Receiver receiver) const noexcept -> opstate<Receiver>
+      {
+        return {static_cast<Receiver &&>(receiver)};
+      }
+    };
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender
+    {
+      return {};
+    }
+
+    auto operator==(env_sensitive_scheduler const &) const noexcept -> bool = default;
+  };
+
   struct value_type
   {
     int val_;
@@ -556,4 +604,22 @@ namespace
     ex::start(op);
     REQUIRE(res == "goodbye");
   }
+  TEST_CASE("continues_on computes the scheduler's completions with the environment the schedule "
+            "sender is actually connected to",
+            "[adaptors][continues_on]")
+  {
+    // The predecessor completes on inline_scheduler, so the schedule sender is
+    // connected to a receiver whose environment has a start scheduler, even
+    // though the receiver passed to continues_on's connect does not.
+    auto snd    = ex::continues_on(ex::continues_on(ex::just(), inline_scheduler{}),
+                                env_sensitive_scheduler{});
+    using snd_t = decltype(snd);
+    STATIC_REQUIRE(ex::__sends<ex::set_error_t, snd_t, ex::env<>>);
+
+    // With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING=ON, connecting also verifies that
+    // the declared and actual completions agree.
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    ex::start(op);
+  }
+
 }  // namespace

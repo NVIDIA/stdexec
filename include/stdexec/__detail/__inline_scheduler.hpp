@@ -44,7 +44,8 @@ namespace STDEXEC
     constexpr auto operator==(__inline_attrs const &) const noexcept -> bool = default;
   };
 
-  STDEXEC_MODULE_EXPORT struct inline_scheduler : __inline_attrs
+  STDEXEC_MODULE_EXPORT
+  struct inline_scheduler : __inline_attrs
   {
    private:
     template <class _Receiver>

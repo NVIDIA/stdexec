@@ -73,7 +73,7 @@ namespace experimental::execution
     {};
 
     template <class Tag, class... Args>
-    using _cref_sig_t = Tag(Args const &...);
+    using _cref_sig_t = Tag(STDEXEC::__decay_t<Args> const &...);
 
     // Given a set of async results, each of the form `tuple<Tag, Args...>`,
     // compute the corresponding completion signatures, where each signature is
@@ -135,7 +135,7 @@ namespace experimental::execution
     {
       using operation_state_concept = STDEXEC::operation_state_tag;
       using _env_t                  = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
-      using _child_completions_t    = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
+      using _child_completions_t    = STDEXEC::completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
         _fork_join::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
@@ -247,26 +247,28 @@ namespace experimental::execution
 
         if constexpr (__minvocable_q<__completion_domain_of_t, set_value_t, _child_sndr_t, Env...>)
         {
-          using _domain_t            = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
-          using _child_t             = __copy_cvref_t<Self, _child_sndr_t>;
-          using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
-          using __decay_copyable_results_t = __decay_copyable_results_t<_child_completions_t>;
+          using _domain_t = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
+          using _child_t  = __copy_cvref_t<Self, _child_sndr_t>;
+          auto _child_completions =
+            STDEXEC::get_completion_signatures<_child_t, __fwd_env_t<Env>...>();
 
-          if constexpr (!__valid_completion_signatures<_child_completions_t>)
+          STDEXEC_IF_OK(_child_completions)
           {
-            return _child_completions_t{};
-          }
-          else if constexpr (!__decay_copyable_results_t::value)
-          {
-            return STDEXEC::__throw_compile_time_error<  //
-              _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-              _IN_ALGORITHM_(exec::fork_join_t)>();
-          }
-          else
-          {
-            using _sndr_t =
-              _fork_join::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-            return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+            using _child_completions_t       = decltype(_child_completions);
+            using __decay_copyable_results_t = __decay_copyable_results_t<_child_completions_t>;
+
+            if constexpr (!__decay_copyable_results_t::value)
+            {
+              return STDEXEC::__throw_compile_time_error<  //
+                _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                _IN_ALGORITHM_(exec::fork_join_t)>();
+            }
+            else
+            {
+              using _sndr_t =
+                _fork_join::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
+              return STDEXEC::get_completion_signatures<_sndr_t, __fwd_env_t<Env>...>();
+            }
           }
         }
         else if constexpr (sizeof...(Env) == 0)

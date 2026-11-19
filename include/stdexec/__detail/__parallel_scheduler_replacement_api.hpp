@@ -48,8 +48,10 @@ namespace STDEXEC::parallel_scheduler_replacement
   //! Can be used to replace the parallel scheduler at runtime.
   //! NOT TO SPEC
   STDEXEC_MODULE_EXPORT
-  [[deprecated("Replacing the parallel scheduler backend at runtime is not recommended and may "
-               "lead to unexpected behavior. Use weak linking to replace the parallel scheduler at "
+  [[deprecated("Replacing the parallel scheduler backend at runtime is not "
+               "recommended and may "
+               "lead to unexpected behavior. Use weak linking to replace the "
+               "parallel scheduler at "
                "compile time instead.")]]
   auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
     -> __parallel_scheduler_backend_factory_t;

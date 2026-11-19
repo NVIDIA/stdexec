@@ -774,6 +774,10 @@ namespace experimental::execution
     struct _MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_
     {};
 
+    template <class...>
+    struct __types
+    {};
+
     template <class _Sequence, class _Sender, class... _Env>
     struct __value_completions_error
     {
@@ -1248,54 +1252,162 @@ namespace experimental::execution
         return make_sequence_expr<merge_each_t>(__(), static_cast<_Sequence&&>(__sequence));
       }
 
+      // Concatenates and uniques lists of types (or propagates errors).
+      static consteval auto __mk_concat_lists()
+      {
+        return []<class... _Lists>(_Lists...)
+        {
+          return STDEXEC::__minvoke<STDEXEC::__mconcat<STDEXEC::__munique<STDEXEC::__qq<__types>>>,
+                                    _Lists...>();
+        };
+      }
+
+      // Given the arguments of a set_value completion of an item sender of the
+      // sequence of sequences, returns a list of the nested sequence types, or
+      // an error.
+      template <class... _Env>
+      static consteval auto __mk_nested_sequence()
+      {
+        return []<class... _Args>(set_value_t (*)(_Args...))
+        {
+          if constexpr (sizeof...(_Args) == 1 && (has_sequence_item_types<_Args, _Env...> && ...))
+          {
+            return __types<_Args...>();
+          }
+          else if constexpr (sizeof...(_Env) == 0 && sizeof...(_Args) == 1
+                             && (dependent_sender<_Args> && ...))
+          {
+            return STDEXEC::__throw_compile_time_error<dependent_sender_error,
+                                                       _WITH_SENDER_<_Args>...>();
+          }
+          else
+          {
+            return STDEXEC::__throw_compile_time_error<
+              _WHAT_(_INVALID_ARGUMENT_),
+              _WHERE_(_IN_ALGORITHM_, merge_each_t),
+              _WHY_(_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_),
+              __fn_t<_WITH_ENVIRONMENT_, _Env>...,
+              _WITH_ARGUMENTS_(_Args...)>();
+          }
+        };
+      }
+
+      template <class... _Env>
+      static consteval auto __mk_item_nested_sequences()
+      {
+        return []<class _ItemSender>()
+        {
+          auto __sigs = STDEXEC::get_completion_signatures<_ItemSender, _Env...>();
+          STDEXEC_IF_OK(__sigs)
+          {
+            return __sigs.__select(set_value).__transform_reduce(__mk_nested_sequence<_Env...>(),
+                                                                 __mk_concat_lists());
+          }
+        };
+      }
+
+      // Returns a list of the (unique) types of all the nested sequences, or an
+      // error. _Env is the augmented environment.
+      template <class _Self, class... _Env>
+      static consteval auto __nested_sequences()
+      {
+        auto __items = exec::get_item_types<__child_of<_Self>, _Env...>();
+        STDEXEC_IF_OK(__items)
+        {
+          return __items.__transform(__mk_item_nested_sequences<_Env...>(), __mk_concat_lists());
+        }
+      }
+
+      template <class _Sequence, class... _Env>
+      static consteval auto __nested_items_of()
+      {
+        auto __items = exec::get_item_types<_Sequence, _Env...>();
+        STDEXEC_IF_OK(__items)
+        {
+          return STDEXEC::__mapply<STDEXEC::__qq<__types>, decltype(__items)>();
+        }
+      }
+
+      // Returns a list of the types of all the item senders of all the nested
+      // sequences, or an error.
+      template <class... _Env, class... _Sequences>
+      static consteval auto __nested_values(__types<_Sequences...>)
+      {
+        return __mk_concat_lists()(__nested_items_of<_Sequences, _Env...>()...);
+      }
+
+      // The completion signatures of all the senders in the list (or an error).
+      template <class... _Env, class... _Senders>
+      static consteval auto __completions_of(__types<_Senders...>)
+      {
+        return exec::concat_completion_signatures(
+          STDEXEC::get_completion_signatures<_Senders, _Env...>()...);
+      }
+
       template <class _Self, class... _Env>
       static consteval auto get_item_types()
       {
         static_assert(sender_for<_Self, merge_each_t>);
-        using __result_t =
-          __compute::__nested_values_t<__child_of<_Self>,
-                                       __env_with_inplace_stop_token_result_t<_Env>...>;
-        if constexpr (__ok<__result_t>)
+        using __child_t = __child_of<_Self>;
+
+        auto __seqs = __nested_sequences<_Self, __env_with_inplace_stop_token_result_t<_Env>...>();
+        STDEXEC_IF_OK(__seqs)
         {
-          return __result_t();
-        }
-        else
-        {
-          return exec::__invalid_item_types(__result_t());
+          auto __values = __nested_values<__env_with_inplace_stop_token_result_t<_Env>...>(__seqs);
+          STDEXEC_IF_OK(__values)
+          {
+            // All the errors that can be emitted on the output sequence: those
+            // of the sequence of sequences' item senders, of the nested
+            // sequences, and of the nested sequences' item senders.
+            auto __item_sigs =
+              exec::get_item_types<__child_t, __env_with_inplace_stop_token_result_t<_Env>...>()
+                .__transform(
+                  __mk_item_completions<__env_with_inplace_stop_token_result_t<_Env>...>(),
+                  exec::concat_completion_signatures);
+            auto __all_sigs = exec::concat_completion_signatures(
+              __item_sigs,
+              __completions_of<__env_with_inplace_stop_token_result_t<_Env>...>(__seqs),
+              __completions_of<__env_with_inplace_stop_token_result_t<_Env>...>(__values));
+            STDEXEC_IF_OK(__all_sigs)
+            {
+              using __error_variant_t = STDEXEC::__mapply_q<
+                STDEXEC::__uniqued_variant,
+                STDEXEC::__minvoke<
+                  STDEXEC::__mconcat<STDEXEC::__qq<__types>>,
+                  __types<std::exception_ptr>,
+                  STDEXEC::__error_types_t<decltype(__all_sigs), STDEXEC::__qq<__types>>>>;
+              return __mapply<__compute::__nested_values_fn<__error_variant_t>,
+                              decltype(__values)>();
+            }
+          }
         }
       }
 
-      template <class _Self, class... _Env>
-      struct __completions_fn
+      template <class... _Env>
+      static consteval auto __mk_item_completions()
       {
-        template <class... _Sequences>
-        using __f =
-          __minvoke_q<__concat_completion_signatures_t,
-                      completion_signatures<set_stopped_t()>,
-                      __sequence_aware_completion_signatures_of_t<__child_of<_Self>, _Env...>,
-                      __sequence_aware_completion_signatures_of_t<_Sequences, _Env...>...>;
-      };
-
-      template <class _Self, class... _Env>
-      using __completions_t = __mapply<__completions_fn<_Self, _Env...>,
-                                       __compute::__nested_sequences_t<__child_of<_Self>, _Env...>>;
+        return []<class _ItemSender>()
+        {
+          return STDEXEC::get_completion_signatures<_ItemSender, _Env...>();
+        };
+      }
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
         static_assert(sender_for<_Self, merge_each_t>);
-        // TODO: update this to use constant evaluation:
-        using __result_t = __minvoke<__mtry_q<__completions_t>,
-                                     _Self,
-                                     __env_with_inplace_stop_token_result_t<_Env>...>;
-        if constexpr (__ok<__result_t>)
+        auto __seqs = __nested_sequences<_Self, __env_with_inplace_stop_token_result_t<_Env>...>();
+        STDEXEC_IF_OK(__seqs)
         {
-          static_assert(STDEXEC::__well_formed_completions<__result_t>);
-          return __result_t();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(__result_t());
+          // merge_each can always complete with set_value() (when all the
+          // nested sequences complete normally), with set_stopped(), and with
+          // an exception_ptr (errors from the sequence of sequences and
+          // failures to connect or start the error item are stored as one).
+          return exec::concat_completion_signatures(
+            completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>(),
+            STDEXEC::get_completion_signatures<__child_of<_Self>,
+                                               __env_with_inplace_stop_token_result_t<_Env>...>(),
+            __completions_of<__env_with_inplace_stop_token_result_t<_Env>...>(__seqs));
         }
       }
 

@@ -267,7 +267,8 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////
   // [exec.snd.apply]
-  STDEXEC_MODULE_EXPORT inline constexpr struct apply_sender_t
+  STDEXEC_MODULE_EXPORT
+  inline constexpr struct apply_sender_t
   {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
       requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
@@ -290,7 +291,8 @@ namespace STDEXEC
     }
   } apply_sender{};
 
-  STDEXEC_MODULE_EXPORT template <class _Domain, class _Tag, class _Sender, class... _Args>
+  STDEXEC_MODULE_EXPORT
+  template <class _Domain, class _Tag, class _Sender, class... _Args>
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
 
   //////////////////////////////////////////////////////////////////////////////
