@@ -266,23 +266,28 @@ namespace STDEXEC
 
   //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26
   //! working draft.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
   using __single_sender_value_t =  //
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
                     __as_single_value,
                     __qq<__msingle>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...>  //
                  && __count_of<_Tag, _Sender, _Env...>::value != 0;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   concept __never_sends = sender_in<_Sender, _Env...>  //
                        && __count_of<_Tag, _Sender, _Env...>::value == 0;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   using __never_sends_t = __mbool<__never_sends<_Tag, _Sender, _Env...>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Error>
   using __is_eptr_t = __mbool<__decays_to<_Error, std::exception_ptr>>;
 
