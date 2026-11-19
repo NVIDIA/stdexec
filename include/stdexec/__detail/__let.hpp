@@ -401,7 +401,7 @@ namespace STDEXEC
         return __minvoke_or_q<__gather_completion_signatures_t,
                               indeterminate_domain<>,
                               __t<_LetTag>,
-                              __completion_signatures_of_t<_Sndr, _Env...>,
+                              completion_signatures_of_t<_Sndr, _Env...>,
                               __domain_transform_fn,
                               __qq<__common_domain_t>>();
       }
@@ -462,7 +462,7 @@ namespace STDEXEC
       __minvoke_or_q<__gather_completion_signatures_t,
                      __secondary_summary<true, false>,  // unknown => conservative
                      _SetTag,
-                     __completion_signatures_of_t<_Sender, _Env...>,
+                     completion_signatures_of_t<_Sender, _Env...>,
                      __secondary_summary_fn<_Tag, _SetTag, _Fun, _Sender, _Env...>,
                      __qq<__combine_summaries>>;
 
@@ -675,7 +675,7 @@ namespace STDEXEC
             __result_completion_behavior_fn<__set_tag_t,
                                             _Fun,
                                             __result_env_t<__set_tag_t, _Sndr, _Env>...>;
-          using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
+          using __completions_t = completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
 
           STDEXEC_CONSTEXPR_LOCAL auto __pred_behavior =
             STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();

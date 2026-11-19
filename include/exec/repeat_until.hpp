@@ -302,8 +302,10 @@ namespace experimental::execution
           }
           else
           {
+            // The child is connected as an lvalue (see __opstate), so copying it
+            // can throw even when moving it cannot.
             using __has_nothrow_connect_t =
-              __mbool<(__nothrow_connectable<__child_t, __receiver_archetype<_Env>> || ...)>;
+              __mbool<(__nothrow_connectable<__child_t &, __receiver_archetype<_Env>> || ...)>;
             constexpr auto __eptr_sigs    = __eptr_completion_unless_t<__has_nothrow_connect_t>();
             constexpr auto __bouncer_sigs = exec::transform_completion_signatures(
               get_completion_signatures<__bouncer_t, _Env...>(),

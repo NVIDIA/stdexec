@@ -132,7 +132,8 @@ namespace STDEXEC
   //! @see stdexec::sender_tag   — the tag type that opts a class into this
   //!                              concept
   //! @see stdexec::enable_sender — alternative opt-in path
-  STDEXEC_MODULE_EXPORT template <class _Sender>
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>          //
                 && __environment_provider<__cref_t<_Sender>>  //
                 && __std::move_constructible<__decay_t<_Sender>>
@@ -179,7 +180,9 @@ namespace STDEXEC
   //! @see stdexec::sender_to                 — adds a specific receiver
   //! @see stdexec::get_completion_signatures — the customization point this
   //!                                           concept depends on
-  STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT
+  //
+  template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
     && sender<_Sender>      //
@@ -213,7 +216,8 @@ namespace STDEXEC
   //! @see stdexec::sender_in     — without the receiver-compatibility check
   //! @see stdexec::receiver_of   — the receiver-side mirror of this concept
   //! @see stdexec::connect       — the operation @c sender_to validates
-  STDEXEC_MODULE_EXPORT template <class _Sender, class _Receiver>
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender, class _Receiver>
   concept sender_to = __sender_to<_Sender, _Receiver>  //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
@@ -262,23 +266,28 @@ namespace STDEXEC
 
   //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26
   //! working draft.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
   using __single_sender_value_t =  //
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
                     __as_single_value,
                     __qq<__msingle>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...>  //
                  && __count_of<_Tag, _Sender, _Env...>::value != 0;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   concept __never_sends = sender_in<_Sender, _Env...>  //
                        && __count_of<_Tag, _Sender, _Env...>::value == 0;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
   using __never_sends_t = __mbool<__never_sends<_Tag, _Sender, _Env...>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Error>
   using __is_eptr_t = __mbool<__decays_to<_Error, std::exception_ptr>>;
 

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "exec/completion_signatures.hpp"
 
 namespace experimental::execution
 {
@@ -28,23 +29,9 @@ namespace experimental::execution
     using namespace STDEXEC;
 
     struct reschedule_t;
-    template <class _Env>
-    using __no_scheduler_error =
-      __mexception<_WHAT_(_CANNOT_RESCHEDULE_),
-                   _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
-                   _WHERE_(_IN_ALGORITHM_, reschedule_t),
-                   _WITH_ENVIRONMENT_(_Env)>;
 
     template <class _Env>
     using __schedule_sender_t = schedule_result_t<__call_result_t<get_start_scheduler_t, _Env>>;
-
-    template <class _Env>
-    using __try_schedule_sender_t =
-      __minvoke<__mtry_catch_q<__schedule_sender_t, __q<__no_scheduler_error>>, _Env>;
-
-    template <class _Env>
-    using __completions =
-      __minvoke_q<__completion_signatures_of_t, __try_schedule_sender_t<_Env>, _Env>;
 
     struct __scheduler
     {
@@ -64,13 +51,19 @@ namespace experimental::execution
         using sender_concept = sender_tag;
 
         template <class _Self, class _Env>
-        static consteval auto get_completion_signatures() -> __completions<_Env>
+        static consteval auto get_completion_signatures()
         {
-          return {};
+          if constexpr (!__callable<get_start_scheduler_t, _Env>)
+            return exec::throw_compile_time_error<
+              _WHAT_(_CANNOT_RESCHEDULE_),
+              _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
+              _WHERE_(_IN_ALGORITHM_, reschedule_t),
+              _WITH_ENVIRONMENT_(_Env)>();
+          else
+            return STDEXEC::get_completion_signatures<__schedule_sender_t<_Env>, _Env>();
         }
 
         template <receiver _Receiver>
-          requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
         auto connect(_Receiver __rcvr) const
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver>
         {

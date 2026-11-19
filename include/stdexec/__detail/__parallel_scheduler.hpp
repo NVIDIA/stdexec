@@ -802,7 +802,11 @@ namespace STDEXEC
     {
       using __cv_previous_t = __copy_cvref_t<_Self, _Previous>;
       auto __completions    = STDEXEC::get_completion_signatures<__cv_previous_t, _Env...>();
-      return STDEXEC::__concat_completion_signatures(__completions, __eptr_completion_t());
+      // The intermediate receiver completes with set_stopped if the connected
+      // receiver's stop token has a stop request when the input completes.
+      return STDEXEC::__concat_completion_signatures(__completions,
+                                                     completion_signatures<set_stopped_t()>(),
+                                                     __eptr_completion_t());
     }
 
    private:
