@@ -351,54 +351,37 @@ namespace STDEXEC
     return STDEXEC::get_completion_signatures<_Sender, _Env...>();
   }
 
+  namespace __cmplsigs
+  {
+    consteval auto __is_constant(auto) noexcept -> bool
+    {
+      return true;
+    }
+
+    // The following concept permits get_completion_signatures to return something that
+    // is not an instance of the completion_signatures class template.
+    template <class _CvSender, class... _Env>
+    concept __constant_completion_signatures =  //
+      enable_sender<__decay_t<_CvSender>>       //
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1400
+      && __constant<STDEXEC::get_completion_signatures<_CvSender, _Env...>()>;
+#  else
+      && requires {
+           typename __mbool<__cmplsigs::__is_constant(
+             STDEXEC::get_completion_signatures<_CvSender, _Env...>())>;
+         };
+#  endif
+  }  // namespace __cmplsigs
+
   //////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
-#  if STDEXEC_GCC()
+  // This alias can be used even if get_completion_signatures does not return an
+  // instance of the completion_signatures class template.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
-    requires enable_sender<__decay_t<_Sender>>
-            && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
+    requires __cmplsigs::__constant_completion_signatures<_Sender, _Env...>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
-
-#  elif STDEXEC_EDG()
-
-  namespace __detail
-  {
-    template <class _Sender, class... _Env>
-    using __cmplsigs_of_t =
-      std::integral_constant<decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>()),
-                             STDEXEC::get_completion_signatures<_Sender, _Env...>()>::value_type;
-  }  // namespace __detail
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class... _Env>
-    requires enable_sender<__decay_t<_Sender>>
-            && __minvocable_q<__detail::__cmplsigs_of_t, _Sender, _Env...>
-  using __completion_signatures_of_t =
-    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
-
-#  elif STDEXEC_MSVC()
-
-  // MSVC cannot handle a __completion_signatures_of_t alias template that
-  // requires get_completion_signatures to be a constant expression, even if we
-  // wrap the call to get_completion_signatures in an integral_constant like we
-  // do for EDG. So we skip checking the requirement.
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class... _Env>
-    requires enable_sender<__decay_t<_Sender>>
-  using __completion_signatures_of_t =
-    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
-
-#  else
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class... _Env>
-    requires enable_sender<__decay_t<_Sender>>
-  using __completion_signatures_of_t =
-    __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
-#  endif
 
   //////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures
