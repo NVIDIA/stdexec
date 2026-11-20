@@ -26,6 +26,7 @@ set(exec_test_sources
     test_variant_sender.cpp
     test_type_async_scope.cpp
     test_completion_signatures.cpp
+    test_get_completion_signatures_type.cpp
     test_create.cpp
     test_env.cpp
     test_into_tuple.cpp
