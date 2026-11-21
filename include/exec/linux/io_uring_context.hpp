@@ -413,7 +413,13 @@ namespace experimental::execution
       auto try_wakeup() noexcept -> std::error_code
       {
         std::uint64_t __wakeup = 1;
-        if (::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1)
+        ssize_t       __ret;
+        do
+        {
+          __ret = ::write(__eventfd_, &__wakeup, sizeof(__wakeup));
+        }
+        while (__ret == -1 && errno == EINTR);
+        if (__ret == -1)
         {
           return {errno, std::system_category()};
         }
