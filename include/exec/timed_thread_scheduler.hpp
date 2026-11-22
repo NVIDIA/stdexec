@@ -32,6 +32,7 @@
 #include <condition_variable>
 #include <limits>
 #include <mutex>
+#include <thread>
 #include <utility>
 
 namespace experimental::execution

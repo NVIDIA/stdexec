@@ -693,6 +693,24 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_RTTI() 1
 #endif
 
+// Detect whether the C++ standard library provides <thread> support.
+// libc++ sets _LIBCPP_HAS_THREADS to 0 when built without threads (or defines
+// _LIBCPP_HAS_NO_THREADS on older libc++ versions).
+#if defined(STDEXEC_NO_STDCPP_THREADS)
+#  if STDEXEC_NO_STDCPP_THREADS == 0
+#    undef STDEXEC_NO_STDCPP_THREADS
+#    define STDEXEC_NO_STDCPP_THREADS() 0
+#  else
+#    undef STDEXEC_NO_STDCPP_THREADS
+#    define STDEXEC_NO_STDCPP_THREADS() 1
+#  endif
+#elif (defined(_LIBCPP_HAS_THREADS) && _LIBCPP_HAS_THREADS == 0)                                   \
+  || defined(_LIBCPP_HAS_NO_THREADS) || !__has_include(<thread>)
+#  define STDEXEC_NO_STDCPP_THREADS() 1
+#else
+#  define STDEXEC_NO_STDCPP_THREADS() 0
+#endif
+
 // MSVC always has typeid support, even when RTTI is disabled
 #if STDEXEC_NO_STDCPP_RTTI() && !STDEXEC_MSVC()
 #  define STDEXEC_NO_STDCPP_TYPEID() 1

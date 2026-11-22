@@ -35,6 +35,7 @@ import stdexec;
 #  include "__meta.hpp"
 #  include "__queries.hpp"
 #  include "__spin_loop_pause.hpp"
+#  include "__thread.hpp"
 #  include "__type_traits.hpp"
 #  include "__variant.hpp"
 
@@ -42,7 +43,6 @@ import stdexec;
 #    include <exception>
 #    include <functional>  // for std::identity
 #    include <system_error>
-#    include <thread>
 #  endif
 
 #  include "__prologue.hpp"
@@ -182,7 +182,7 @@ namespace STDEXEC
       //           before await_suspend did its exchange. T2 is spinning on
       //           load() until it observes {} (written by T1's exchange). No
       //           notify_one is used; the value change itself is the signal.
-      __std::atomic<std::thread::id> __thread_id_{std::this_thread::get_id()};
+      __std::atomic<__thread_id> __thread_id_{STDEXEC::__get_thread_id()};
     };
 
     template <class _Value>
@@ -277,31 +277,30 @@ namespace STDEXEC
      private:
       void __done() noexcept
       {
-        auto&                 __awaiter     = static_cast<__awaiter_t&>(this->__awaiter_);
-        std::thread::id const __current_id  = std::this_thread::get_id();
-        std::thread::id const __awaiting_id = __awaiter.__thread_id_.load(
-          __std::memory_order_relaxed);
+        auto&             __awaiter     = static_cast<__awaiter_t&>(this->__awaiter_);
+        __thread_id const __current_id  = STDEXEC::__get_thread_id();
+        __thread_id const __awaiting_id = __awaiter.__thread_id_.load(__std::memory_order_relaxed);
         if (__current_id == __awaiting_id)
         {
           // Completed on the same thread as the awaiter. Clear __thread_id_ so
           // that await_suspend sees {} after start() returns and resumes the
           // continuation. This cannot race with await_suspend because
           // await_suspend is still on the same thread.
-          __awaiter.__thread_id_.store(std::thread::id{}, __std::memory_order_relaxed);
+          __awaiter.__thread_id_.store(__thread_id{}, __std::memory_order_relaxed);
           return;
         }
         // Completing on a different thread. Write our id so await_suspend knows
         // we already ran.
-        std::thread::id const __old_id =
-          __awaiter.__thread_id_.exchange(__current_id, __std::memory_order_acquire);
-        if (__old_id != std::thread::id{})
+        __thread_id const __old_id = __awaiter.__thread_id_.exchange(__current_id,
+                                                                     __std::memory_order_acquire);
+        if (__old_id != __thread_id{})
         {
           // await_suspend is between start() returning and its own
           // exchange({}). That exchange is T1's last write to the frame. Spin
           // until we observe it so that we don't call resume() while T1 is
           // still touching the frame. The window is just a few instructions, so
           // a yield-spin is fine.
-          while (__awaiter.__thread_id_.load(__std::memory_order_acquire) != std::thread::id{})
+          while (__awaiter.__thread_id_.load(__std::memory_order_acquire) != __thread_id{})
           {
             STDEXEC::__spin_loop_pause();
           }
@@ -352,12 +351,11 @@ namespace STDEXEC
         //    function.
 #    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
         bool const __done =  //
-          this->__thread_id_.exchange(std::thread::id{}, __std::memory_order_release)
-          == std::thread::id{};
+          this->__thread_id_.exchange(__thread_id{}, __std::memory_order_release) == __thread_id{};
         return __done ? this->__get_continuation() : __std::noop_coroutine();
 #    else
         bool const __done =  //
-          this->__thread_id_.load(__std::memory_order_relaxed) == std::thread::id{};
+          this->__thread_id_.load(__std::memory_order_relaxed) == __thread_id{};
         return __done ? this->__get_continuation()
                       : __coroutine_signal_completion(this->__thread_id_);
 #    endif

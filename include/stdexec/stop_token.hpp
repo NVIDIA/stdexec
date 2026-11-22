@@ -27,11 +27,11 @@ import stdexec;
 #  include "__detail/__atomic.hpp"
 #  include "__detail/__query.hpp"
 #  include "__detail/__stop_token.hpp"  // IWYU pragma: export
+#  include "__detail/__thread.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstdint>
 #    include <memory>
-#    include <thread>
 #    include <type_traits>
 #    include <utility>
 #    include <version>
@@ -148,7 +148,7 @@ namespace STDEXEC::__stok
       {
         if (__count_ == 0)  // true if __count_ wrapped around
           __count_ = __yield_threshold_;
-        std::this_thread::yield();
+        STDEXEC::__yield();
       }
     }
 
@@ -213,7 +213,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
     mutable STDEXEC::__std::atomic<uint8_t>                __state_{0};
     mutable STDEXEC::__stok::__inplace_stop_callback_base* __callbacks_ = nullptr;
-    std::thread::id                                        __notifying_thread_;
+    STDEXEC::__thread_id                                   __notifying_thread_;
     bool*                                                  __destroyed_ = nullptr;
   };
 
@@ -386,7 +386,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     auto __notifying_thread = __notifying_thread_;
     __unlock_(__old_state);
 
-    if (__destroyed != nullptr && std::this_thread::get_id() == __notifying_thread)
+    if (__destroyed != nullptr && STDEXEC::__get_thread_id() == __notifying_thread)
     {
       // A stop callback is destroying us from inside request_stop().
       *__destroyed = true;
@@ -410,7 +410,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     if (!__try_lock_unless_stop_requested_(true))
       return false;
 
-    __notifying_thread_ = std::this_thread::get_id();
+    __notifying_thread_ = STDEXEC::__get_thread_id();
 
     // ~inplace_stop_source() sets this if a callback destroys us.
     bool __destroyed = false;
@@ -562,7 +562,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
       // Callback has either already been executed or is
       // currently executing on another thread.
-      if (std::this_thread::get_id() == __notifying_thread)
+      if (STDEXEC::__get_thread_id() == __notifying_thread)
       {
         if (__callbk->__execute_members_.__removed_during_callback_ != nullptr)
         {

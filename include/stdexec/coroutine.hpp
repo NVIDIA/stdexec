@@ -26,11 +26,11 @@ import stdexec;
 #  include "__detail/__atomic.hpp"
 #  include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #  include "__detail/__concepts.hpp"
+#  include "__detail/__thread.hpp"
 #  include "__detail/__utility.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
-#    include <thread>
 #  endif
 
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
@@ -288,7 +288,7 @@ namespace STDEXEC
 
     struct __promise
     {
-      __std::atomic<std::thread::id>* __thread_id_;
+      __std::atomic<__thread_id>* __thread_id_;
     } __promise_;
 
     static thread_local __signal_completion_frame value;
@@ -314,8 +314,7 @@ namespace STDEXEC
     return __std::coroutine_handle<>::from_address(&__unhandled_stopped_frame::value);
   }
 
-  inline auto
-  __coroutine_signal_completion(__std::atomic<std::thread::id>& __thread_id_) noexcept  //
+  inline auto __coroutine_signal_completion(__std::atomic<__thread_id>& __thread_id_) noexcept  //
     -> __std::coroutine_handle<>
   {
     __signal_completion_frame::value.__promise_.__thread_id_ = &__thread_id_;
@@ -341,7 +340,7 @@ namespace STDEXEC
   }
 
   STDEXEC_ATTRIBUTE(always_inline)
-  auto __coroutine_signal_completion(__std::atomic<std::thread::id>& __thread_id_) noexcept  //
+  auto __coroutine_signal_completion(__std::atomic<__thread_id>& __thread_id_) noexcept  //
     -> __std::coroutine_handle<>
   {
     __thread_id_.store({}, __std::memory_order_release);

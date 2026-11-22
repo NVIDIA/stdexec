@@ -34,6 +34,7 @@ import stdexec;
 #  include "__receivers.hpp"
 #  include "__schedulers.hpp"
 #  include "__stop_token.hpp"
+#  include "__thread.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstddef>
@@ -84,7 +85,7 @@ namespace STDEXEC
           }
 
           // Another thread still has work in flight. Let it make progress.
-          std::this_thread::yield();
+          STDEXEC::__yield();
         }
       }
 
