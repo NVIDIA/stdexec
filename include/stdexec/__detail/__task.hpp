@@ -71,6 +71,12 @@ namespace STDEXEC
 
   namespace __task
   {
+    // `co_return with_stopped{}` completes the task with set_stopped, unless _Ty
+    // can be constructed from with_stopped, in which case it is an ordinary value.
+    template <class _Ty, class _Value>
+    inline constexpr bool __co_returns_stopped_v =
+      __same_as<__decay_t<_Value>, with_stopped> && !__std::convertible_to<with_stopped, _Ty>;
+
     ////////////////////////////////////////////////////////////////////////////
     // A base class for task::promise_type so it can be specialized when _Ty is
     // void:
@@ -78,6 +84,7 @@ namespace STDEXEC
     struct __promise_base
     {
       template <class _Value = _Ty>
+        requires(!__co_returns_stopped_v<_Ty, _Value>)
       constexpr void return_value(_Value&& __value)
       {
         __result_.emplace(static_cast<_Value&&>(__value));
@@ -91,8 +98,13 @@ namespace STDEXEC
         static_cast<_Promise&>(*this).__set_error(std::move(__error).error);
       }
 
-      constexpr void return_value(with_stopped) noexcept
-        requires(!__std::convertible_to<with_stopped, _Ty>)
+      // This is a template so that `co_return {};` can't deduce it. A non-template
+      // `with_stopped` parameter would accept `{}` (with_stopped is an empty
+      // aggregate) and tie with the value overload above for any _Ty that `{}`
+      // converts to by a user-defined conversion, silently stopping the task.
+      template <class _Stopped>
+        requires(__co_returns_stopped_v<_Ty, _Stopped>)
+      constexpr void return_value(_Stopped&&) noexcept
       {
         static_cast<_Promise&>(*this).__set_stopped();
       }
