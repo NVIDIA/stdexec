@@ -47,7 +47,7 @@ namespace STDEXEC
   namespace __upon
   {
     template <class _SetTag>
-    static constexpr auto __complete =
+    inline constexpr auto __complete =
       []<class _Tag, class _State, class... _Args>(__ignore,
                                                    _State& __state,
                                                    _Tag,

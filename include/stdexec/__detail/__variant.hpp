@@ -100,7 +100,7 @@ namespace STDEXEC
 
     template <size_t _Ny, class _Result, class _Fn, class _Self, class... _Us>
     STDEXEC_ATTRIBUTE(host, device)
-    static constexpr auto __visit_alt(_Fn &&__fn, _Self &&__self, _Us &&...__us) -> _Result
+    constexpr auto __visit_alt(_Fn &&__fn, _Self &&__self, _Us &&...__us) -> _Result
     {
       return static_cast<_Fn &&>(__fn)(static_cast<_Us &&>(__us)...,
                                        __var::__get<_Ny>(static_cast<_Self &&>(__self)));

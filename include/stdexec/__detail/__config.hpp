@@ -122,6 +122,29 @@ import std;
 #  define STDEXEC_INTELLISENSE() 0
 #endif
 
+// With -fmodules, GCC crashes in duplicate_decls when a namespace-scope variable
+// is first declared without `inline` and later redeclared with it, e.g.:
+//
+//   extern const int x;
+//   inline constexpr int x = 42; // internal compiler error: Segmentation fault
+//
+// Forward declarations of inline variables must therefore be `extern inline`.
+#if STDEXEC_GCC() && defined(__cpp_modules)
+#  define STDEXEC_GCC_MODULES_INLINE_REDECL_BUG() 1
+#else
+#  define STDEXEC_GCC_MODULES_INLINE_REDECL_BUG() 0
+#endif
+
+// Keyword used in forward declarations of inline variables (`extern STDEXEC_FWD_DECL_INLINE T const x;`).
+// Only GCC with modules needs `inline` here. Elsewhere, `inline` on a forward declaration makes
+// clang reject headers that odr-use these variables without their definitions visible
+// (e.g. __deprecations.hpp), so the plain `extern` form is used there.
+#if STDEXEC_GCC_MODULES_INLINE_REDECL_BUG()
+#  define STDEXEC_FWD_DECL_INLINE inline
+#else
+#  define STDEXEC_FWD_DECL_INLINE
+#endif
+
 // Not all supported compilers have implemented the resolution of CWG 2428 yet.
 // https://cplusplus.github.io/CWG/issues/2428.html
 #if (STDEXEC_CLANG_VERSION >= 1900) || (STDEXEC_GCC_VERSION >= 1300)                               \

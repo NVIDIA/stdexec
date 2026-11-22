@@ -173,7 +173,7 @@ namespace experimental::execution
 
   using __schedule_after::__schedule_after_base_t;
   using __schedule_after::schedule_after_t;
-  extern schedule_after_t const schedule_after;
+  extern inline schedule_after_t const schedule_after;
 
   namespace __schedule_at
   {
@@ -183,7 +183,7 @@ namespace experimental::execution
 
   using __schedule_at::__schedule_at_base_t;
   using __schedule_at::schedule_at_t;
-  extern schedule_at_t const schedule_at;
+  extern inline schedule_at_t const schedule_at;
 
   namespace __schedule_after
   {

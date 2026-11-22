@@ -647,7 +647,7 @@ namespace experimental::execution
   using __debug::__debug_sequence_sender;
 
   template <class _Sequence, class... _Env>
-  static constexpr auto __diagnose_sequence_sender_concept_failure();
+  constexpr auto __diagnose_sequence_sender_concept_failure();
 
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // Sequence-aware version of the extra-type-checking hooks. For types that
@@ -1220,7 +1220,7 @@ namespace experimental::execution
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sequence, class... _Env>
-  static constexpr auto __diagnose_sequence_sender_concept_failure()
+  constexpr auto __diagnose_sequence_sender_concept_failure()
   {
     if constexpr (!enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>
                   && !has_sequence_item_types<STDEXEC::__decay_t<_Sequence>, _Env...>)
