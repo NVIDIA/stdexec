@@ -165,7 +165,7 @@ namespace STDEXEC
   //! auto inner_sndr = read_env(get_stop_token)
   //!                 | then([](auto tok) { return tok.stop_requested(); });
   //!
-  //! stop_source src;
+  //! inplace_stop_source src;
   //! auto pipeline = inner_sndr
   //!               | write_env(prop{get_stop_token, src.get_token()});
   //!
