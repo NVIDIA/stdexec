@@ -1,5 +1,6 @@
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
+#include <test_common/schedulers.hpp>
 
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
@@ -60,6 +61,65 @@ namespace
 
     REQUIRE(value == 42);
     REQUIRE(flags_storage.all_unset());
+  }
+
+  TEST_CASE("nvexec split: an operation's stop request does not stop the others",
+            "[cuda][stream][adaptors][split]")
+  {
+    nvexec::stream_context stream_ctx{};
+    auto                   sch = stream_ctx.get_scheduler();
+    impulse_scheduler      gate;  // the shared operation waits for it
+
+    // (The function is noexcept: the results of a stream split must be trivially copyable.)
+    auto shared = ex::schedule(gate) | ex::then([]() noexcept { return 42; })
+                | ex::continues_on(sch) | exec::split();
+
+    // A's stop has been requested before it starts, so A completes with set_stopped.
+    ex::inplace_stop_source stop_a;
+    stop_a.request_stop();
+    auto [a] = STDEXEC::sync_wait(shared  //
+                                  | ex::write_env(ex::prop{ex::get_stop_token, stop_a.get_token()})
+                                  | ex::then([](int) { return 1; })
+                                  | ex::upon_stopped([] { return 2; })
+                                  | ::_proclaim_completes_on(sch))
+                 .value();
+    CHECK(a == 2);
+
+    // B was not asked to stop, so it receives the shared operation's value.
+    std::atomic<bool> b_done{false};
+    int               b = 0;
+    std::thread       thread_b(
+      [&]
+      {
+        auto [v] = STDEXEC::sync_wait(shared  //
+                                      | ex::then([](int v) { return v; })
+                                      | ex::upon_stopped([] { return -1; })
+                                      | ::_proclaim_completes_on(sch))
+                     .value();
+        b      = v;
+        b_done = true;
+      });
+
+    // Release the shared operation once B has started it. (Had B been stopped, it would
+    // have finished without waiting for it.)
+    while (!b_done.load() && !gate.try_start_next())
+    {
+      std::this_thread::yield();
+    }
+    thread_b.join();
+    CHECK(b == 42);
+  }
+
+  TEST_CASE("nvexec split reports its value scheduler without an environment",
+            "[cuda][stream][adaptors][split]")
+  {
+    nvexec::stream_context stream_ctx{};
+    auto                   sch = stream_ctx.get_scheduler();
+
+    // The split sender has been customized already, so it answers as it would in an
+    // environment.
+    auto snd = exec::split(ex::schedule(sch) | ex::then([]() noexcept { return 42; }));
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sch);
   }
 
   TEST_CASE("nvexec split can preceed a sender without values", "[cuda][stream][adaptors][split]")

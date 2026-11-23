@@ -18,8 +18,8 @@
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../stdexec/__detail/__basic_sender.hpp"
 #include "../stdexec/__detail/__sender_adaptor_closure.hpp"
+#include "../stdexec/__detail/__sender_facade.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__transform_sender.hpp"
 #include "detail/shared.hpp"
@@ -32,14 +32,32 @@ namespace experimental::execution
   {
     using namespace __shared;
 
+    // Is _Tag the tag of an ensure_started sender: one whose operation has started (which
+    // ensure_started returns, or a domain's customization of it)? A domain that customizes
+    // ensure_started with a sender of its own specializes this for that sender's tag, so
+    // that ensure_started returns that sender as it is.
+    template <class _Tag>
+    inline constexpr bool __is_started_sender_tag_v = false;
+
+    template <>
+    inline constexpr bool __is_started_sender_tag_v<__shared::__sender_tag<ensure_started_t>> =
+      true;
+
+    template <class _Sender>
+    inline constexpr bool __is_ensure_started_sender_v = false;
+
+    template <class _Tag, class _Data>
+    inline constexpr bool __is_ensure_started_sender_v<STDEXEC::__facade::__sender<_Tag, _Data>> =
+      __is_started_sender_tag_v<_Tag>;
+
     template <class _CvSender>
-    concept __is_ensure_started_sender =
-      __is_instance_of<__decay_t<_CvSender>, __shared::__sndr>
-      && __same_as<typename __decay_t<_CvSender>::__tag_t, ensure_started_t>;
+    concept __is_ensure_started_sender = __is_ensure_started_sender_v<__decay_t<_CvSender>>;
   }  // namespace __ensure_started
 
   struct ensure_started_t
   {
+    // Makes a sender that describes the ensure_started sender, which its domain customizes
+    // (see __shared::__describe_algo).
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
     [[nodiscard]]
     auto
@@ -51,10 +69,11 @@ namespace experimental::execution
       }
       else
       {
-        return STDEXEC::transform_sender(STDEXEC::__sexpr{ensure_started_t(),
-                                                          static_cast<_Env&&>(__env),
-                                                          static_cast<_CvSender&&>(__sndr)},
-                                         __env);
+        return STDEXEC::transform_sender(
+          STDEXEC::__facade::__sender{ensure_started_t(),
+                                      __shared::__env_copy(static_cast<_Env&&>(__env)),
+                                      static_cast<_CvSender&&>(__sndr)},
+          __env);
       }
     }
 
@@ -64,16 +83,19 @@ namespace experimental::execution
       return STDEXEC::__closure(*this);
     }
 
+    // The ensure_started sender, unless a domain customizes it. Its shared operation is
+    // started now.
     template <class _CvSender>
     static constexpr auto
     transform_sender(STDEXEC::set_value_t, _CvSender&& __sndr, STDEXEC::__ignore)
     {
       static_assert(sender_for<_CvSender, ensure_started_t>);
-      auto __result = __shared::__sndr{ensure_started_t(),
-                                       STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
-                                       STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
+      auto __result =
+        __shared::__make_sender(ensure_started_t(),
+                                STDEXEC::__facade::__get_child<0>(static_cast<_CvSender&&>(__sndr)),
+                                STDEXEC::__facade::__get_data(static_cast<_CvSender&&>(__sndr)));
       // eagerly start the operation:
-      __result.__sh_state_->__try_start();
+      STDEXEC::__facade::__get_data(__result).__sh_state_->__try_start();
       return __result;
     }
   };
@@ -87,6 +109,7 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::ensure_started_t> : exec::__shared::__impls<exec::ensure_started_t>
+  struct __facade::__algorithm<exec::ensure_started_t>
+    : exec::__shared::__describe_algo<exec::ensure_started_t>
   {};
 }  // namespace STDEXEC

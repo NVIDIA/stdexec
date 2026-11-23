@@ -31,7 +31,9 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <type_traits>
+#include <utility>
 
 #include <cuda/std/tuple>
 
@@ -40,6 +42,12 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
+  // The sender that exec::split returns for a child that completes on a stream scheduler: a
+  // facade sender (see exec/detail/shared.hpp). The stream_domain makes it from the sender
+  // that split describes it with (see transform_sender_for<exec::split_t> below).
+  struct split_t : stream_tag_base
+  {};
+
   namespace _split
   {
     inline auto
@@ -79,6 +87,7 @@ namespace nv::execution::_strm
 
         if constexpr (stream_sender<Sender, env_t>)
         {
+          // The child runs on the stream that the shared state provides it.
           cudaStream_t stream = sh_state_.stream_provider_.own_stream_.value();
           sh_state_.index_    = __mapply<__mfind_i<tuple_t>, variant_t>::value;
           copy_kernel<Tag, Args&&...>
@@ -130,6 +139,13 @@ namespace nv::execution::_strm
       notify_fn_t*  notify_{};
     };
 
+    // The attributes of the shared operation, as the operations that wait for it see them:
+    // those of the child, in its environment. (Each operation completes on its own stream,
+    // whether the shared operation completes before it starts or after.)
+    template <class Sender>
+    using attrs_t =
+      exec::__shared::__shared_attrs<Sender, env_t, __completion_behavior::__unknown_t>;
+
     template <class Sender>
     struct sh_state
     {
@@ -153,6 +169,7 @@ namespace nv::execution::_strm
         // while kernels may be running, which managed memory only allows on
         // devices with concurrent managed access.
         , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
+        , attrs_(STDEXEC::get_env(sndr), make_env())
         , opstate2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this}))
       {
         _initialize_stopped();
@@ -175,6 +192,7 @@ namespace nv::execution::_strm
                                       ctx.pinned_resource_)
                   .release())
         , env_(host_allocate(this->stream_provider_.status_, ctx_.pinned_resource_, make_env()))
+        , attrs_(STDEXEC::get_env(sndr), make_env())
         , opstate2_(
             connect(static_cast<Sender&&>(sndr),
                     enqueue_receiver_t{env_.get(), data_.get(), task_, ctx.hub_->producer()}))
@@ -219,48 +237,161 @@ namespace nv::execution::_strm
         }
       }
 
+      // Starts the shared operation, unless an operation already has. ref is the starting
+      // operation's reference to the state: the state keeps a copy while the shared operation
+      // runs, so that the operations that wait for it can stop waiting (see opstate) without
+      // destroying it.
+      void try_start(std::shared_ptr<sh_state> const & ref) noexcept
+      {
+        {
+          std::lock_guard lock{mutex_};
+          if (start_requested_)
+          {
+            return;
+          }
+          start_requested_ = true;
+          running_ref_     = ref;
+        }
+
+        if (stop_source_.stop_requested())
+        {
+          // The shared operation was asked to stop before it started: complete with the
+          // initial results, which are set_stopped.
+          notify();
+        }
+        else
+        {
+          started_.test_and_set(::cuda::memory_order_relaxed);
+          STDEXEC::start(opstate2_);
+        }
+      }
+
+      enum class add_result
+      {
+        added,      // the operation receives the results when the shared operation completes
+        completed,  // the shared operation has completed: the results are ready
+        stopped     // the operation's stop has been requested
+      };
+
+      // Adds an operation to the ones waiting for the shared operation
+      template <class StopToken>
+      auto try_add_waiter(opstate_base* op, StopToken const & stok) noexcept -> add_result
+      {
+        std::lock_guard lock{mutex_};
+        if (completed_)
+        {
+          return add_result::completed;
+        }
+        if (stok.stop_requested())
+        {
+          return add_result::stopped;
+        }
+        op->next_ = std::exchange(waiters_, op);
+        return add_result::added;
+      }
+
+      // Removes an operation from the ones waiting for the shared operation, if it is one.
+      // (It is not if it has not started yet, or if the shared operation has completed.)
+      auto try_remove_waiter(opstate_base* op) noexcept -> bool
+      {
+        std::lock_guard lock{mutex_};
+        for (opstate_base** link = &waiters_; *link != nullptr; link = &(*link)->next_)
+        {
+          if (*link == op)
+          {
+            *link = op->next_;
+            return true;
+          }
+        }
+        return false;
+      }
+
+      // The shared operation has completed: sends its results to the operations waiting for
+      // it.
       void notify() noexcept
       {
-        void* const completion_state = static_cast<void*>(this);
-        void*       old              = head_.exchange(completion_state, std::memory_order_acq_rel);
-        auto*       opstate          = static_cast<opstate_base*>(old);
-
-        while (opstate != nullptr)
+        opstate_base*             waiters = nullptr;
+        std::shared_ptr<sh_state> running_ref;
         {
-          opstate_base* next = opstate->next_;
-          opstate->notify_(opstate);
-          opstate = next;
+          std::lock_guard lock{mutex_};
+          completed_  = true;
+          waiters     = std::exchange(waiters_, nullptr);
+          running_ref = std::move(running_ref_);
+        }
+
+        while (waiters != nullptr)
+        {
+          opstate_base* next = waiters->next_;
+          waiters->notify_(waiters);
+          waiters = next;
+        }
+        // Releasing running_ref can destroy the state.
+      }
+
+      // A split sender or an operation no longer refers to the state (but still holds its
+      // reference). If the shared operation is running and nothing else refers to the state,
+      // nothing will receive its results, so it is asked to stop. (This is how exec::split
+      // detaches.)
+      void detach() noexcept
+      {
+        std::shared_ptr<sh_state> running_ref;
+        {
+          std::lock_guard lock{mutex_};
+          running_ref = running_ref_;
+        }
+        // The caller's reference, the state's reference, and this copy of it
+        if (running_ref.use_count() == 3)
+        {
+          stop_source_.request_stop();
         }
       }
 
       context                      ctx_;
       stream_provider              stream_provider_;
       inplace_stop_source          stop_source_{};
-      std::atomic<void*>           head_{nullptr};
+      std::mutex                   mutex_{};
+      opstate_base*                waiters_{nullptr};   // guarded by mutex_
+      bool                         start_requested_{};  // guarded by mutex_
+      bool                         completed_{};        // guarded by mutex_
+      std::shared_ptr<sh_state>    running_ref_{};      // guarded by mutex_
       unsigned int                 index_{0};
       host_ptr_t<variant_t>        data_{};
       task_t*                      task_{nullptr};
       cudaEvent_t                  event_;
       host_ptr_t<__decay_t<env_t>> env_{};
+      attrs_t<Sender>              attrs_;
       inner_opstate_t              opstate2_;
       ::cuda::std::atomic_flag     started_{};
     };
 
-    template <class Sender, class Receiver>
+    // The key of the shared operation, whose results each operation receives
+    struct shared_op
+    {};
+
+    // The state of the operation of a split sender. There is one for each receiver connected
+    // to the sender. It holds a reference to the shared state.
+    template <class Algo, class Sender, class Receiver>
     struct opstate
       : public opstate_base
       , public _strm::opstate_base<Receiver>
       , public exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>,
-                                          opstate<Sender, Receiver>>
+                                          opstate<Algo, Sender, Receiver>>
     {
       std::shared_ptr<sh_state<Sender>> sh_state_;
 
+      // Only this operation stops: if it is still waiting for the shared operation, it no
+      // longer does, and it completes with set_stopped. (If it is not waiting, either it has
+      // not been added to the ones that wait yet, and __start will see the stop request, or
+      // the shared operation has completed, and its results are on their way.)
       void on_stop_requested() noexcept
       {
-        sh_state_->stop_source_.request_stop();
+        if (sh_state_->try_remove_waiter(this))
+        {
+          std::exchange(sh_state_, {})->detach();
+          (void) _strm::_report_stopped(*this);
+        }
       }
 
-     public:
       opstate(Receiver&& rcvr, std::shared_ptr<sh_state<Sender>> sh_state)
         noexcept(std::is_nothrow_move_constructible_v<Receiver>)
         : opstate_base{nullptr, notify}
@@ -270,6 +401,28 @@ namespace nv::execution::_strm
 
       STDEXEC_IMMOVABLE(opstate);
 
+      ~opstate()
+      {
+        if (sh_state_)
+        {
+          sh_state_->detach();
+        }
+      }
+
+      // The algorithm registers the stop callback in __start.
+      template <class StopToken>
+      void register_stop_callback(StopToken const & stok) noexcept
+      {
+        this->register_stoppable(stok);
+      }
+
+      void deregister_stop_callback() noexcept
+      {
+        this->deregister_stoppable();
+      }
+
+      // Sends the results of the shared operation, on this operation's stream, once the
+      // stream has waited for them
       static void notify(opstate_base* self) noexcept
       {
         auto* op = static_cast<opstate*>(self);
@@ -288,7 +441,8 @@ namespace nv::execution::_strm
             [&](auto& tupl) noexcept -> void
             {
               ::cuda::std::apply([&]<class Tag, class... Args>(Tag, Args const &... args) noexcept
-                                   -> void { op->propagate_completion_signal(Tag(), args...); },
+                                   -> void
+                                 { (void) Algo::__complete(shared_op(), *op, Tag(), args...); },
                                  tupl);
             },
             *op->sh_state_->data_,
@@ -296,51 +450,7 @@ namespace nv::execution::_strm
         }
         else
         {
-          op->propagate_completion_signal(STDEXEC::set_error, std::as_const(status));
-        }
-      }
-
-      void start() & noexcept
-      {
-        sh_state<Sender>*   sh_state         = sh_state_.get();
-        std::atomic<void*>& head             = sh_state->head_;
-        void* const         completion_state = static_cast<void*>(sh_state);
-        void*               old              = head.load(std::memory_order_acquire);
-
-        if (old != completion_state)
-        {
-          this->register_stoppable(get_stop_token(STDEXEC::get_env(this->rcvr_)));
-        }
-
-        do
-        {
-          if (old == completion_state)
-          {
-            notify(this);
-            return;
-          }
-          next_ = static_cast<opstate_base*>(old);
-        }
-        while (!head.compare_exchange_weak(old,
-                                           static_cast<void*>(this),
-                                           std::memory_order_release,
-                                           std::memory_order_acquire));
-
-        if (old == nullptr)
-        {
-          // the inner sender isn't running
-          if (sh_state->stop_source_.stop_requested())
-          {
-            // 1. resets head to completion state
-            // 2. notifies waiting threads
-            // 3. propagates "stopped" signal to `out_r'`
-            sh_state->notify();
-          }
-          else
-          {
-            sh_state->started_.test_and_set(::cuda::memory_order_relaxed);
-            STDEXEC::start(sh_state->opstate2_);
-          }
+          (void) Algo::__complete(shared_op(), *op, set_error_t(), std::as_const(status));
         }
       }
     };
@@ -349,69 +459,197 @@ namespace nv::execution::_strm
     using _decayed_cref_t = __decay_t<Ty> const &;
   }  // namespace _split
 
-  template <class Sender>
-  struct split_sender : stream_sender_base
+  namespace _split
   {
-    using sender_concept = STDEXEC::sender_tag;
-    using sh_state_t     = _split::sh_state<Sender>;
-
-    template <class Receiver>
-    using opstate_t = _split::opstate<Sender, Receiver>;
-
-    explicit split_sender(context ctx, Sender sndr)
-      : sndr_(static_cast<Sender&&>(sndr))
-      , sh_state_{std::make_shared<sh_state_t>(sndr_, ctx)}
-    {}
-
-    template <receiver Receiver>
-    auto connect(Receiver rcvr) const & noexcept -> opstate_t<Receiver>
+    // The shared operation, as the operations that wait for it see it: it completes with
+    // its results, as const lvalue references, or with a CUDA error. It is never connected.
+    template <class Sender>
+    struct results_sender
     {
-      return opstate_t<Receiver>{static_cast<Receiver&&>(rcvr), sh_state_};
-    }
+      using sender_concept = STDEXEC::sender_tag;
 
-    template <class>
-    static consteval auto get_completion_signatures()
+      template <class Self, class... Env>
+      static consteval auto get_completion_signatures()
+      {
+        using env_t = STDEXEC::prop<get_stop_token_t, inplace_stop_token>;
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<Sender, env_t>(),
+          exec::transform_arguments<STDEXEC::set_value_t, _split::_decayed_cref_t, exec::split_t>(),
+          exec::transform_arguments<STDEXEC::set_error_t, _split::_decayed_cref_t, exec::split_t>(),
+          exec::keep_completion<STDEXEC::set_stopped_t>(),
+          STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>());
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> attrs_t<Sender>
+      {
+        return attrs_;
+      }
+
+      attrs_t<Sender> attrs_;
+    };
+
+    // The data of a split sender: a reference to the shared state, and the shared operation's
+    // attributes. It is copyable. A split sender that no longer refers to the shared state
+    // (because it is destroyed, or assigned over) detaches from it (see sh_state::detach).
+    template <class Sender>
+    struct handle
     {
-      using env_t = STDEXEC::prop<get_stop_token_t, inplace_stop_token>;
-      return exec::transform_completion_signatures(
-        STDEXEC::get_completion_signatures<Sender, env_t>(),
-        exec::transform_arguments<STDEXEC::set_value_t, _split::_decayed_cref_t, exec::split_t>(),
-        exec::transform_arguments<STDEXEC::set_error_t, _split::_decayed_cref_t, exec::split_t>(),
-        exec::keep_completion<STDEXEC::set_stopped_t>(),
-        STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>());
-    }
+      using child_t = Sender;
 
-    auto get_env() const noexcept -> stream_sender_attrs<Sender>
+      handle(std::shared_ptr<sh_state<Sender>> sh_state, attrs_t<Sender> attrs) noexcept
+        : sh_state_(std::move(sh_state))
+        , attrs_(std::move(attrs))
+      {}
+
+      handle(handle const &)    = default;
+      handle(handle&&) noexcept = default;
+
+      auto operator=(handle&& other) noexcept -> handle&
+      {
+        if (this != &other)
+        {
+          detach();
+          sh_state_ = std::move(other.sh_state_);
+          attrs_    = std::move(other.attrs_);
+        }
+        return *this;
+      }
+
+      auto operator=(handle const & other) -> handle&
+      {
+        if (this != &other)
+        {
+          handle copy(other);
+          *this = std::move(copy);
+        }
+        return *this;
+      }
+
+      ~handle()
+      {
+        detach();
+      }
+
+      void detach() noexcept
+      {
+        if (sh_state_)
+        {
+          sh_state_->detach();
+        }
+      }
+
+      std::shared_ptr<sh_state<Sender>> sh_state_;
+      attrs_t<Sender>                   attrs_;
+    };
+
+    // The algorithm of a split sender: when the operation starts, it starts the shared
+    // operation if no other operation has, and its results reach it through the shared
+    // operation, on its stream (immediately, if it has completed already).
+    struct algo : stream_algorithm
     {
-      return {&sndr_};
-    }
+      using __dispatch_source = __facade::__via<shared_op, set_value_t, __facade::__from_start>;
 
-   private:
-    Sender                      sndr_;
-    std::shared_ptr<sh_state_t> sh_state_;
-  };
+      template <class Sender>
+      using handle_t = __decay_t<__facade::__data_of_t<Sender>>;
+
+      using stream_algorithm::__nested_sender;
+
+      template <class Sender, class... Env>
+      static auto __nested_sender(shared_op, Sender const & sndr, Env const &...) noexcept
+        -> results_sender<typename handle_t<Sender>::child_t>
+      {
+        return {__facade::__get_data(sndr).attrs_};
+      }
+
+      template <class Sender, class Receiver>
+      static auto __get_state(Sender&& sndr, Receiver rcvr) noexcept
+        -> opstate<algo, typename handle_t<Sender>::child_t, Receiver>
+      {
+        return opstate<algo, typename handle_t<Sender>::child_t, Receiver>(
+          static_cast<Receiver&&>(rcvr),
+          __facade::__get_data(static_cast<Sender&&>(sndr)).sh_state_);
+      }
+
+      // The operation starts the shared operation, unless another has, and waits for its
+      // results. If its receiver asks it to stop first, it stops waiting (see
+      // opstate::on_stop_requested), and the shared operation is stopped only if nothing
+      // else waits for it (see sh_state::detach).
+      template <class State, class Children>
+      static auto __start(State& state, Children&) noexcept
+        -> __facade::__effects<__facade::__starts<shared_op>, __facade::__starts<stream_stopped>>
+      {
+        auto const stok = get_stop_token(STDEXEC::get_env(state.rcvr_));
+        state.register_stop_callback(stok);
+
+        if (!stok.stop_requested())
+        {
+          auto& sh_state = *state.sh_state_;
+          sh_state.try_start(state.sh_state_);
+
+          using add_result = __decay_t<decltype(sh_state)>::add_result;
+          switch (sh_state.try_add_waiter(&state, stok))
+          {
+          case add_result::added:
+            return {};  // the results come when the shared operation completes
+          case add_result::completed:
+            State::notify(&state);
+            return {};
+          case add_result::stopped:
+            break;
+          }
+        }
+
+        // The operation's stop has been requested, before it waits for the shared operation.
+        state.deregister_stop_callback();
+        std::exchange(state.sh_state_, {})->detach();
+        return _strm::_report_stopped(state);
+      }
+
+      template <class State, class Tag, class... Args>
+      static auto __complete(shared_op, State& state, Tag tag, Args&&... args) noexcept
+      {
+        return _strm::_propagate(state, tag, static_cast<Args&&>(args)...);
+      }
+
+      template <class State>
+      static auto __complete(stream_stopped, State& state, set_stopped_t) noexcept
+      {
+        return _strm::_propagate(state, set_stopped_t());
+      }
+    };
+  }  // namespace _split
 
   template <>
   struct transform_sender_for<exec::split_t>
   {
-    template <class Sender>
-    using _sender_t = split_sender<__decay_t<Sender>>;
-
     template <class Env, class Sender>
     auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
     {
+      using sender_t = __decay_t<Sender>;
       if constexpr (stream_completing_sender<Sender, Env>)
       {
-        auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
-        return _sender_t<Sender>{sched.ctx_, static_cast<Sender&&>(sndr)};
+        auto     sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
+        sender_t child(static_cast<Sender&&>(sndr));
+        auto     sh_state = std::make_shared<_split::sh_state<sender_t>>(child, sched.ctx_);
+        auto     attrs    = sh_state->attrs_;
+        return STDEXEC::__facade::__sender{
+          _strm::split_t(),
+          _split::handle<sender_t>{std::move(sh_state), std::move(attrs)}
+        };
       }
       else
       {
-        return _strm::_no_stream_scheduler_in_env<exec::split_t, _sender_t<Sender>, Env>();
+        return _strm::_no_stream_scheduler_in_env<exec::split_t, Sender, Env>();
       }
     }
   };
 }  // namespace nv::execution::_strm
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::split_t>
+  : nv::execution::_strm::_split::algo
+{};
 
 namespace nvexec = nv::execution;
 

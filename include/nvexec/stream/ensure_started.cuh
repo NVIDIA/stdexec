@@ -39,6 +39,13 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
+  // The sender that exec::ensure_started returns for a child that completes on a stream
+  // scheduler: a facade sender (see exec/detail/shared.hpp). The stream_domain makes it from
+  // the sender that ensure_started describes it with (see
+  // transform_sender_for<exec::ensure_started_t> below).
+  struct ensure_started_t : stream_tag_base
+  {};
+
   namespace _ensure_started
   {
     template <class Tag, class... Args, class Variant>
@@ -133,6 +140,13 @@ namespace nv::execution::_strm
       notify_fn_t* notify_{};
     };
 
+    // The attributes of the shared operation, as the operation that waits for it sees them:
+    // those of the child, in its environment. (The operation completes on its stream,
+    // whether the shared operation completes before it starts or after.)
+    template <class Sender>
+    using attrs_t =
+      exec::__shared::__shared_attrs<Sender, env_t, __completion_behavior::__unknown_t>;
+
     template <class Sender>
     struct sh_state : __enable_intrusive_from_this<sh_state<Sender>>
     {
@@ -158,6 +172,7 @@ namespace nv::execution::_strm
         // while kernels may be running, which managed memory only allows on
         // devices with concurrent managed access.
         , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
+        , attrs_(STDEXEC::get_env(sndr), make_env())
         , opstate1_{nullptr}
         , opstate2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this}))
       {
@@ -183,6 +198,7 @@ namespace nv::execution::_strm
                                       ctx.pinned_resource_)
                   .release())
         , env_(host_allocate(this->stream_provider_.status_, ctx_.pinned_resource_, make_env()))
+        , attrs_(STDEXEC::get_env(sndr), make_env())
         , opstate2_(
             connect(static_cast<Sender&&>(sndr),
                     enqueue_receiver_t{env_.get(), data_.get(), task_, ctx.hub_->producer()}))
@@ -240,16 +256,23 @@ namespace nv::execution::_strm
       task_t*                      task_{nullptr};
       inplace_stop_source          stop_source_{};
       host_ptr_t<__decay_t<env_t>> env_{};
+      attrs_t<Sender>              attrs_;
       std::atomic<void*>           opstate1_;
       inner_opstate_t              opstate2_;
     };
 
-    template <class Sender, class Receiver>
+    // The key of the shared operation, whose results the operation receives
+    struct shared_op
+    {};
+
+    // The state of the operation of an ensure_started sender. It holds the reference to the
+    // shared state.
+    template <class Algo, class Sender, class Receiver>
     struct opstate
       : public opstate_base
       , public _strm::opstate_base<Receiver>
       , public exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>,
-                                          opstate<Sender, Receiver>>
+                                          opstate<Algo, Sender, Receiver>>
     {
       __intrusive_ptr<sh_state<Sender>> shared_state_;
 
@@ -258,7 +281,6 @@ namespace nv::execution::_strm
         shared_state_->stop_source_.request_stop();
       }
 
-     public:
       opstate(Receiver rcvr, __intrusive_ptr<sh_state<Sender>> shared_state) noexcept
         : opstate_base{notify}
         , _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), shared_state->ctx_)
@@ -267,7 +289,7 @@ namespace nv::execution::_strm
 
       ~opstate()
       {
-        // The stopped path in start() completes without deregistering, and the
+        // The stopped path in __start completes without deregistering, and the
         // base outlives shared_state_, which on_stop_requested() uses.
         this->deregister_stoppable();
 
@@ -281,6 +303,15 @@ namespace nv::execution::_strm
 
       STDEXEC_IMMOVABLE(opstate);
 
+      // The algorithm registers the stop callback in __start.
+      template <class StopToken>
+      void register_stop_callback(StopToken const & stok) noexcept
+      {
+        this->register_stoppable(stok);
+      }
+
+      // Sends the results of the shared operation, on this operation's stream, once the
+      // stream has waited for them
       static void notify(opstate_base* self) noexcept
       {
         auto* op = static_cast<opstate*>(self);
@@ -299,126 +330,200 @@ namespace nv::execution::_strm
           nvexec::visit(
             [&](auto& tupl) noexcept -> void
             {
-              ::cuda::std::apply([&]<class Tag, class... Args>(Tag, Args&... args) noexcept -> void
-                                 { op->propagate_completion_signal(Tag(), std::move(args)...); },
-                                 tupl);
+              ::cuda::std::apply(
+                [&]<class Tag, class... Args>(Tag, Args&... args) noexcept -> void
+                { (void) Algo::__complete(shared_op(), *op, Tag(), std::move(args)...); },
+                tupl);
             },
             *op->shared_state_->data_,
             op->shared_state_->index_);
         }
         else
         {
-          op->propagate_completion_signal(STDEXEC::set_error, std::move(status));
+          (void) Algo::__complete(shared_op(), *op, set_error_t(), std::move(status));
+        }
+      }
+    };
+
+    template <class Sender>
+    using _decayed_t = __decay_t<Sender>;
+
+    // The shared operation, as the operation that waits for it sees it: it completes with its
+    // results, as rvalues, or with a CUDA error. It is never connected.
+    template <class Sender>
+    struct results_sender
+    {
+      using sender_concept = STDEXEC::sender_tag;
+
+      template <class Self, class... Env>
+      static consteval auto get_completion_signatures()
+      {
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<Sender, _ensure_started::env_t>(),
+          exec::decay_arguments<set_value_t, exec::ensure_started_t>(),
+          exec::decay_arguments<set_error_t, exec::ensure_started_t>(),
+          {},
+          completion_signatures<set_error_t(cudaError_t), set_stopped_t()>());
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> attrs_t<Sender>
+      {
+        return attrs_;
+      }
+
+      attrs_t<Sender> attrs_;
+    };
+
+    // The data of an ensure_started sender: the reference to the shared state, and the shared
+    // operation's attributes. It is move-only. A sender that is destroyed without being
+    // connected detaches the shared operation.
+    template <class Sender>
+    struct handle
+    {
+      using child_t = Sender;
+
+      handle(__intrusive_ptr<sh_state<Sender>> shared_state, attrs_t<Sender> attrs) noexcept
+        : shared_state_(std::move(shared_state))
+        , attrs_(std::move(attrs))
+      {}
+
+      handle(handle&&) noexcept = default;
+
+      ~handle()
+      {
+        if (nullptr != shared_state_)
+        {
+          // We're detaching a potentially running operation. Request cancellation.
+          shared_state_->detach();  // BUGBUG NOT TO SPEC
         }
       }
 
-      void start() & noexcept
+      __intrusive_ptr<sh_state<Sender>> shared_state_;
+      attrs_t<Sender>                   attrs_;
+    };
+
+    struct _AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_;
+
+    // The algorithm of an ensure_started sender: the operation receives the results of the
+    // shared operation through it, on its stream (immediately, if it has completed
+    // already), unless stop was requested before it starts.
+    struct algo : stream_algorithm
+    {
+      using __dispatch_source = __facade::__via<shared_op, set_value_t, __facade::__from_start>;
+
+      template <class Sender>
+      using handle_t = __decay_t<__facade::__data_of_t<Sender>>;
+
+      using stream_algorithm::__nested_sender;
+
+      template <class Sender, class... Env>
+      static auto __nested_sender(shared_op, Sender const & sndr, Env const &...) noexcept
+        -> results_sender<typename handle_t<Sender>::child_t>
       {
-        sh_state<Sender>*   shared_state     = shared_state_.get();
+        return {__facade::__get_data(sndr).attrs_};
+      }
+
+      template <class Sender, class Receiver>
+      static auto
+      __get_state([[maybe_unused]] Sender&& sndr, [[maybe_unused]] Receiver rcvr) noexcept
+      {
+        using child_t = handle_t<Sender>::child_t;
+        if constexpr (std::is_lvalue_reference_v<Sender>)
+        {
+          return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                              _WHERE_(_IN_ALGORITHM_, exec::ensure_started_t),
+                              _WHY_(
+                                _AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_)>();
+        }
+        else
+        {
+          return opstate<algo, child_t, Receiver>(
+            static_cast<Receiver&&>(rcvr),
+            std::move(__facade::__get_data(static_cast<Sender&&>(sndr)).shared_state_));
+        }
+      }
+
+      template <class State, class Children>
+      static auto __start(State& state, Children&) noexcept
+      {
+        using result_t =
+          __facade::__effects<__facade::__starts<shared_op>, __facade::__starts<stream_stopped>>;
+        auto*               shared_state     = state.shared_state_.get();
         std::atomic<void*>& opstate1         = shared_state->opstate1_;
         void* const         completion_state = static_cast<void*>(shared_state);
         void* const         old              = opstate1.load(std::memory_order_acquire);
         if (old == completion_state)
         {
-          notify(this);
+          State::notify(&state);
+          return result_t(__facade::__effects<__facade::__starts<shared_op>>());
         }
         else
         {
           // register stop callback:
-          this->register_stoppable(get_stop_token(STDEXEC::get_env(this->rcvr_)));
+          state.register_stop_callback(get_stop_token(STDEXEC::get_env(state.rcvr_)));
           // Check if the stop_source has requested cancellation
           if (shared_state->stop_source_.stop_requested())
           {
             // Stop has already been requested. Don't bother starting
-            // the child operations.
-            this->propagate_completion_signal(set_stopped_t{});
+            // the child operations. (The operation completes on its stream, as it does
+            // when it receives the shared operation's results.)
+            return result_t(_strm::_report_stopped(state));
           }
           else
           {
             // Otherwise, the inner source hasn't notified completion.
             // Set this operation as the opstate1 so it's notified.
+            // (A strong exchange: a weak one could fail spuriously, which would look like the
+            // task having completed.)
             void* old = nullptr;
-            if (!opstate1.compare_exchange_weak(old,
-                                                this,
-                                                std::memory_order_release,
-                                                std::memory_order_acquire))
+            if (!opstate1.compare_exchange_strong(old,
+                                                  static_cast<opstate_base*>(&state),
+                                                  std::memory_order_release,
+                                                  std::memory_order_acquire))
             {
               // We get here when the task completed during the execution
               // of this function. Complete the operation synchronously.
               STDEXEC_ASSERT(old == completion_state);
-              notify(this);
+              State::notify(&state);
             }
+            return result_t(__facade::__effects<__facade::__starts<shared_op>>());
           }
         }
+      }
+
+      template <class State, class Tag, class... Args>
+      static auto __complete(shared_op, State& state, Tag tag, Args&&... args) noexcept
+      {
+        return _strm::_propagate(state, tag, static_cast<Args&&>(args)...);
+      }
+
+      template <class State>
+      static auto __complete(stream_stopped, State& state, set_stopped_t) noexcept
+      {
+        return _strm::_propagate(state, set_stopped_t());
       }
     };
   }  // namespace _ensure_started
 
-  template <class Sender>
-  struct ensure_started_sender : stream_sender_base
-  {
-    using sender_concept = STDEXEC::sender_tag;
-    using sh_state_t     = _ensure_started::sh_state<Sender>;
-    template <class Receiver>
-    using opstate_t = _ensure_started::opstate<Sender, Receiver>;
-
-    explicit ensure_started_sender(context ctx, Sender sndr)
-      : sndr_(static_cast<Sender&&>(sndr))
-      , shared_state_{__make_intrusive<sh_state_t>(sndr_, ctx)}
-    {}
-
-    // Move-only:
-    ensure_started_sender(ensure_started_sender&&) = default;
-
-    ~ensure_started_sender()
-    {
-      if (nullptr != shared_state_)
-      {
-        // We're detaching a potentially running operation. Request cancellation.
-        shared_state_->detach();  // BUGBUG NOT TO SPEC
-      }
-    }
-
-    template <receiver Receiver, class Env = env<>>
-      requires receiver_of<Receiver, completion_signatures_of_t<ensure_started_sender, Env>>
-    auto connect(Receiver rcvr) && noexcept -> opstate_t<Receiver>
-    {
-      return opstate_t<Receiver>{static_cast<Receiver&&>(rcvr), std::move(shared_state_)};
-    }
-
-    auto get_env() const noexcept -> stream_sender_attrs<Sender>
-    {
-      return {&sndr_};
-    }
-
-    template <class Self, class... Env>
-    static consteval auto get_completion_signatures()
-    {
-      return exec::transform_completion_signatures(
-        STDEXEC::get_completion_signatures<Sender, _ensure_started::env_t>(),
-        exec::decay_arguments<set_value_t, ensure_started_t>(),
-        exec::decay_arguments<set_error_t, ensure_started_t>(),
-        {},
-        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>());
-    }
-
-    Sender                      sndr_;
-    __intrusive_ptr<sh_state_t> shared_state_;
-  };
-
   template <>
   struct transform_sender_for<exec::ensure_started_t>
   {
-    template <class Sender>
-    using _sender_t = ensure_started_sender<__decay_t<Sender>>;
-
     template <class Env, class Sender>
     auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
     {
+      using sender_t = __decay_t<Sender>;
       if constexpr (stream_completing_sender<Sender, Env>)
       {
-        auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
-        return _sender_t<Sender>{sched.ctx_, static_cast<Sender&&>(sndr)};
+        auto     sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
+        sender_t child(static_cast<Sender&&>(sndr));
+        auto     shared_state = __make_intrusive<_ensure_started::sh_state<sender_t>>(child,
+                                                                                  sched.ctx_);
+        auto     attrs        = shared_state->attrs_;
+        return STDEXEC::__facade::__sender{
+          _strm::ensure_started_t(),
+          _ensure_started::handle<sender_t>{std::move(shared_state), std::move(attrs)}
+        };
       }
       else
       {
@@ -427,6 +532,17 @@ namespace nv::execution::_strm
     }
   };
 }  // namespace nv::execution::_strm
+
+// The stream domain's ensure_started sender is an ensure_started sender: its operation has
+// started, so exec::ensure_started returns it as it is.
+template <>
+inline constexpr bool experimental::execution::__ensure_started::__is_started_sender_tag_v<
+  nv::execution::_strm::ensure_started_t> = true;
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::ensure_started_t>
+  : nv::execution::_strm::_ensure_started::algo
+{};
 
 namespace nvexec = nv::execution;
 

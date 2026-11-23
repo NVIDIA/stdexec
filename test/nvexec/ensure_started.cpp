@@ -188,6 +188,42 @@ namespace
     REQUIRE(v == 1);
   }
 
+  TEST_CASE("nvexec ensure_started is idempotent", "[cuda][stream][adaptors][ensure_started]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    auto snd1 = exec::ensure_started(ex::schedule(stream_ctx.get_scheduler())
+                                     | ex::then([]() -> bool { return is_on_gpu(); }));
+    // The stream domain's ensure_started sender is an ensure_started sender too, so it is
+    // not wrapped again.
+    auto snd2 = exec::ensure_started(std::move(snd1));
+    STATIC_REQUIRE(std::same_as<decltype(snd2), decltype(snd1)>);
+
+    auto [v] = STDEXEC::sync_wait(std::move(snd2)).value();
+
+    REQUIRE(v);
+  }
+
+  TEST_CASE("nvexec ensure_started completes on the stream when it is stopped",
+            "[cuda][stream][adaptors][ensure_started]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    // An operation that starts after the shared operation was stopped completes with
+    // set_stopped on its stream, as its other completions do. So let_stopped finds its
+    // customization in the stream domain.
+    auto snd = exec::ensure_started(ex::schedule(stream_ctx.get_scheduler())
+                                    | ex::then([]() noexcept { return 42; }))
+             | ex::let_stopped([]() noexcept { return ex::just(0); })
+             // let_stopped completes with a value both when its child does and when the
+             // sender that its function returns does, so it does not know one completion
+             // scheduler for its values. Proclaim the one they share, for sync_wait:
+             | ::_proclaim_completes_on(stream_ctx.get_scheduler());
+    auto [v] = STDEXEC::sync_wait(std::move(snd)).value();
+
+    REQUIRE(v == 42);
+  }
+
   TEST_CASE("nvexec ensure_started destroys completion storage",
             "[cuda][stream][adaptors][ensure_started]")
   {

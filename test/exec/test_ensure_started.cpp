@@ -21,6 +21,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <test_common/catch2.hpp>
@@ -358,6 +359,43 @@ namespace
     }
   };
 
+  TEST_CASE("an ensure_started sender can be connected only as a non-const rvalue",
+            "[adaptors][ensure_started]")
+  {
+    // Connecting it gives the operation the sender's reference to the shared operation, so
+    // that the sender cannot be connected again. (A const rvalue cannot give it up, and the
+    // sender is move-only, so it cannot be copied either.)
+    auto snd         = exec::ensure_started(ex::just(42));
+    using sender_t   = decltype(snd);
+    using receiver_t = decltype(expect_value_receiver{42});
+    STATIC_REQUIRE(ex::sender_to<sender_t, receiver_t>);
+    STATIC_REQUIRE(!ex::sender_to<sender_t const, receiver_t>);
+    STATIC_REQUIRE(!ex::sender_to<sender_t&, receiver_t>);
+    STATIC_REQUIRE(!ex::sender_to<sender_t const &, receiver_t>);
+    auto op = ex::connect(std::move(snd), expect_value_receiver{42});
+    ex::start(op);
+  }
+
+  TEST_CASE("assigning over an ensure_started sender detaches it", "[adaptors][ensure_started]")
+  {
+    // An operation that completes only when it is stopped, and says so
+    auto make = [](bool& stopped)
+    {
+      return exec::ensure_started(completes_if{false}
+                                  | ex::upon_stopped([&stopped] { stopped = true; }));
+    };
+
+    bool stopped1 = false;
+    bool stopped2 = false;
+    auto snd      = make(stopped1);
+    CHECK_FALSE(stopped1);
+    snd = make(stopped2);
+    // The first operation lost its only consumer, so it was asked to stop, as it would have
+    // been had its sender been destroyed.
+    CHECK(stopped1);
+    CHECK_FALSE(stopped2);
+  }
+
   TEST_CASE("ensure_started accepts a custom sender", "[adaptors][ensure_started]")
   {
     auto snd1 = my_sender();
@@ -367,7 +405,6 @@ namespace
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }
