@@ -150,7 +150,9 @@ namespace
     SECTION("for value channel")
     {
       ex::sender auto snd = ex::schedule(sched) | ex::then([] {});
-      REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sched);
+      // The run_loop's schedule sender is dependent (whether it can be stopped depends on
+      // the environment), so the completion scheduler is reported for an environment.
+      REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env{}) == sched);
     }
   }
 

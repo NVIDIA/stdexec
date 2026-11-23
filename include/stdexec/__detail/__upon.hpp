@@ -32,6 +32,7 @@ import stdexec;
 #  include "__meta.hpp"
 #  include "__partition_completion_signatures.hpp"
 #  include "__receivers.hpp"
+#  include "__sender_facade.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
@@ -62,6 +63,32 @@ namespace STDEXEC
       else
       {
         _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+      }
+    };
+
+    // then(sndr, fn), upon_error(sndr, fn), and upon_stopped(sndr, fn): the child's _SetTag
+    // completions invoke the function, and its result is sent as a value. Other completions
+    // are passed through. _AlgoTag names the algorithm in diagnostics.
+    template <class _AlgoTag, class _SetTag>
+    struct __algo : __facade::__defaults
+    {
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State& __state,
+                                       _Tag    __tag,
+                                       _Args&&... __args) noexcept
+      {
+        if constexpr (__same_as<_Tag, _SetTag>)
+        {
+          return __facade::__set_value_from<_AlgoTag>(__state.__rcvr_,
+                                                      static_cast<_State&&>(__state).__data_,
+                                                      static_cast<_Args&&>(__args)...);
+        }
+        else
+        {
+          return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args&&>(__args)...);
+        }
       }
     };
 

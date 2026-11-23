@@ -211,12 +211,14 @@ namespace STDEXEC
         return STDEXEC::get_env(__child_).query(_Query(), __mk_env2(__env)...);
       }
 
+      // (The result type is deduced. Compilers that substitute into the return type before
+      // checking the constraints, as Clang does through version 19, would otherwise ask the
+      // child a completion query in the receiver's environment.)
       template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Args>
         requires(!__completion_query<_Query>) && __queryable_with<_Attrs, _Query, _Args...>
       [[nodiscard]]
       constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>)
-          -> __query_result_t<_Attrs, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>) -> decltype(auto)
       {
         return STDEXEC::get_env(__child_).query(_Query(), static_cast<_Args&&>(__args)...);
       }

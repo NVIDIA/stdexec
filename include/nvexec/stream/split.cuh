@@ -79,7 +79,7 @@ namespace nv::execution::_strm
 
         if constexpr (stream_sender<Sender, env_t>)
         {
-          cudaStream_t stream = sh_state_.opstate2_.get_stream();
+          cudaStream_t stream = sh_state_.stream_provider_.own_stream_.value();
           sh_state_.index_    = __mapply<__mfind_i<tuple_t>, variant_t>::value;
           copy_kernel<Tag, Args&&...>
             <<<1, 1, 0, stream>>>(sh_state_.data_.get(), static_cast<Args&&>(args)...);
