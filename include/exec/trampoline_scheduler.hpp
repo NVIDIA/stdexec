@@ -337,6 +337,7 @@ namespace experimental::execution
     }
   }  // namespace __trampoline
 
+  STDEXEC_MODULE_EXPORT
   using trampoline_scheduler = __trampoline::__scheduler;
 
 }  // namespace experimental::execution

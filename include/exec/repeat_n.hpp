@@ -16,20 +16,12 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__basic_sender.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/__detail/__sender_facade.hpp"
 #include "../stdexec/execution.hpp"
 
-#include "completion_signatures.hpp"
-#include "sequence.hpp"
-#include "trampoline_scheduler.hpp"
+#include "detail/repeat.hpp"
 
 #include <cstddef>
-
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
-STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace experimental::execution
 {
@@ -40,221 +32,49 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    template <class _Receiver>
-    struct __opstate_base
+    // repeat_n(sndr, count): the body completes with no values count times, unless it
+    // completes otherwise first.
+    struct __algo : __repeat::__algo_base<__algo>
     {
-      constexpr explicit __opstate_base(_Receiver &&__rcvr, std::size_t __count) noexcept
-        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
-        , __count_{__count}
+      static constexpr bool __decays_errors = true;
+
+      static constexpr auto __iterates(std::size_t __count) noexcept -> bool
       {
-        static_assert(__nothrow_constructible_from<trampoline_scheduler>,
-                      "trampoline_scheduler c'tor is always expected to be noexcept");
+        return __count != 0;
       }
 
-      STDEXEC_IMMOVABLE(__opstate_base);
-
-      virtual constexpr void __cleanup() noexcept = 0;
-      virtual constexpr void __repeat() noexcept  = 0;
-
-      _Receiver   __rcvr_;
-      std::size_t __count_;
-
-     protected:
-      ~__opstate_base() noexcept = default;
-    };
-
-    template <class _Receiver>
-    struct __receiver
-    {
-      using receiver_concept = STDEXEC::receiver_tag;
-
-      constexpr void set_value() noexcept
+      // Zero repetitions complete without starting the child.
+      template <class _State, class _Children>
+      static constexpr auto __start(_State &__state, _Children &) noexcept
       {
-        __state_->__repeat();
+        return __facade::__choose(
+          __state.__data_ != 0,
+          [&]() noexcept { return __algo::__start_iteration(__state); },
+          [&]() noexcept { return __facade::__send(__state.__rcvr_, set_value_t()); });
       }
 
-      template <class _Error>
-      constexpr void set_error(_Error &&__err) noexcept
+      using __repeat::__algo_base<__algo>::__complete;
+
+      template <class _State, class... _Args>
+      static constexpr auto
+      __complete(__repeat::__body, _State &__state, set_value_t, _Args &&...) noexcept
       {
-        auto *__state = __state_;
-        STDEXEC_TRY
+        if constexpr (sizeof...(_Args) != 0)
         {
-          // make a copy of the error...
-          auto __err_copy = static_cast<_Error &&>(__err);
-          // ... because this could potentially invalidate it.
-          __state->__cleanup();
-          STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__err_copy));
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__nothrow_decay_copyable<_Error>)
-          {
-            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
-          }
-        }
-      }
-
-      constexpr void set_stopped() noexcept
-      {
-        auto *__state = __state_;
-        __state->__cleanup();
-        STDEXEC::set_stopped(std::move(__state->__rcvr_));
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
-      {
-        return STDEXEC::get_env(__state_->__rcvr_);
-      }
-
-      __opstate_base<_Receiver> *__state_;
-    };
-
-    template <class _Child>
-    using __bouncy_sndr_t =
-      __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
-
-    template <class _Child, class _Receiver>
-    constexpr bool __nothrow_connect =
-      __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler>
-      && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
-      && __nothrow_connectable<__bouncy_sndr_t<_Child>, _Receiver>;
-
-    template <class _Child, class _Receiver>
-    struct __opstate final : __opstate_base<_Receiver>
-    {
-      using __receiver_t = __receiver<_Receiver>;
-      using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t<_Child>, __receiver_t>;
-
-      constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
-        noexcept(__nothrow_move_constructible<_Child> && __nothrow_connect<_Child, _Receiver>)
-        : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
-        , __child_(std::move(__child))
-      {
-        if (this->__count_ != 0)
-        {
-          __connect();
-        }
-      }
-
-      constexpr void start() noexcept
-      {
-        if (this->__count_ == 0)
-        {
-          STDEXEC::set_value(static_cast<_Receiver &&>(this->__rcvr_));
+          return __facade::__type_error(
+            __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                         _WHERE_(_IN_ALGORITHM_, repeat_n_t),
+                         _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
+                         _WITH_SENDER_<typename _State::__child_t &>>());
         }
         else
         {
-          STDEXEC::start(*__child_op_);
+          return __facade::__choose(
+            --__state.__data_ == 0,
+            [&]() noexcept { return __algo::__finish(__state); },
+            [&]() noexcept { return __algo::__next(__state); });
         }
       }
-
-      constexpr auto __connect() noexcept(__nothrow_connect<_Child, _Receiver>) -> __child_op_t &
-      {
-        return __child_op_.__emplace_from(STDEXEC::connect,
-                                          exec::sequence(STDEXEC::schedule(trampoline_scheduler{}),
-                                                         __child_),
-                                          __receiver_t{this});
-      }
-
-      constexpr void __cleanup() noexcept final
-      {
-        __child_op_.reset();
-      }
-
-      constexpr void __repeat() noexcept final
-      {
-        STDEXEC_ASSERT(this->__count_ > 0);
-        STDEXEC_TRY
-        {
-          if (--this->__count_ == 0)
-          {
-            __cleanup();
-            STDEXEC::set_value(std::move(this->__rcvr_));
-          }
-          else
-          {
-            STDEXEC::start(__connect());
-          }
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__nothrow_connect<_Child, _Receiver>)
-          {
-            STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
-          }
-        }
-      }
-
-      _Child                            __child_;
-      STDEXEC::__optional<__child_op_t> __child_op_;
-    };
-
-    template <class _Child, class _Receiver>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    __opstate(std::size_t, _Child, _Receiver) -> __opstate<_Child, _Receiver>;
-
-    struct __impls : __sexpr_defaults
-    {
-      static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const &__child) noexcept
-        -> __seq::__attrs<schedule_result_t<trampoline_scheduler>, _Child &>
-      {
-        return {STDEXEC::schedule(trampoline_scheduler{}), const_cast<_Child &>(__child)};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        using __child_t = __child_of<_Sender>;
-
-        auto __completions = exec::transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__bouncy_sndr_t<__child_t>, _Env...>(),
-          // transform for set_value completions:
-          []<class... _Args>()
-          {
-            if constexpr (sizeof...(_Args) == 0)
-            {
-              return completion_signatures<set_value_t()>();
-            }
-            else
-            {
-              return exec::throw_compile_time_error<
-                _WHAT_(_INVALID_ARGUMENT_),
-                _WHERE_(_IN_ALGORITHM_, repeat_n_t),
-                _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
-                _WITH_SENDER_<__child_t &>>();
-            }
-          },
-          // transform for set_error completions:
-          decay_arguments<set_error_t, repeat_n_t>(),
-          keep_completion<set_stopped_t>(),
-          // Zero repetitions complete successfully without starting the child.
-          completion_signatures<set_value_t()>());
-
-        STDEXEC_IF_OK(__completions)
-        {
-          // Conditionally add set_error(std::exception_ptr) when appropriate
-          if constexpr (__completions.template __contains<set_error_t(std::exception_ptr)>())
-            return __completions;  // NOLINT(bugprone-branch-clone)
-          else if constexpr (sizeof...(_Env) == 0)
-            return STDEXEC::__throw_dependent_sender_error<__child_t>();
-          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> && ...))
-            return __completions;
-          else
-            return exec::concat_completion_signatures(__completions, __eptr_completion_t());
-        }
-      }
-
-      static constexpr auto __connect =  //
-        []<class _Receiver, class _Sender>(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(
-          noexcept(__opstate(0, STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>())))
-      {
-        std::size_t const __count = STDEXEC::__get<1>(__sndr);
-        return __opstate(__count,
-                         STDEXEC::__get<2>(static_cast<_Sender &&>(__sndr)),
-                         static_cast<_Receiver &&>(__rcvr));
-      };
     };
   }  // namespace __repeat_n
 
@@ -264,7 +84,7 @@ namespace experimental::execution
     constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const  //
       -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__sexpr{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__facade::__sender{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -283,8 +103,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::repeat_n_t> : exec::__repeat_n::__impls
+  struct __facade::__algorithm<exec::repeat_n_t> : exec::__repeat_n::__algo
   {};
 }  // namespace STDEXEC
-
-STDEXEC_PRAGMA_POP()

@@ -222,6 +222,7 @@ namespace STDEXEC
   concept __completes_inline = (__completion_behavior_of_v<_Tag, _Attrs, _Env...>.value
                                 == __completion_behavior::__inline_completion);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Attrs, class... _Env>
   concept __completes_where_it_starts = __completion_behavior::__is_affine(
     __completion_behavior_of_v<_Tag, _Attrs, _Env...>);

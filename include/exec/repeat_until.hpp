@@ -16,20 +16,13 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__basic_sender.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/__detail/__sender_facade.hpp"
 #include "../stdexec/execution.hpp"
 
-#include "completion_signatures.hpp"
-#include "sequence.hpp"
-#include "trampoline_scheduler.hpp"
+#include "detail/repeat.hpp"
 
 #include <exception>
 #include <type_traits>
-
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 
 namespace experimental::execution
 {
@@ -41,301 +34,113 @@ namespace experimental::execution
 
   namespace __repeat
   {
-    using namespace STDEXEC;
-
-    template <class _Receiver>
-    struct __opstate_base
-    {
-      constexpr explicit __opstate_base(_Receiver &&__rcvr) noexcept
-        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
-      {}
-
-      virtual constexpr void __cleanup() noexcept = 0;
-      virtual constexpr void __repeat() noexcept  = 0;
-
-      _Receiver __rcvr_;
-
-     protected:
-      ~__opstate_base() noexcept = default;
-    };
-
     template <class _Boolean, bool _Expected>
     concept __is_bool_constant = __decay_t<_Boolean>::value == _Expected;
 
-    template <class _Receiver>
-    struct __receiver
+    // repeat_until(sndr): the body completes with a value that says whether the loop is
+    // done, unless it completes otherwise.
+    struct __until_algo : __algo_base<__until_algo>
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      static constexpr bool __decays_errors = false;
 
-      template <class... _Booleans>
-      constexpr void set_value(_Booleans &&...__bools) noexcept
+      static constexpr auto __iterates(__ignore) noexcept -> bool
       {
-        auto *__state = __state_;
-        if constexpr ((__is_bool_constant<_Booleans, true> && ...))
+        return true;
+      }
+
+      template <class _State, class _Children>
+      static constexpr auto __start(_State &__state, _Children &) noexcept
+      {
+        return __until_algo::__start_iteration(__state);
+      }
+
+      using __algo_base<__until_algo>::__complete;
+
+      template <class _State, class... _Booleans>
+      static constexpr auto
+      __complete(__body, _State &__state, set_value_t, _Booleans &&...__bools) noexcept
+      {
+        // (Each branch instantiates only the handlers it can call. Instantiating one it can't
+        // call would instantiate completions that the operation does not declare, as when the
+        // body always says the loop is done.)
+        if constexpr (sizeof...(_Booleans) != 1 || (!__std::convertible_to<_Booleans, bool> || ...))
         {
-          // Always done:
-          __state->__cleanup();
-          STDEXEC::set_value(std::move(__state->__rcvr_));
+          return __facade::__type_error(
+            __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                         _WHERE_(_IN_ALGORITHM_, repeat_until_t),
+                         _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
+                         _WITH_SENDER_<typename _State::__child_t &>>());
+        }
+        else if constexpr ((__is_bool_constant<_Booleans, true> && ...))
+        {
+          return __until_algo::__finish(__state);  // always done
         }
         else if constexpr ((__is_bool_constant<_Booleans, false> && ...))
         {
-          // Never done:
-          __state->__repeat();
+          return __until_algo::__next(__state);  // never done
+        }
+        else if constexpr ((std::is_nothrow_convertible_v<_Booleans, bool> && ...))
+        {
+          return __facade::__choose((static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...),
+                                    [&]() noexcept { return __until_algo::__finish(__state); },
+                                    [&]() noexcept { return __until_algo::__next(__state); });
         }
         else
         {
-          // Mixed results:
-          constexpr bool __is_nothrow = (std::is_nothrow_convertible_v<_Booleans, bool> && ...);
+          using __result_t =
+            __facade::__union_t<decltype(__until_algo::__finish(__state)),
+                                decltype(__until_algo::__next(__state)),
+                                __facade::__effects<set_error_t(std::exception_ptr)>>;
+          bool __done = false;
           STDEXEC_TRY
           {
-            // If the child sender completed with true, we're done
-            bool const __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
-            if (__done)
-            {
-              __state->__cleanup();
-              STDEXEC::set_value(std::move(__state->__rcvr_));
-            }
-            else
-            {
-              __state->__repeat();
-            }
+            __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
           }
           STDEXEC_CATCH_ALL
           {
-            if constexpr (!__is_nothrow)
-            {
-              __state->__cleanup();
-              STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
-            }
+            __state.__cleanup();
+            return __result_t(
+              __facade::__send(__state.__rcvr_, set_error_t(), std::current_exception()));
           }
+          return __done ? __result_t(__until_algo::__finish(__state))
+                        : __result_t(__until_algo::__next(__state));
         }
-      }
-
-      template <class _Error>
-      constexpr void set_error(_Error &&__err) noexcept
-      {
-        auto *__state = __state_;
-        STDEXEC_TRY
-        {
-          // make a local copy of the error...
-          auto __err_copy = static_cast<_Error &&>(__err);
-          // ... because this could potentially invalidate it.
-          __state->__cleanup();
-          STDEXEC::set_error(std::move(__state->__rcvr_), static_cast<_Error &&>(__err_copy));
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__nothrow_decay_copyable<_Error>)
-          {
-            __state->__cleanup();
-            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
-          }
-        }
-      }
-
-      constexpr void set_stopped() noexcept
-      {
-        auto *__state = __state_;
-        __state->__cleanup();
-        STDEXEC::set_stopped(std::move(__state->__rcvr_));
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> __fwd_env_t<env_of_t<_Receiver>>
-      {
-        return __fwd_env(STDEXEC::get_env(__state_->__rcvr_));
-      }
-
-      __opstate_base<_Receiver> *__state_;
-    };
-
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
-
-    template <class _Child, class _Receiver>
-    struct __opstate final : __opstate_base<_Receiver>
-    {
-      using __receiver_t = __receiver<_Receiver>;
-      using __bouncy_sndr_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
-      using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
-
-      static constexpr bool __nothrow_connect =
-        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler>
-        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
-        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>;
-
-      constexpr explicit __opstate(_Child __child, _Receiver __rcvr)
-        noexcept(__nothrow_move_constructible<_Child> && __nothrow_connect)
-        : __opstate_base<_Receiver>(std::move(__rcvr))
-        , __child_(std::move(__child))
-      {
-        __connect();
-      }
-
-      constexpr void start() noexcept
-      {
-        STDEXEC::start(*__child_op_);
-      }
-
-      constexpr auto __connect() noexcept(__nothrow_connect) -> __child_op_t &
-      {
-        return __child_op_.__emplace_from(STDEXEC::connect,
-                                          exec::sequence(STDEXEC::schedule(trampoline_scheduler{}),
-                                                         __child_),
-                                          __receiver_t{this});
-      }
-
-      constexpr void __cleanup() noexcept final
-      {
-        __child_op_.reset();
-      }
-
-      constexpr void __repeat() noexcept final
-      {
-        STDEXEC_TRY
-        {
-          STDEXEC::start(__connect());
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__nothrow_connect)
-          {
-            STDEXEC::set_error(static_cast<_Receiver &&>(this->__rcvr_), std::current_exception());
-          }
-        }
-      }
-
-      _Child                            __child_;
-      STDEXEC::__optional<__child_op_t> __child_op_;
-    };
-
-    template <class _Child, class _Receiver>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-      __opstate(_Child, _Receiver) -> __opstate<_Child, _Receiver>;
-
-    STDEXEC_PRAGMA_POP()
-
-    struct _never
-    {
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr std::false_type operator()() const noexcept
-      {
-        return {};
       }
     };
 
-    struct __repeat_until_impl : __sexpr_defaults
+    // repeat(sndr): the body completes with no values, and the loop is never done, unless
+    // the body completes otherwise.
+    struct __forever_algo : __algo_base<__forever_algo>
     {
-      static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const &__child) noexcept
-        -> __seq::__attrs<schedule_result_t<trampoline_scheduler>, _Child &>
-      {
-        return {STDEXEC::schedule(trampoline_scheduler{}), const_cast<_Child &>(__child)};
-      };
+      static constexpr bool __decays_errors = false;
 
-      template <class _Child>
-      static constexpr auto __transform_values = []<class... _Args>()
+      static constexpr auto __iterates(__ignore) noexcept -> bool
       {
-        if constexpr (sizeof...(_Args) != 1 || (!__std::convertible_to<_Args, bool> || ...))
+        return true;
+      }
+
+      template <class _State, class _Children>
+      static constexpr auto __start(_State &__state, _Children &) noexcept
+      {
+        return __forever_algo::__start_iteration(__state);
+      }
+
+      using __algo_base<__forever_algo>::__complete;
+
+      template <class _State, class... _Args>
+      static constexpr auto __complete(__body, _State &__state, set_value_t, _Args &&...) noexcept
+      {
+        if constexpr (sizeof...(_Args) != 0)
         {
-          return exec::throw_compile_time_error<
-            _WHAT_(_INVALID_ARGUMENT_),
-            _WHERE_(_IN_ALGORITHM_, repeat_until_t),
-            _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
-            _WITH_SENDER_<_Child>>();
-        }
-        else if constexpr ((__is_bool_constant<_Args, false> && ...))
-        {
-          return STDEXEC::completion_signatures{};
-        }
-        else if constexpr ((std::is_nothrow_convertible_v<_Args, bool> && ...))
-        {
-          return STDEXEC::completion_signatures<set_value_t()>();
+          return __facade::__type_error(
+            __mexception<_WHAT_(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
+                         _WHERE_(_IN_ALGORITHM_, repeat_t),
+                         _WITH_SENDER_<typename _State::__child_t &>>());
         }
         else
         {
-          return STDEXEC::completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>();
+          return __forever_algo::__next(__state);
         }
-      };
-
-      static constexpr auto __transform_errors = []<class _Error>() noexcept
-      {
-        if constexpr (__nothrow_decay_copyable<_Error> || __decays_to<_Error, std::exception_ptr>)
-        {
-          return STDEXEC::completion_signatures<set_error_t(_Error)>();
-        }
-        else
-        {
-          return STDEXEC::completion_signatures<set_error_t(_Error),
-                                                set_error_t(std::exception_ptr)>();
-        }
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        using __child_t                  = __child_of<_Sender>;
-        using __bouncer_t                = schedule_result_t<trampoline_scheduler>;
-        using __eptr_completion_t        = set_error_t(std::exception_ptr);
-        constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
-
-        auto __sigs =
-          exec::transform_completion_signatures(get_completion_signatures<__child_t, _Env...>(),
-                                                __transform_values<__child_t>,
-                                                __transform_errors);
-        STDEXEC_IF_OK(__sigs)
-        {
-          // The repeat_until sender is a dependent sender if one of the
-          // following is true:
-          // - the child sender is a dependent sender, or
-          // - the trampoline scheduler's sender is a dependent sender, or
-          // - sizeof...(_Env) == 0 and the child sender does not have a
-          //   set_error(exception_ptr) completion.
-          constexpr bool __is_dependent = (sizeof...(_Env) == 0)
-                                       && (dependent_sender<__bouncer_t>
-                                           || !__sigs.__contains(__eptr_completion));
-          if constexpr (__is_dependent)
-          {
-            return exec::throw_compile_time_error<dependent_sender_error,
-                                                  _WITH_SENDER_<__child_t>>();
-          }
-          else
-          {
-            // The child is connected as an lvalue (see __opstate), so copying it
-            // can throw even when moving it cannot.
-            using __has_nothrow_connect_t =
-              __mbool<(__nothrow_connectable<__child_t &, __receiver_archetype<_Env>> || ...)>;
-            constexpr auto __eptr_sigs    = __eptr_completion_unless_t<__has_nothrow_connect_t>();
-            constexpr auto __bouncer_sigs = exec::transform_completion_signatures(
-              get_completion_signatures<__bouncer_t, _Env...>(),
-              exec::ignore_completion());  // drop the set_value_t() completion from the
-                                           // trampoline scheduler.
-
-            return exec::concat_completion_signatures(__sigs, __eptr_sigs, __bouncer_sigs);
-          }
-        }
-      }
-
-      static constexpr auto __connect =
-        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<__opstate<__child_of<_Sender>, _Receiver>,
-                                       __child_of<_Sender>,
-                                       _Receiver>)
-      {
-        auto &[__tag, __ign, __child] = __sndr;
-        return __opstate(STDEXEC::__forward_like<_Sender>(__child), std::move(__rcvr));
-      };
-    };
-
-    struct __repeat_impl : __repeat_until_impl
-    {
-      template <class _CvSender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        using __child_t  = __call_result_t<then_t, __child_of<_CvSender>, _never>;
-        using __parent_t = __call_result_t<repeat_until_t, __child_t>;
-        return __repeat_until_impl::__get_completion_signatures<__parent_t, _Env...>();
       }
     };
   }  // namespace __repeat
@@ -345,7 +150,9 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__sexpr{repeat_until_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__facade::__sender{repeat_until_t(),
+                                         STDEXEC::__(),
+                                         static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -362,35 +169,15 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__sexpr{repeat_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__facade::__sender{repeat_t(),
+                                         STDEXEC::__(),
+                                         static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()() const
     {
       return STDEXEC::__closure(*this);
-    }
-
-    template <class _CvSender, class _Env>
-    static constexpr auto
-    transform_sender(STDEXEC::set_value_t, _CvSender &&__sndr, _Env const &) noexcept
-    {
-      using namespace STDEXEC;
-      using __child_t               = __child_of<_CvSender>;
-      using __values_t              = value_types_of_t<__child_t, _Env, __mlist, __mlist>;
-      auto &[__tag, __ign, __child] = __sndr;
-
-      if constexpr (__same_as<__values_t, __mlist<>> || __same_as<__values_t, __mlist<__mlist<>>>)
-      {
-        return repeat_until(then(static_cast<__child_t &&>(__child), __repeat::_never{}));
-      }
-      else
-      {
-        return __not_a_sender<_WHAT_(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
-                              _WHERE_(_IN_ALGORITHM_, repeat_until_t),
-                              _WITH_SENDER_<__child_t>,
-                              _WITH_ENVIRONMENT_(_Env)>();
-      }
     }
   };
 
@@ -411,12 +198,10 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::repeat_t> : exec::__repeat::__repeat_impl
+  struct __facade::__algorithm<exec::repeat_until_t> : exec::__repeat::__until_algo
   {};
 
   template <>
-  struct __sexpr_impl<exec::repeat_until_t> : exec::__repeat::__repeat_until_impl
+  struct __facade::__algorithm<exec::repeat_t> : exec::__repeat::__forever_algo
   {};
 }  // namespace STDEXEC
-
-STDEXEC_PRAGMA_POP()

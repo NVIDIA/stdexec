@@ -228,6 +228,7 @@ namespace STDEXEC
     template <class _Ty>
     concept move_constructible = constructible_from<_Ty, _Ty>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ty>
     concept copy_constructible = move_constructible<_Ty> && constructible_from<_Ty, _Ty const &>;
 
