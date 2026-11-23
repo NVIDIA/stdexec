@@ -26,9 +26,9 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__queries.hpp"
+#  include "__sender_facade.hpp"
 #  include "__sender_introspection.hpp"
 
 #  include "__prologue.hpp"
@@ -43,28 +43,41 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const
     {
-      return __sexpr{schedule_from_t(), __(), static_cast<_Sender&&>(__sndr)};
+      return __facade::__sender{schedule_from_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
   };
 
   inline constexpr schedule_from_t schedule_from{};
 
-  template <>
-  struct __sexpr_impl<schedule_from_t> : __sexpr_defaults
+  namespace __schedule_from
   {
-    static constexpr auto __get_attrs =
-      []<class _Child>(schedule_from_t, __ignore, _Child const & __child) noexcept
+    // schedule_from(sndr): completes as sndr does. It exists to be customized by the domain
+    // in which sndr completes, which can then move the completions elsewhere (as a CUDA
+    // stream scheduler moves them off the device).
+    struct __algo : __facade::__defaults
     {
-      return __sync_attrs{__child};
-    };
+      // The child sees the forwarded environment of the receiver
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __env_for(__facade::__child<0>, _Sender const &, _Env&& __env) noexcept
+        -> __fwd_env_t<_Env>
+      {
+        return __fwd_env(static_cast<_Env&&>(__env));
+      }
 
-    template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures()
-    {
-      static_assert(__sender_for<_Sender, schedule_from_t>);
-      return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
-    }
-  };
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(__facade::__child<0>, _State const & __state) noexcept
+        -> decltype(auto)
+      {
+        return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
+      }
+    };
+  }  // namespace __schedule_from
+
+  template <>
+  struct __facade::__algorithm<schedule_from_t> : __schedule_from::__algo
+  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
