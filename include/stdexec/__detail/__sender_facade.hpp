@@ -405,10 +405,15 @@ namespace STDEXEC
     // the operation state discard them.
 
     // The receiver of a child operation that the facade connects. (Child
-    // operations are stored outside the algorithm's state.) _Sender and _Env
-    // are the algorithm's sender and the environment of the receiver connected
-    // to it.
-    template <class _Algo, class _Key, class _State, class _Sender, class _Env>
+    // operations are stored outside the algorithm's state.) _Env is the type of
+    // its environment, __env_t<_Algo, _Key, _Sender, env_of_t<_Receiver>> for
+    // the algorithm's sender and receiver.
+    //
+    // (The receiver's type does not name the algorithm's sender. Each child
+    // operation names its receiver, and the algorithm's operation names every
+    // child operation, so its type, and the debug info that names it, would
+    // grow with the square of the sender's size.)
+    template <class _Algo, class _Key, class _State, class _Env>
     struct __receiver : _Algo::__receiver_base
     {
       using receiver_concept = receiver_tag;
@@ -439,10 +444,9 @@ namespace STDEXEC
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto get_env() const noexcept -> __facade::__env_t<_Algo, _Key, _Sender, _Env>
+      constexpr auto get_env() const noexcept -> _Env
       {
-        using __env_t = __facade::__env_t<_Algo, _Key, _Sender, _Env>;
-        static_assert(__same_as<decltype(_Algo::__get_env(_Key(), *__state_)), __env_t>,
+        static_assert(__same_as<decltype(_Algo::__get_env(_Key(), *__state_)), _Env>,
                       "__get_env and __env_for must produce environments of the same type");
         return _Algo::__get_env(_Key(), *__state_);
       }
@@ -457,7 +461,7 @@ namespace STDEXEC
     // its receiver's member functions, for example when the operation
     // type-erases its receiver, and the state is incomplete while that type is
     // computed. Clang instantiates constexpr functions eagerly.)
-    template <class _Algo, class _Key, class _State, class _Sender, class _Env>
+    template <class _Algo, class _Key, class _State, class _Env>
     struct __nested_receiver : _Algo::__receiver_base
     {
       using receiver_concept = receiver_tag;
@@ -488,10 +492,9 @@ namespace STDEXEC
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      auto get_env() const noexcept -> __facade::__env_t<_Algo, _Key, _Sender, _Env>
+      auto get_env() const noexcept -> _Env
       {
-        using __env_t = __facade::__env_t<_Algo, _Key, _Sender, _Env>;
-        static_assert(__same_as<decltype(_Algo::__get_env(_Key(), *__state_)), __env_t>,
+        static_assert(__same_as<decltype(_Algo::__get_env(_Key(), *__state_)), _Env>,
                       "__get_env and __env_for must produce environments of the same type");
         return _Algo::__get_env(_Key(), *__state_);
       }
@@ -519,7 +522,10 @@ namespace STDEXEC
     template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
     struct __receiver_of
     {
-      using __t = __nested_receiver<_Algo, _Key, _State, _Sender, env_of_t<_Receiver>>;
+      using __t = __nested_receiver<_Algo,
+                                    _Key,
+                                    _State,
+                                    __facade::__env_t<_Algo, _Key, _Sender, env_of_t<_Receiver>>>;
     };
 
     template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
@@ -573,7 +579,10 @@ namespace STDEXEC
 
       template <std::size_t _Idx>
       using __receiver_t =
-        __facade::__receiver<_Algo, __child<_Idx>, __state_t, _Sender, env_of_t<_Receiver>>;
+        __facade::__receiver<_Algo,
+                             __child<_Idx>,
+                             __state_t,
+                             __facade::__env_t<_Algo, __child<_Idx>, _Sender, env_of_t<_Receiver>>>;
 
       template <std::size_t _Idx>
       using __op_t = decltype(_Algo::__connect(__child<_Idx>(),

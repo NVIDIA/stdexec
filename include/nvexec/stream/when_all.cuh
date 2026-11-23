@@ -21,7 +21,6 @@
 #include "../../exec/stoppable_base.hpp"
 #include "../../stdexec/execution.hpp"
 
-#include "../../exec/completion_signatures.hpp"
 #include "../detail/event.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
@@ -29,6 +28,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -37,6 +37,11 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace nv::execution::_strm
 {
+  // when_all as a facade algorithm. The stream_domain customizes when_all(sndrs...) by
+  // re-tagging it with this tag (see transform_sender_for<when_all_t> below).
+  struct when_all_t : stream_tag_base
+  {};
+
   namespace _when_all
   {
     using STDEXEC::__when_all::_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_;
@@ -49,19 +54,6 @@ namespace nv::execution::_strm
       stopped
     };
 
-    template <class Env>
-    using env_t = STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, Env>;
-
-    template <class Sender, class... Env>
-    concept valid_child_sender = sender_in<Sender, Env...> && requires {
-      requires(STDEXEC::__count_of<set_value_t, Sender, Env...>::value <= 1);
-    };
-
-    template <class Sender, class... Env>
-    concept too_many_completions_sender = sender_in<Sender, Env...> && requires {
-      requires(STDEXEC::__count_of<set_value_t, Sender, Env...>::value > 1);
-    };
-
     template <class... Args, class TupleT>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
     __global__ void copy_kernel(TupleT* tpl, Args... args)
@@ -70,480 +62,462 @@ namespace nv::execution::_strm
       *tpl = __decayed_tuple<Args...>{static_cast<Args&&>(args)...};
     }
 
-    template <class Env, class... Senders>
-    struct completions
-    {};
+    // The environment of a child: the stop token of when_all's stop source, and the
+    // child's own stream
+    template <class Env>
+    using local_env_t = STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, Env>;
 
-    template <class... Env, class... Senders>
-      requires(too_many_completions_sender<Senders, Env...> || ...)
-    struct completions<__mlist<Env...>, Senders...>
+    template <class Env>
+    using child_env_t = terminal_stream_env_t<local_env_t<Env>>;
+
+    // A child's stream, as connect_stream_child needs it
+    struct stream_view
     {
-      using __t =
-        __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                     _WHERE_(_IN_ALGORITHM_, when_all_t),
-                     _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
-                     _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>;
-    };
-
-    template <class... Env, class... Senders>
-      requires(valid_child_sender<Senders, Env...> && ...)
-    struct completions<__mlist<Env...>, Senders...>
-    {
-      using non_values_t = __minvoke_q<
-        __concat_completion_signatures_t,
-        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-        __transform_completion_signatures_t<__completion_signatures_of_t<Senders, Env...>,
-                                            completion_signatures<>,
-                                            __mconst<completion_signatures<>>::__f>...>;
-
-      using values_t = __minvoke<__mconcat<__qf<set_value_t>>,
-                                 __value_types_t<__completion_signatures_of_t<Senders, Env...>,
-                                                 __q<__mlist>,
-                                                 __msingle_or<__mlist<>>>...>;
-
-      using __t =
-        __if_c<(__sends<set_value_t, Senders, Env...> && ...),
-               __minvoke<__mpush_back<__q<completion_signatures>>, non_values_t, values_t>,
-               non_values_t>;
-    };
-
-    inline constexpr auto _sync_op = []<class OpT>(OpT& op) noexcept
-    {
-      if constexpr (STDEXEC_IS_BASE_OF(stream_opstate_base, OpT))
+      [[nodiscard]]
+      auto get_stream() const -> cudaStream_t
       {
-        if (op.stream_provider_.status_ == cudaSuccess)
-        {
-          op.stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
-            cudaStreamSynchronize(op.get_stream()));
-        }
-      }
-    };
-  }  // namespace _when_all
-
-  template <class WhenAllTag, class Scheduler, class... Senders>
-  struct when_all_sender : stream_sender_base
-  {
-   private:
-    struct attrs;
-
-    template <class CvReceiver>
-    struct opstate;
-
-    template <class Cv, class... Env>
-    using _completions_t = STDEXEC::__t<
-      _when_all::completions<__mlist<_when_all::env_t<Env>...>, __copy_cvref_t<Cv, Senders>...>>;
-
-   public:
-    template <class... Sndrs>
-    explicit when_all_sender(context ctx, Sndrs&&... sndrs)
-      : attrs_{ctx}
-      , sndrs_{static_cast<Sndrs&&>(sndrs)...}
-    {}
-
-    template <__decays_to<when_all_sender> Self, receiver Receiver>
-    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
-      -> opstate<__copy_cvref_t<Self, Receiver>>
-    {
-      return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
-    }
-    STDEXEC_EXPLICIT_THIS_END(connect)
-
-    template <__decays_to<when_all_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> _completions_t<Self, Env...>
-    {
-      return {};
-    }
-
-    [[nodiscard]]
-    auto get_env() const noexcept -> attrs const &
-    {
-      return attrs_;
-    }
-
-   private:
-    struct attrs
-    {
-      template <class... Env>
-      using sched_domain_t = __call_result_or_t<get_completion_domain_t<set_value_t>,
-                                                indeterminate_domain<>,
-                                                Scheduler,
-                                                Env...>;
-
-      auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
-        requires STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>
-      {
-        return Scheduler(ctx_);
-      }
-
-      template <class... Env>
-      constexpr auto query(get_completion_domain_t<set_value_t>, Env const &...) const noexcept
-      {
-        if constexpr (STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>)
-        {
-          return sched_domain_t<Env...>{};
-        }
-        else
-        {
-          static_assert(sizeof...(Senders) == 0
-                        || STDEXEC::__same_as<
-                          stream_domain,
-                          __common_domain_t<
-                            STDEXEC::__completion_domain_of_t<set_value_t, Senders, Env...>...>>);
-          return stream_domain{};
-        }
-      }
-
-      context ctx_;
-    };
-
-    template <class CvReceiver, std::size_t Index>
-    struct receiver : stream_receiver_base
-    {
-      using receiver_concept  = STDEXEC::receiver_tag;
-      using when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
-      using receiver_t        = __decay_t<CvReceiver>;
-      using sender_t          = __m_at_c<Index, Senders...>;
-      using completions_t     = when_all_sender::_completions_t<CvReceiver, env_of_t<receiver_t>>;
-      using local_env_t =
-        STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<receiver_t>>;
-      using env_t = make_terminal_stream_env_t<local_env_t>;
-
-      template <class... Values>
-      STDEXEC_ATTRIBUTE(always_inline)
-      void set_value(Values&&... vals) && noexcept
-      {
-        opstate_->template _set_value<Index>(static_cast<Values&&>(vals)...);
-      }
-
-      template <class Error>
-      STDEXEC_ATTRIBUTE(always_inline)
-      void set_error(Error&& err) && noexcept
-      {
-        opstate_->_set_error(static_cast<Error&&>(err));
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline) void set_stopped() && noexcept
-      {
-        opstate_->_set_stopped();
+        return provider_->own_stream_.value();
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> env_t
+      auto get_stream_context() const -> context
       {
-        return make_terminal_stream_env(
-          local_env_t{
-            STDEXEC::prop{get_stop_token, opstate_->stop_source_.get_token()},
-            STDEXEC::get_env(opstate_->rcvr_)
-        },
-          &const_cast<stream_provider&>(opstate_->stream_providers_[Index]));
+        return provider_->context_;
       }
 
-      opstate<CvReceiver>* opstate_;
+      context          ctx_;
+      stream_provider* provider_;
     };
 
-    template <class CvReceiver>
-    struct opstate
-      : stream_opstate_base
-      , private ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<__decay_t<CvReceiver>>>,
-                                             opstate<CvReceiver>>
+    template <class Sig>
+    struct value_of
     {
-     private:
-      using _when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
-      using _receiver_t        = __decay_t<CvReceiver>;
-      using _stop_base_t =
-        ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<_receiver_t>>, opstate>;
-      friend _stop_base_t;
+      using __t = __mlist<>;
+    };
 
+    template <class... Vs>
+    struct value_of<set_value_t(Vs...)>
+    {
+      using __t = __mlist<__decayed_tuple<Vs...>>;
+    };
+
+    template <class Sig>
+    struct error_of
+    {
+      using __t = __mlist<>;
+    };
+
+    template <class Error>
+    struct error_of<set_error_t(Error)>
+    {
+      using __t = __mlist<__decay_t<Error>>;
+    };
+
+    template <class Sigs>
+    struct child_results;
+
+    template <class... Sigs>
+    struct child_results<completion_signatures<Sigs...>>
+    {
+      using values_t = __mcall<__mconcat<>, typename value_of<Sigs>::__t...>;
+      using errors_t = __mcall<__mconcat<>, typename error_of<Sigs>::__t...>;
+    };
+
+    struct algo;
+
+    // The types of when_all's state, computed from the children's completions
+    template <class Sender, class Receiver, class Indices>
+    struct traits;
+
+    template <class Sender, class Receiver, std::size_t... Is>
+    struct traits<Sender, Receiver, __indices<Is...>>
+    {
+      template <std::size_t I>
+      using sigs_t =
+        STDEXEC::__facade::__completions_of_t<algo, STDEXEC::__facade::__child<I>, Sender, Receiver>;
+
+      static constexpr bool too_many_values = ((sigs_t<Is>::__count(set_value) > 1) || ...);
+      static constexpr bool all_send_values = ((sigs_t<Is>::__count(set_value) == 1) && ...);
+      static constexpr bool sends_stopped   = ((sigs_t<Is>::__count(set_stopped) != 0) || ...);
+
+      // A tuple of the children's value tuples, if each child can complete with values
+      using values_t =
+        __if_c<all_send_values,
+               __mcall<__mconcat<__qq<__tuple>>, typename child_results<sigs_t<Is>>::values_t...>,
+               __ignore>;
+
+      using errors_t = __mcall<__mconcat<__qq<__uniqued_variant>>,
+                               typename child_results<sigs_t<Is>>::errors_t...>;
+    };
+
+    template <class Sender, class Receiver>
+    using traits_t =
+      traits<Sender, Receiver, __make_indices<STDEXEC::__facade::__nbr_children_v<Sender>>>;
+
+    template <class Sender, class Receiver>
+    struct state
+      : ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>, state<Sender, Receiver>>
+    {
+      using receiver_t                 = Receiver;
+      using traits_t                   = _when_all::traits_t<Sender, Receiver>;
+      using values_t                   = traits_t::values_t;
+      using errors_t                   = traits_t::errors_t;
+      static constexpr std::size_t nbr = STDEXEC::__facade::__nbr_children_v<Sender>;
+
+      template <class... Contexts>
+      explicit state(Receiver rcvr, Contexts... ctxs)
+        : rcvr_(static_cast<Receiver&&>(rcvr))
+        , stream_providers_{ctxs...}
+      {
+        if constexpr (!__same_as<values_t, __ignore>)
+        {
+          status_ = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&values_, sizeof(values_t)));
+        }
+      }
+
+      ~state()
+      {
+        if (values_ != nullptr)
+        {
+          STDEXEC_ASSERT_CUDA_API(cudaFree(values_));
+        }
+      }
+
+      STDEXEC_IMMOVABLE(state);
+
+      // Called when the receiver's stop token is stopped
       void on_stop_requested() noexcept
       {
         stop_source_.request_stop();
       }
 
-     public:
-      opstate(_when_all_sender_t&& sndr, _receiver_t rcvr)
-        : rcvr_(static_cast<_receiver_t&&>(rcvr))
-        , stream_providers_{opstate::_get_stream_providers(sndr, rcvr_)}
-        , child_states_{
-            opstate::_connect_children(this, static_cast<_when_all_sender_t&&>(sndr), _indices_t{})}
+      void register_stop_callback() noexcept
       {
-        status_ = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&values_, sizeof(_child_values_t)));
-      }
-
-      ~opstate()
-      {
-        STDEXEC_ASSERT_CUDA_API(cudaFree(values_));
-      }
-
-      STDEXEC_IMMOVABLE(opstate);
-
-      void start() & noexcept
-      {
-        // register stop callback:
         this->register_stoppable(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
-        if (stop_source_.stop_requested())
-        {
-          // Stop has already been requested. Don't bother starting
-          // the child operations.
-          STDEXEC::set_stopped(static_cast<_receiver_t&&>(rcvr_));
-        }
+      }
+
+      void deregister_stop_callback() noexcept
+      {
+        this->deregister_stoppable();
+      }
+
+      Receiver                            rcvr_;
+      cudaError_t                         status_{cudaSuccess};
+      std::atomic<std::size_t>            count_{nbr};
+      std::array<stream_provider, nbr>    stream_providers_;
+      std::array<detail::cuda_event, nbr> events_{};
+      std::array<cudaError_t, nbr>        statuses_{};  // all initialized to cudaSuccess
+      std::atomic<disposition>            disp_{started};
+      errors_t                            errors_{__no_init};
+      __if_c<__same_as<values_t, __ignore>, void, values_t>* values_{};
+      inplace_stop_source                                    stop_source_{};
+    };
+
+    // when_all(sndrs...): the children run concurrently, each on its own stream, and the last
+    // one to complete completes the operation, once the streams have finished their work:
+    // with all their values if each child succeeded, and otherwise with an error or stopped.
+    // An error or stopped requests stop on a stop source whose token the children see.
+    struct algo : stream_algorithm
+    {
+      using stream_algorithm::__env_for;
+      using stream_algorithm::__get_env;
+
+      template <std::size_t I, class Sender, class Env>
+      static auto __env_for(STDEXEC::__facade::__child<I>, Sender const &, Env&& env) noexcept
+        -> child_env_t<Env>
+      {
+        return _strm::make_terminal_stream_env(
+          local_env_t<Env>{
+            STDEXEC::prop{get_stop_token, inplace_stop_token{}},
+            static_cast<Env&&>(env)
+        },
+          static_cast<stream_provider*>(nullptr));
+      }
+
+      template <std::size_t I, class State>
+      static auto __get_env(STDEXEC::__facade::__child<I>, State const & state) noexcept
+        -> child_env_t<env_of_t<typename State::receiver_t>>
+      {
+        using env_t = env_of_t<typename State::receiver_t>;
+        return _strm::make_terminal_stream_env(
+          local_env_t<env_t>{
+            STDEXEC::prop{get_stop_token, state.stop_source_.get_token()},
+            STDEXEC::get_env(state.rcvr_)
+        },
+          &const_cast<stream_provider&>(state.stream_providers_[I]));
+      }
+
+      // The children run on their own streams.
+      template <std::size_t I, class State, class Sender, class Receiver>
+      static auto
+      __connect(STDEXEC::__facade::__child<I>, State& state, Sender&& sndr, Receiver rcvr)
+        -> stream_child_op_t<Sender, Receiver>
+      {
+        stream_provider& provider = state.stream_providers_[I];
+        stream_view      view{provider.context_, &provider};
+        return _strm::connect_stream_child(view,
+                                           static_cast<Sender&&>(sndr),
+                                           static_cast<Receiver&&>(rcvr));
+      }
+
+      // A child that completes successfully in more than one way is an error: use
+      // when_all_with_variant instead. (Not __if_c, which propagates an error argument.)
+      template <class Sender, class Receiver>
+      using _state_t = std::conditional_t<
+        traits_t<Sender, Receiver>::too_many_values,
+        __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                     _WHERE_(_IN_ALGORITHM_, STDEXEC::when_all_t),
+                     _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                     _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>,
+        state<Sender, Receiver>>;
+
+      template <class Sender, class Receiver>
+      static auto __get_state(Sender&& sndr, Receiver rcvr) -> _state_t<Sender, Receiver>
+      {
+        if constexpr (traits_t<Sender, Receiver>::too_many_values)
+          return {};
         else
+          return algo::_make_state(sndr,
+                                   rcvr,
+                                   __make_indices<STDEXEC::__facade::__nbr_children_v<Sender>>());
+      }
+
+      template <class State, class Children>
+      static auto __start(State& state, Children& children) noexcept
+      {
+        state.register_stop_callback();
+        // If stop has already been requested, don't bother starting the children.
+        return STDEXEC::__facade::__choose(
+          state.stop_source_.stop_requested(),
+          [&]() noexcept { return STDEXEC::__facade::__send(state.rcvr_, set_stopped_t()); },
+          [&]() noexcept { return children.__start_all(); });
+      }
+
+      // A child completed with values. Copy them, on the child's stream, unless the operation
+      // has failed.
+      template <std::size_t I, class State, class... Args>
+      static auto
+      __complete(STDEXEC::__facade::__child<I>, State& state, set_value_t, Args&&... args) noexcept
+      {
+        if constexpr (!__same_as<typename State::values_t, __ignore>)
         {
-          STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, child_states_);
-          if constexpr (sizeof...(Senders) == 0)
+          if (state.disp_.load() == started && state.values_ != nullptr)
           {
-            _complete();
+            cudaStream_t stream = state.stream_providers_[I].own_stream_.value();
+            if constexpr (sizeof...(Args) != 0)
+            {
+              copy_kernel<Args&&...><<<1, 1, 0, stream>>>(&STDEXEC::__get<I>(*state.values_),
+                                                          static_cast<Args&&>(args)...);
+              state.statuses_[I] = cudaGetLastError();
+            }
+
+            if constexpr (stream_receiver<typename State::receiver_t>)
+            {
+              if (state.statuses_[I] == cudaSuccess)
+              {
+                state.statuses_[I] = state.events_[I].try_record(stream);
+              }
+            }
           }
         }
+        return algo::_arrive(state);
+      }
+
+      // A child failed. The operation cannot complete with values now.
+      template <std::size_t I, class State, class Error>
+      static auto
+      __complete(STDEXEC::__facade::__child<I>, State& state, set_error_t, Error&& err) noexcept
+      {
+        // Transition to the "error" state and switch on the prior state.
+        switch (state.disp_.exchange(error))
+        {
+        case started:
+          // We must request stop. When the previous state is "error" or "stopped", then stop
+          // has already been requested.
+          state.stop_source_.request_stop();
+          [[fallthrough]];
+        case stopped:
+          // We are the first child to complete with an error, so we must save the error.
+          // (Any subsequent errors are ignored.)
+          static_assert(__nothrow_constructible_from<__decay_t<Error>, Error>);
+          state.errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
+          break;
+        case error:;  // We're already in the "error" state. Ignore the error.
+        }
+        return algo::_arrive(state);
+      }
+
+      template <std::size_t I, class State>
+      static auto __complete(STDEXEC::__facade::__child<I>, State& state, set_stopped_t) noexcept
+      {
+        auto expected = started;
+        // Transition to the "stopped" state if and only if we're in the "started" state. (If
+        // this fails, it's because we're in an error state, which trumps cancellation.)
+        if (state.disp_.compare_exchange_strong(expected, stopped))
+        {
+          state.stop_source_.request_stop();
+        }
+        return algo::_arrive(state);
       }
 
      private:
-      template <class, std::size_t>
-      friend struct receiver;
-
-      using _env_t              = env_of_t<_receiver_t>;
-      using _completions_t      = when_all_sender::_completions_t<CvReceiver, _env_t>;
-      using _indices_t          = __indices_for<Senders...>;
-      using _stream_providers_t = std::array<stream_provider, sizeof...(Senders)>;
-
-      template <class Sender, std::size_t Index>
-      using _child_opstate_t =
-        exit_opstate_t<__copy_cvref_t<_when_all_sender_t, Sender>, receiver<CvReceiver, Index>>;
-
-      // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
-      using _child_values_t = __if_c<_completions_t::__count(set_value_t()) != 0,
-                                     __minvoke<__qq<__tuple>,
-                                               __value_types_of_t<Senders,
-                                                                  _when_all::env_t<_env_t>,
-                                                                  __qq<__decayed_tuple>,
-                                                                  __msingle_or<void>>...>,
-                                     __>;
-
-      using _errors_t =
-        error_types_of_t<when_all_sender, _when_all::env_t<_env_t>, __uniqued_variant>;
-
-      template <size_t... Is>
+      template <class Sender, class Receiver, std::size_t... Is>
       static auto
-      _connect_children(opstate* parent_op, _when_all_sender_t&& when_all, __indices<Is...>)
-        -> __tuple<_child_opstate_t<Senders, Is>...>
+      _make_state(Sender& sndr, Receiver& rcvr, __indices<Is...>) -> state<Sender, Receiver>
       {
-        using _child_opstates_t = __tuple<_child_opstate_t<Senders, Is>...>;
-        return STDEXEC::__apply(
-          [parent_op]<class... Children>(Children&&... children) -> _child_opstates_t
-          {
-            return _child_opstates_t{_strm::exit_opstate(
-              static_cast<Children&&>(children),
-              receiver<CvReceiver, Is>{{}, parent_op},
-              STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(children),
-                                                             STDEXEC::get_env(parent_op->rcvr_))
-                .ctx_)...};
-          },
-          static_cast<_when_all_sender_t&&>(when_all).sndrs_);
+        return state<Sender, Receiver>(static_cast<Receiver&&>(rcvr),
+                                       algo::_child_context<Is>(sndr, rcvr)...);
       }
 
-      using _child_opstates_t =
-        decltype(opstate::_connect_children({}, __declval<_when_all_sender_t>(), _indices_t{}));
-
-      void _arrive() noexcept
+      // The context of the scheduler on which the child completes, whose stream it uses
+      template <std::size_t I, class Sender, class Receiver>
+      static auto _child_context(Sender const & sndr, Receiver const & rcvr) -> context
       {
-        if (1 == count_.fetch_sub(1))
-        {
-          _complete();
-        }
+        return STDEXEC::get_completion_scheduler<set_value_t>(
+                 STDEXEC::__facade::__nested_attrs_of<algo>(STDEXEC::__facade::__child<I>(),
+                                                            sndr,
+                                                            STDEXEC::get_env(rcvr)),
+                 algo::__env_for(STDEXEC::__facade::__child<I>(), sndr, STDEXEC::get_env(rcvr)))
+          .ctx_;
       }
 
-      void _complete() noexcept
+      // Is this the last child to complete? If so, it completes the operation.
+      template <class State>
+      static auto _arrive(State& state) noexcept
       {
+        return STDEXEC::__facade::__when(1 == state.count_.fetch_sub(1),
+                                         [&]() noexcept { return algo::_complete(state); });
+      }
+
+      template <class State>
+      static auto _complete(State& state) noexcept
+      {
+        using receiver_t = State::receiver_t;
+
         // Stop callback is no longer needed. Deregister it.
-        this->deregister_stoppable();
+        state.deregister_stop_callback();
 
         // See if any child operations completed with an error status:
-        for (auto status: statuses_)
+        for (auto status: state.statuses_)
         {
           if (status != cudaSuccess)
           {
-            status_ = status;
+            state.status_ = status;
             break;
           }
         }
 
-        // Synchronize streams
-        if (status_ == cudaSuccess)
+        // Wait for the children's streams
+        if (state.status_ == cudaSuccess)
         {
-          if constexpr (stream_receiver<_receiver_t>)
+          if constexpr (stream_receiver<receiver_t>
+                        && __callable<get_stream_provider_t, env_of_t<receiver_t> const &>)
           {
-            auto             env             = STDEXEC::get_env(rcvr_);
-            stream_provider* stream_provider = get_stream_provider(env);
-            cudaStream_t     stream          = *stream_provider->own_stream_;
+            auto             env      = STDEXEC::get_env(state.rcvr_);
+            stream_provider* provider = get_stream_provider(env);
+            cudaStream_t     stream   = *provider->own_stream_;
 
-            for (int i = 0; i < sizeof...(Senders); ++i)
+            for (auto& event: state.events_)
             {
-              if (status_ == cudaSuccess)
+              if (state.status_ == cudaSuccess)
               {
-                status_ = events_[i].try_wait(stream);
+                state.status_ = event.try_wait(stream);
               }
             }
           }
           else
           {
-            // Synchronize the streams of all the child operations
-            STDEXEC::__apply(STDEXEC::__for_each{_when_all::_sync_op}, child_states_);
-          }
-        }
-
-        if (status_ == cudaSuccess)
-        {
-          // All child operations have completed and arrived at the barrier.
-          switch (state_.load(std::memory_order_relaxed))
-          {
-          case _when_all::started:
-            if constexpr (_completions_t::__count(set_value_t()) != 0)
+            for (auto& provider: state.stream_providers_)
             {
-              // All child operations completed successfully:
-              STDEXEC::__apply(
-                [this]<class... Tuples>(Tuples&&... value_tupls) noexcept -> void
-                {
-                  STDEXEC::__cat_apply(__mk_completion_fn(STDEXEC::set_value, rcvr_),
-                                       static_cast<Tuples&&>(value_tupls)...);
-                },
-                static_cast<_child_values_t&&>(*values_));
-            }
-            break;
-          case _when_all::error:
-            STDEXEC::__visit(__mk_completion_fn(STDEXEC::set_error, rcvr_),
-                             static_cast<_errors_t&&>(errors_));
-            break;
-          case _when_all::stopped:
-            STDEXEC::set_stopped(static_cast<_receiver_t&&>(rcvr_));
-            break;
-          default:;
-          }
-        }
-        else
-        {
-          STDEXEC::set_error(static_cast<_receiver_t&&>(rcvr_), std::move(status_));
-        }
-      }
-
-      static auto
-      _get_stream_providers(_when_all_sender_t& when_all, _receiver_t& rcvr) -> _stream_providers_t
-      {
-        return STDEXEC::__apply(
-          [](auto& rcvr, auto&... sndrs) -> _stream_providers_t
-          {
-            return _stream_providers_t{
-              STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(sndrs),
-                                                             STDEXEC::get_env(rcvr))
-                .ctx_...};
-          },
-          when_all.sndrs_,
-          rcvr);
-      }
-
-      template <class Error>
-      void _set_error_impl(Error&& err) noexcept
-      {
-        // Transition to the "error" state and switch on the prior state.
-        // TODO: What memory orderings are actually needed here?
-        switch (state_.exchange(_when_all::error))
-        {
-        case _when_all::started:
-          // We must request stop. When the previous state is "error" or "stopped", then stop
-          // has already been requested.
-          stop_source_.request_stop();
-          [[fallthrough]];
-        case _when_all::stopped:
-          // We are the first child to complete with an error, so we must save the error.
-          // (Any subsequent errors are ignored.)
-          static_assert(__nothrow_constructible_from<__decay_t<Error>, Error>);
-          errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
-          break;
-        case _when_all::error:;  // We're already in the "error" state. Ignore the error.
-        }
-      }
-
-      template <std::size_t Index, class... Args>
-      void _set_value(Args&&... args) noexcept
-      {
-        if constexpr (_completions_t::__count(set_value_t()) != 0)
-        {
-          // We only need to bother recording the completion values
-          // if we're not already in the "error" or "stopped" state.
-          if (state_.load() == _when_all::started)
-          {
-            cudaStream_t stream = STDEXEC::__get<Index>(child_states_).get_stream();
-            if constexpr (sizeof...(Args))
-            {
-              _when_all::copy_kernel<Args&&...>
-                <<<1, 1, 0, stream>>>(&STDEXEC::__get<Index>(*values_),
-                                      static_cast<Args&&>(args)...);
-              statuses_[Index] = cudaGetLastError();
-            }
-
-            if constexpr (stream_receiver<_receiver_t>)
-            {
-              if (statuses_[Index] == cudaSuccess)
+              if (state.status_ == cudaSuccess)
               {
-                statuses_[Index] = events_[Index].try_record(stream);
+                state.status_ = STDEXEC_LOG_CUDA_API(
+                  cudaStreamSynchronize(provider.own_stream_.value()));
               }
             }
           }
         }
-        _arrive();
+
+        return STDEXEC::__facade::__choose(
+          state.status_ == cudaSuccess,
+          [&]() noexcept
+          {
+            auto const disp = state.disp_.load(std::memory_order_relaxed);
+            return STDEXEC::__facade::__choose(
+              disp == started,
+              [&]() noexcept { return algo::_send_values(state); },
+              [&]() noexcept
+              {
+                return STDEXEC::__facade::__choose(
+                  disp == error,
+                  [&]() noexcept { return algo::_send_error(state); },
+                  [&]() noexcept { return algo::_send_stopped(state); });
+              });
+          },
+          [&]() noexcept
+          {
+            return STDEXEC::__facade::__send(state.rcvr_,
+                                             set_error_t(),
+                                             cudaError_t(state.status_));
+          });
       }
 
-      template <class Error>
-      void _set_error(Error&& err) noexcept
+      template <class State>
+      static auto _send_values(State& state) noexcept
       {
-        _set_error_impl(static_cast<Error&&>(err));
-        _arrive();
-      }
-
-      void _set_stopped() noexcept
-      {
-        auto expected = _when_all::started;
-        // Transition to the "stopped" state if and only if we're in the
-        // "started" state. (If this fails, it's because we're in an
-        // error state, which trumps cancellation.)
-        if (state_.compare_exchange_strong(expected, _when_all::stopped))
+        if constexpr (__same_as<typename State::values_t, __ignore>)
         {
-          stop_source_.request_stop();
+          // Unreachable: some child cannot complete with a value, so the operation cannot.
+          return STDEXEC::__facade::__effects<>();
         }
-        _arrive();
+        else
+        {
+          return STDEXEC::__apply(
+            [&]<class... Tuples>(Tuples&... tupls) noexcept
+            {
+              return STDEXEC::__cat_apply(
+                [&]<class... Vs>(Vs&&... vs) noexcept
+                {
+                  return STDEXEC::__facade::__send(state.rcvr_,
+                                                   set_value_t(),
+                                                   static_cast<Vs&&>(vs)...);
+                },
+                static_cast<Tuples&&>(tupls)...);
+            },
+            *state.values_);
+        }
       }
 
-      _receiver_t                                        rcvr_;
-      cudaError_t                                        status_{cudaSuccess};
-      std::atomic<std::size_t>                           count_{sizeof...(Senders)};
-      std::array<stream_provider, sizeof...(Senders)>    stream_providers_;
-      std::array<detail::cuda_event, sizeof...(Senders)> events_{};
-      std::array<cudaError_t, sizeof...(Senders)> statuses_{};  // all initialized to cudaSuccess
-      _child_opstates_t                           child_states_;
-      // Could be non-atomic here and atomic_ref everywhere except __completion_fn
-      std::atomic<_when_all::disposition> state_{_when_all::started};
+      template <class State>
+      static auto _send_error(State& state) noexcept
+      {
+        return STDEXEC::__facade::__visit(
+          state.errors_,
+          [&]<class Error>(Error& err) noexcept
+          {
+            return STDEXEC::__facade::__send(state.rcvr_, set_error_t(), static_cast<Error&&>(err));
+          });
+      }
 
-      _errors_t           errors_{__no_init};
-      _child_values_t*    values_{};
-      inplace_stop_source stop_source_{};
+      template <class State>
+      static auto _send_stopped(State& state) noexcept
+      {
+        return STDEXEC::__facade::__send(state.rcvr_, set_stopped_t());
+      }
     };
-
-    attrs                        attrs_;
-    STDEXEC::__tuple<Senders...> sndrs_;
-  };
+  }  // namespace _when_all
 
   template <>
   struct transform_sender_for<STDEXEC::when_all_t>
   {
-    template <class Env, class... CvSenders>
-    constexpr auto operator()(Env const &, __ignore, __ignore, CvSenders&&... sndrs) const
+    template <class Env, class Data, class... CvSenders>
+    constexpr auto operator()(Env const &, __ignore, Data&& data, CvSenders&&... sndrs) const
     {
       if constexpr ((stream_completing_sender<CvSenders, Env> && ...))
       {
-        using sender_t =
-          when_all_sender<STDEXEC::when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
-        return sender_t{
-          context{nullptr, nullptr, nullptr, nullptr},
-          static_cast<CvSenders&&>(sndrs)...
-        };
+        return STDEXEC::__facade::__sender{_strm::when_all_t(),
+                                           static_cast<Data&&>(data),
+                                           static_cast<CvSenders&&>(sndrs)...};
       }
       else
       {
@@ -555,21 +529,12 @@ namespace nv::execution::_strm
       }
     }
   };
-
-  template <>
-  struct transform_sender_for<STDEXEC::__transfer_when_all_t>
-  {
-    template <class Env,
-              gpu_stream_scheduler<Env> Scheduler,
-              stream_completing_sender<Env>... CvSenders>
-    auto operator()(Env const &, __ignore, Scheduler sched, CvSenders&&... sndrs) const
-    {
-      using sender_t =
-        when_all_sender<STDEXEC::__transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
-      return sender_t{sched.ctx_, static_cast<CvSenders&&>(sndrs)...};
-    }
-  };
 }  // namespace nv::execution::_strm
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::when_all_t>
+  : nv::execution::_strm::_when_all::algo
+{};
 
 namespace nvexec = nv::execution;
 
