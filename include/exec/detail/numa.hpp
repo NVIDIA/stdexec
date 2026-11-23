@@ -133,27 +133,6 @@ namespace experimental::execution
     std::size_t num_cpus = ::numa_bitmask_weight(cpus);
     return num_cpus;
   }
-
-  struct _node_to_thread_index
-  {
-    static std::vector<int> const &get() noexcept
-    {
-      // This leaks one memory block at shutdown, but it's fine. Clang's and
-      // gcc's leak sanitizer do not report it.
-      static STDEXEC::__indestructible<std::vector<int>> const g_node_to_thread_index{
-        []
-        {
-          std::vector<int> index(::numa_num_task_nodes());
-          for (std::size_t node = 0, total_cpus = 0; node < index.size(); ++node)
-          {
-            total_cpus += exec::_get_numa_num_cpus(static_cast<int>(node));
-            index[node] = static_cast<int>(total_cpus);
-          }
-          return index;
-        }()};
-      return g_node_to_thread_index.get();
-    }
-  };
 }  // namespace experimental::execution
 
 STDEXEC_MODULE_EXPORT
@@ -161,10 +140,25 @@ namespace experimental::execution
 {
   struct default_numa_policy
   {
+    // The table of cumulative CPU counts is owned by the policy, and so by the
+    // pool that holds the policy, rather than by a global. A global would have
+    // to outlive every pool, including ones with static storage duration, which
+    // is only possible by never destroying it, and that leaks it every time a
+    // shared library using the pool is unloaded.
+    default_numa_policy()
+      : node_to_thread_index_(static_cast<std::size_t>(::numa_num_task_nodes()))
+    {
+      for (std::size_t node = 0, total_cpus = 0; node < node_to_thread_index_.size(); ++node)
+      {
+        total_cpus += exec::_get_numa_num_cpus(static_cast<int>(node));
+        node_to_thread_index_[node] = static_cast<int>(total_cpus);
+      }
+    }
+
     [[nodiscard]]
     std::size_t num_nodes() const noexcept
     {
-      return _node_to_thread_index::get().size();
+      return node_to_thread_index_.size();
     }
 
     [[nodiscard]]
@@ -189,12 +183,14 @@ namespace experimental::execution
     [[nodiscard]]
     int thread_index_to_node(std::size_t idx) const noexcept
     {
-      auto const &node_to_thread_index = _node_to_thread_index::get();
-      int         index                = static_cast<int>(idx) % node_to_thread_index.back();
-      auto it = std::upper_bound(node_to_thread_index.begin(), node_to_thread_index.end(), index);
-      STDEXEC_ASSERT(it != node_to_thread_index.end());
-      return static_cast<int>(std::distance(node_to_thread_index.begin(), it));
+      int  index = static_cast<int>(idx) % node_to_thread_index_.back();
+      auto it = std::upper_bound(node_to_thread_index_.begin(), node_to_thread_index_.end(), index);
+      STDEXEC_ASSERT(it != node_to_thread_index_.end());
+      return static_cast<int>(std::distance(node_to_thread_index_.begin(), it));
     }
+
+   private:
+    std::vector<int> node_to_thread_index_;
   };
 
   inline numa_policy get_numa_policy() noexcept
