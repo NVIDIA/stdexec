@@ -363,6 +363,9 @@ namespace
   static_assert(
     has_sigs_v<decltype(ex::then(ex::just(1), may_throw)), ex::set_value_t(int), eptr_sig_t>);
   static_assert(has_sigs_v<decltype(ex::then(ex::just(1), no_throw)), ex::set_value_t(int)>);
+  static_assert(has_sigs_v<decltype(ex::upon_error(domain_probe{}, no_throw)),
+                           ex::set_value_t(),
+                           ex::set_value_t(int)>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // 2. then: when fn may throw, error completions also come from the child's *value*
@@ -384,6 +387,17 @@ namespace
   static_assert(
     behavior_of_v<decltype(ex::then(behavior_probe{}, no_throw)), ex::set_error_t, ex::env<>>
     == cb::__inline_completion);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // 3. upon_error: value completions also come from the child's *error* completions.
+  static_assert(
+    is_indeterminate_of_v<
+      domain_of_t<decltype(ex::upon_error(domain_probe{}, no_throw)), ex::set_value_t, ex::env<>>,
+      value_domain,
+      error_domain>);
+  static_assert(
+    behavior_of_v<decltype(ex::upon_error(behavior_probe{}, no_throw)), ex::set_value_t, ex::env<>>
+    == (cb::__inline_completion | cb::__asynchronous));
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
