@@ -640,6 +640,13 @@ namespace STDEXEC
     using __f = __minvoke<_Fn, _As...>;
   };
 
+  template <class... _As>
+  struct __mfor<__mlist_ptr<_As...>>
+  {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _As...>;
+  };
+
   template <class _Ret, class... _As>
   struct __mfor<_Ret(_As...)>
   {

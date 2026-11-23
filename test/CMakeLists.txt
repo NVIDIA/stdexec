@@ -101,6 +101,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
+    stdexec/detail/test_facade.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp)
 endif()
 
