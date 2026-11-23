@@ -84,7 +84,7 @@ to a receiver and managing the lifetime the operation state.
 
     auto sndr = stdexec::just(42);                    // Sender that yields 42 immediately
     auto [result] = stdexec::sync_wait(sndr).value(); // Start the work & wait for the result
-    assert(result.value() == 42);
+    assert(result == 42);
 
 🧮 Composition via Algorithms
 -----------------------------
@@ -966,7 +966,7 @@ environment, so child senders see the merged view.
     auto inner = stdexec::read_env(stdexec::get_stop_token)
                | stdexec::then([](auto tok) { return tok.stop_requested(); });
 
-    stdexec::stop_source src;
+    stdexec::inplace_stop_source src;
     auto pipeline =
       inner
       | stdexec::write_env(stdexec::prop{stdexec::get_stop_token, src.get_token()});
