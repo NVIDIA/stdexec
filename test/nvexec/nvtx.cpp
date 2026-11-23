@@ -14,6 +14,7 @@ namespace
 
     ex::sync_wait(snd);
 
-    CHECK(snd.name_ == "test");
+    auto const& [tag, name, child] = snd;
+    CHECK(name == "test");
   }
 }  // namespace
