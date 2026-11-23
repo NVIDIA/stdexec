@@ -50,7 +50,11 @@ namespace
              | exec::split()                                                         //
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})  //
              | ex::then([] { return 0; })                                            //
-             | ex::upon_stopped([] { return 42; });
+             | ex::upon_stopped([] { return 42; })
+             // upon_stopped completes with a value both when its child does and when its
+             // child is stopped, so it does not know one completion scheduler for its values.
+             // Proclaim the one they share, for sync_wait:
+             | ::_proclaim_completes_on(stream_ctx.get_scheduler());
 
     auto [value] = STDEXEC::sync_wait(std::move(snd)).value();
 
