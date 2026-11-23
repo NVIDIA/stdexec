@@ -88,7 +88,7 @@ TEST_CASE("sequence produces a sender", "[sequence]")
   check_err_types<ex::__mset<>>(s0);
   check_sends_stopped<false>(s0);
 
-  using env_t = ex::prop<ex::get_allocator_t, std::allocator<void>>;
+  using env_t = ex::prop<ex::get_allocator_t, std::allocator<int>>;
   auto s1     = exec::sequence(ex::just_error(42), ex::read_env(ex::get_allocator));
   STATIC_REQUIRE(ex::sender<decltype(s1)>);
   STATIC_REQUIRE(ex::dependent_sender<decltype(s1)>);
@@ -185,16 +185,19 @@ namespace
   };
 }  // namespace
 
-TEST_CASE("lowering a sequence is noexcept unless moving or copying its children can throw",
+TEST_CASE("connecting a sequence is noexcept unless moving or copying its children can throw",
           "[sequence]")
 {
-  auto nothrow = exec::sequence(ex::just(), ex::just(42));
-  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(nothrow), ex::env<>{})));
-  STATIC_REQUIRE(ex::__nothrow_connectable<decltype(nothrow), ex::__receiver_archetype<ex::env<>>>);
+  using receiver_t = ex::__receiver_archetype<ex::env<>>;
 
+  auto nothrow = exec::sequence(ex::just(), ex::just(42));
+  STATIC_REQUIRE(ex::__nothrow_connectable<decltype(nothrow), receiver_t>);
+
+  // Connecting the sequence stores its later senders: moved from an rvalue sequence, and
+  // copied from an lvalue one.
   auto throwing = exec::sequence(ex::just(), ex::just(throwing_copy{}));
-  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(throwing), ex::env<>{})));
-  STATIC_REQUIRE(!noexcept(ex::transform_sender(throwing, ex::env<>{})));
+  STATIC_REQUIRE(ex::__nothrow_connectable<decltype(throwing), receiver_t>);
+  STATIC_REQUIRE(!ex::__nothrow_connectable<decltype(throwing) const &, receiver_t>);
 }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
