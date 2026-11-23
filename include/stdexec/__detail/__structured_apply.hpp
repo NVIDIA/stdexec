@@ -129,31 +129,35 @@ namespace STDEXEC
 
 #  if STDEXEC_EDG()
       template <class _Fn, class _Type, class... _Us>
-      static auto __declfn_fn()                                                             //
-        -> decltype((__detail::__structured_apply_v<__structured_binding_size_v<_Type>>) (  //
+      static auto __declfn_fn()  //
+        -> decltype((
+          __detail::__structured_apply_v<__structured_binding_size_v<__decay_t<_Type>>>) (  //
           __get_declfn<_Fn>{},
           __declval<_Type>(),
           __declval<_Us>()...));
 
       template <class _Fn, class _Type, class... _Us>
-        requires(__structured_binding_size_v<_Type> >= 0)
+        requires(__structured_binding_size_v<__decay_t<_Type>> >= 0)
       using __declfn_t = decltype(__declfn_fn<_Fn, _Type, _Us...>());
 #  else
       template <class _Fn, class _Type, class... _Us>
-        requires(__structured_binding_size_v<_Type> >= 0)
-      using __declfn_t = __result_of<__structured_apply_v<__structured_binding_size_v<_Type>>,
-                                     __get_declfn<_Fn>,
-                                     _Type,
-                                     _Us...>;
+        requires(__structured_binding_size_v<__decay_t<_Type>> >= 0)
+      using __declfn_t =
+        __result_of<__structured_apply_v<__structured_binding_size_v<__decay_t<_Type>>>,
+                    __get_declfn<_Fn>,
+                    _Type,
+                    _Us...>;
 #  endif
 
      public:
+      // _Type may be a reference (to an lvalue, say), which has the structured bindings of the
+      // object it refers to.
       template <class _Fn, class _Type, class... _Us, class _DeclFn = __declfn_t<_Fn, _Type, _Us...>>
         requires __callable<_DeclFn>
       constexpr auto operator()(_Fn &&__fn, _Type &&__obj, _Us &&...__us) const
         noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn>
       {
-        return __structured_apply_v<__structured_binding_size_v<_Type>,
+        return __structured_apply_v<__structured_binding_size_v<__decay_t<_Type>>,
                                     __nothrow_callable<_DeclFn>>(static_cast<_Fn &&>(__fn),
                                                                  static_cast<_Type &&>(__obj),
                                                                  static_cast<_Us &&>(__us)...);
