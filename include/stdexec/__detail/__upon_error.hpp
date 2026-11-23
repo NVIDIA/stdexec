@@ -25,10 +25,10 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
@@ -41,30 +41,6 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
-  namespace __upon_error
-  {
-    struct __impl : __sexpr_defaults
-    {
-      static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
-      {
-        return __sync_attrs{__child};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, upon_error_t>);
-        using __fn_t = __decay_t<__data_of<_Sender>>;
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
-          {},
-          __upon::__transform_completion<__fn_t, upon_error_t>());
-      }
-
-      static constexpr auto __complete = __upon::__complete<set_error_t>;
-    };
-  }  // namespace __upon_error
 
   //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that handles a predecessor sender's
@@ -209,11 +185,11 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<upon_error_t> : __upon_error::__impl
+  struct __facade::__algorithm<upon_error_t> : __upon::__algo<upon_error_t, set_error_t>
   {};
 
   template <class _Fun, class _Sender>
-  struct upon_error_t::__sender : __sexpr<upon_error_t, _Fun, _Sender>
+  struct upon_error_t::__sender : __facade::__sender<upon_error_t, _Fun, _Sender>
   {};
 
   template <sender _Sender, __movable_value _Fun>
