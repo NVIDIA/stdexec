@@ -26,19 +26,17 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"
 #  include "__meta.hpp"
-#  include "__operation_states.hpp"
 #  include "__schedule_from.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
+#  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__storage.hpp"
-#  include "__transform_completion_signatures.hpp"
 #  include "__tuple.hpp"
-#  include "__utility.hpp"
 
 #  include "__prologue.hpp"
 
@@ -49,410 +47,261 @@ namespace STDEXEC
   // [exec.continues.on]
   namespace __trnsfr
   {
-    template <class _Env2, class _Storage, class _Receiver>
-    struct __state_base
-    {
-      template <class _Sender>
-      constexpr explicit __state_base(_Sender const & __child, _Receiver&& __rcvr) noexcept
-        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __env2_(__mk_secondary_env_t<set_value_t>()(__child, get_env(__rcvr_)))
-      {}
+    // The key of continues_on's nested schedule operation
+    struct __sched_op
+    {};
 
-      _Receiver   __rcvr_;
-      _Env2 const __env2_;
-      _Storage    __data_{};
-    };
+    struct __algo;
 
-    // This receiver is to be completed on the execution context associated with
-    // the scheduler. When the source sender completes, the completion
-    // information is saved off in the operation state so that when this
-    // receiver completes, it can read the completion out of the operation state
-    // and forward it to the output receiver after transitioning to the
-    // scheduler's context.
-    template <class _Env2, class _Storage, class _Receiver>
-    struct __receiver2
-    {
-      using receiver_concept = receiver_tag;
-      using __sch_env_t      = __join_env_t<_Env2 const &, env_of_t<_Receiver>>;
-
-      constexpr void set_value() noexcept
-      {
-        std::move(__state_->__data_).__complete(__state_->__rcvr_);
-      }
-
-      template <class _Error>
-      constexpr void set_error(_Error&& __err) noexcept
-      {
-        STDEXEC::set_error(static_cast<_Receiver&&>(__state_->__rcvr_),
-                           static_cast<_Error&&>(__err));
-      }
-
-      constexpr void set_stopped() noexcept
-      {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__state_->__rcvr_));
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> __sch_env_t
-      {
-        return __env::__join(__state_->__env2_, STDEXEC::get_env(__state_->__rcvr_));
-      }
-
-      __state_base<_Env2, _Storage, _Receiver>* __state_;
-    };
-
-    template <class _Scheduler, class _Env2, class _Storage, class _Receiver>
-    struct __state : __state_base<_Env2, _Storage, _Receiver>
-    {
-      using __receiver2_t       = __receiver2<_Env2, _Storage, _Receiver>;
-      using __schedule_sender_t = schedule_result_t<_Scheduler&>;
-
-      template <class _Sender>
-      constexpr explicit __state(_Scheduler __sched, _Sender const & __child, _Receiver&& __rcvr)
-        noexcept(__nothrow_callable<schedule_t, _Scheduler&>
-                 && __nothrow_connectable<__schedule_sender_t, __receiver2_t>)
-        : __state_base<_Env2, _Storage, _Receiver>(__child, static_cast<_Receiver&&>(__rcvr))
-        , __state2_(connect(schedule(__sched), __receiver2_t{this}))
-      {}
-      STDEXEC_IMMOVABLE(__state);
-
-      connect_result_t<__schedule_sender_t, __receiver2_t> __state2_;
-    };
-
-    template <class _Scheduler, class _Sender, class _Receiver>
-    using __state_t = __state<_Scheduler,
-                              __secondary_env_t<_Sender, env_of_t<_Receiver>, set_value_t>,
-                              __storage_for_t<_Sender, __fwd_env_t<env_of_t<_Receiver>>>,
-                              _Receiver>;
-
-    //! The environment of the receiver to which the scheduler's sender is
-    //! connected. This must match @c __receiver2::get_env().
+    // Where the child completes, which is where the schedule operation starts (see
+    // __mk_secondary_env_t): the child's completion scheduler if it completes in only one
+    // way, or else the domain in which it completes. Or nothing if the child does not
+    // type-check in the environment. (Such a sender cannot be connected, but the facade
+    // still computes its attributes, and its state type when the walk has no environment.)
     template <class _Child, class _Env>
-    using __sch_sndr_env_t =
-      __join_env_t<__secondary_env_t<_Child, _Env, set_value_t> const &, _Env>;
-
-    //! @brief The @c continues_on sender's attributes.
-    template <class _Scheduler, class _Sender>
-    struct __attrs
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __mk_env2(_Child const & __child, _Env const & __env) noexcept
     {
-     private:
-      template <class _Env>
-      using __env2_t = __secondary_env_t<_Sender, _Env, set_value_t>;
-      template <class _Env>
-      using __sch_env_t = __join_env_t<__env2_t<_Env>, _Env>;
-      // The environment of the receiver to which the schedule sender is
-      // connected; see __receiver2.
-      template <class _Env>
-      using __sch_sndr_env_t = __trnsfr::__sch_sndr_env_t<_Sender, _Env>;
+      using __mk_env2_t = __mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
+      if constexpr (__callable<__mk_env2_t, _Child const &, _Env const &>)
+        return __mk_env2_t()(__child, __env);
+      else
+        return env{};
+    }
 
-      template <class _Env>
-      constexpr auto __mk_sch_env(_Env&& __env) const noexcept -> __sch_env_t<_Env>
-      {
-        return __env::__join(__mk_secondary_env_t<set_value_t>()(__sndr_, __env),
-                             static_cast<_Env&&>(__env));
-      }
+    // Does the child complete where it starts, however it completes? Then the schedule
+    // operation starts where the operation started, which the receiver's environment says.
+    // (The child sees the receiver's environment forwarded.)
+    template <class _Child, class _Env>
+    inline constexpr bool __child_stays_put_v = __stays_put<__decay_t<_Child>, __fwd_env_t<_Env>>;
 
-      //! @brief Returns `true` when:
-      //! - _SetTag is set_error_t, and
-      //! - _Sender has value completions, and
-      //! - at least one of the value completions is not nothrow decay-copyable.
-      //!
-      //! In that case, error completions can come from the sender's value
-      //! completions.
-      template <class _SetTag, class... _Env>
-      static consteval bool __has_decay_copy_errors() noexcept
-      {
-        if constexpr (__same_as<_SetTag, set_error_t>)
-        {
-          if constexpr (__sends<set_value_t, _Sender, __fwd_env_t<_Env>...>)
-          {
-            using __completions_t = completion_signatures_of_t<_Sender, __fwd_env_t<_Env>...>;
-            return !__cmplsigs::__partitions_of_t<
-              __completions_t>::__nothrow_decay_copyable::__values::value;
-          }
-        }
-        return false;
-      }
-
-      //! @brief Returns `true` when a @c _SetTag completion of the predecessor
-      //! (or a failure to decay-copy its values) can be forwarded through the scheduler.
-      template <class _SetTag, class... _Env>
-      static consteval bool __forwards_completion() noexcept
-      {
-        return __sends<_SetTag, _Sender, __fwd_env_t<_Env>...>
-            || __has_decay_copy_errors<_SetTag, _Env...>();
-      }
-
-      template <class _SetTag, class... _Env>
-      static consteval auto __forwarded_domain() noexcept
-      {
-        using _SchSndr = schedule_result_t<_Scheduler>;
-        // Clang 16 substitutes the return type of `query` before checking its
-        // constraints, so this function can be instantiated with a _SetTag (e.g.,
-        // `void`) that the query would reject. Bail out before touching anything
-        // that could hard-error.
-        if constexpr (!__one_of<_SetTag, set_error_t, set_stopped_t>)
-        {  // NOLINT(bugprone-branch-clone)
-          return indeterminate_domain<>();
-        }
-        else if constexpr (__forwards_completion<_SetTag, _Env...>())
-        {
-          constexpr bool __own = __sends<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>;
-          using _Fwd = __completion_domain_of_t<set_value_t, _SchSndr, __sch_sndr_env_t<_Env>...>;
-          if constexpr (__own)
-          {
-            return __common_domain_t<
-              _Fwd,
-              __completion_domain_of_t<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>>();
-          }
-          else
-          {
-            return _Fwd();
-          }
-        }
-        else if constexpr (__sends<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>)
-        {
-          return __completion_domain_of_t<_SetTag, _SchSndr, __sch_sndr_env_t<_Env>...>();
-        }
-        else
-        {
-          // Neither the predecessor nor the scheduler's sender can complete with
-          // _SetTag. The query's constraints exclude this case; see above.
-          return indeterminate_domain<>();
-        }
-      }
-
-      template <class _SetTag, class... _Env>
-      static consteval bool __sch_sends() noexcept
-      {
-        return __sends<_SetTag, schedule_result_t<_Scheduler>, __sch_sndr_env_t<_Env>...>;
-      }
-
-      _Scheduler      __sch_;
-      _Sender const & __sndr_;
-
-     public:
-      constexpr explicit __attrs(_Scheduler __sch, _Sender const & __sndr) noexcept
-        : __sch_(static_cast<_Scheduler&&>(__sch))
-        , __sndr_(__sndr)
-      {}
-
-      //! @brief Queries the completion scheduler for a given @c _SetTag.
-      //! @tparam _SetTag The completion tag to query for.
-      //! @tparam _Env The environment to consider when querying for the
-      //! completion scheduler.
-      //!
-      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path:
-      //! everything succeeded and execution continues on @c _Scheduler.
-      //!
-      //! Otherwise, completions of the predecessor sender are saved and replayed
-      //! from the @c set_value completion of the scheduler's sender, so they
-      //! complete on the scheduler's @c set_value completion scheduler. If the
-      //! scheduler's sender can also complete with @c _SetTag itself, there is no
-      //! way to know at compile time which scheduler a given completion will use
-      //! (they are runtime values), so the query is not provided.
-      template <class _SetTag, class... _Env>
-        requires(__same_as<_SetTag, set_value_t>
-                 || (__forwards_completion<_SetTag, _Env...>() && !__sch_sends<_SetTag, _Env...>()))
-      [[nodiscard]]
-      constexpr auto
-      query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<set_value_t>, _Scheduler, __sch_env_t<_Env>...>
-      {
-        return get_completion_scheduler<set_value_t>(__sch_, __mk_sch_env(__env)...);
-      }
-
-      //! @overload
-      //! Only the scheduler's sender can complete with @c _SetTag.
-      template <class _SetTag, class... _Env>
-        requires(!__same_as<_SetTag, set_value_t> && !__forwards_completion<_SetTag, _Env...>()
-                 && __sch_sends<_SetTag, _Env...>())
-      [[nodiscard]]
-      constexpr auto
-      query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __sch_env_t<_Env>...>
-      {
-        return get_completion_scheduler<_SetTag>(__sch_, __mk_sch_env(__env)...);
-      }
-
-      //! @brief Queries the completion domain for a given @c _SetTag.
-      //! @tparam _SetTag The completion tag to query for.
-      //! @tparam _Env The environment to consider when querying for the
-      //! completion domain.
-      //!
-      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path:
-      //! everything succeeded and execution continues on @c _Scheduler.
-      //!
-      //! Otherwise, if @c _SetTag is @c set_stopped_t or if decay-copying
-      //! @c _Sender's value results cannot throw, then a @c _SetTag completion
-      //! can happen on the sender's completion domain (if it has one) or the
-      //! scheduler's completion domain (if it has one).
-      //!
-      //! @note Otherwise, @c _SetTag is @c set_error_t and decay-copying @c
-      //! _Sender's value results can throw, so error completions can also come
-      //! from the sender's value completions.
-      template <__same_as<set_value_t> _SetTag, class... _Env>
-      [[nodiscard]]
-      constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
-        -> __ensure_valid_domain_t<__completion_domain_of_t<_SetTag,
-                                                            schedule_result_t<_Scheduler>,
-                                                            __sch_sndr_env_t<_Env>...>>
-      {
-        return {};
-      }
-
-      //! @overload
-      //! @note Completions of the predecessor sender are saved and replayed from
-      //! the @c set_value completion of the scheduler's sender, so they complete
-      //! in the scheduler's @c set_value completion domain. The scheduler's sender
-      //! may additionally complete with @c _SetTag itself, in which case that
-      //! domain contributes too.
-      template <__one_of<set_error_t, set_stopped_t> _SetTag, class... _Env>
-        requires(__forwards_completion<_SetTag, _Env...>()
-                 || __sends<_SetTag, schedule_result_t<_Scheduler>, __sch_sndr_env_t<_Env>...>)
-      [[nodiscard]]
-      constexpr auto query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept
-        -> __ensure_valid_domain_t<decltype(__forwarded_domain<_SetTag, _Env...>())>
-      {
-        return {};
-      }
-
-      //! @brief Queries the completion behavior of the combined sender.
-      //! @tparam _Env The environment to consider when querying for the
-      //! completion behavior.
-      //! @note The completion behavior is the minimum between the scheduler's
-      //! sender and the original sender.
-      template <class _Tag, class... _Env>
-      [[nodiscard]]
-      constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
-      {
-        using _SchSender = schedule_result_t<_Scheduler>;
-        constexpr auto cb_sched =
-          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __sch_sndr_env_t<_Env>...>();
-        constexpr auto cb_sndr =
-          STDEXEC::__get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
-        return cb_sched | cb_sndr;
-      }
-
-      //! @brief Forwards other queries to the underlying sender's environment.
-      //! @pre @c _Query is a forwarding query but not a completion query.
-      template <__forwarding_query _Query, class... _Args>
-        requires(!__completion_query<_Query>)
-             && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
-      [[nodiscard]]
-      constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>) -> decltype(auto)
-      {
-        return _Query()(STDEXEC::get_env(__sndr_), static_cast<_Args&&>(__args)...);
-      }
-    };
-
-    struct __continues_on_impl : __sexpr_defaults
+    // Saves a completion in __storage, and then starts the nested operation __op, keyed by
+    // _Key. If decay-copying the completion's arguments throws, saves the exception as an
+    // error instead. If they cannot be decay-copied, reports a type error on behalf of
+    // _AlgoTag.
+    template <class _AlgoTag, class _Key, class _Storage, class _OpState, class _Tag, class... _Args>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __save_and_start(_Storage& __storage,
+                                    _OpState& __op,
+                                    _Tag      __tag,
+                                    _Args&&... __args) noexcept
     {
-     private:
-      template <class _Sender, class... _Env>
-      using __scheduler_t = __decay_t<__data_of<_Sender>>;
-
-      template <class _Child, class... _Env>
-      static consteval auto __get_child_completions()
+      if constexpr (!__decay_copyable<_Args...>)
       {
-        // continues_on has the completions of the child sender, but with value
-        // and error result types decayed.
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>(),
-          __decay_arguments<set_value_t, continues_on_t>(),
-          __decay_arguments<set_error_t, continues_on_t>());
+        return __facade::__decay_copy_error<_AlgoTag, _Args...>();
       }
-
-      template <class _Child, class _Scheduler, class... _Env>
-      static consteval auto __get_scheduler_completions()
+      else
       {
-        // The scheduler contributes only error and stopped completions; we
-        // ignore value completions here. The schedule sender is connected to a
-        // receiver whose environment is __sch_sndr_env_t, not __fwd_env_t<_Env>.
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<schedule_result_t<_Scheduler>,
-                                             __sch_sndr_env_t<_Child, _Env>...>(),
-          __ignore_completion());
-      }
-
-      template <class _Sender, class _Receiver>
-      using __state_for_t =
-        __state_t<__decay_t<__data_of<_Sender>>, __decay_t<__child_of<_Sender>>, _Receiver>;
-
-     public:
-      static constexpr auto __get_attrs =
-        []<class _Scheduler, class _Child>(__ignore,
-                                           _Scheduler const & __data,
-                                           _Child const &     __child) noexcept
-      {
-        return __attrs<_Scheduler, _Child>{__data, __child};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, continues_on_t>);
-        using __scheduler_t      = __decay_t<__data_of<_Sender>>;
-        using __child_t          = __child_of<_Sender>;
-        auto __child_completions = __get_child_completions<__child_t, _Env...>();
-        return STDEXEC::__concat_completion_signatures(
-          __child_completions,
-          __get_scheduler_completions<__child_t, __scheduler_t, _Env...>(),
-          __eptr_completion_unless_t<
-            __nothrow_decay_copyable_results_t<decltype(__child_completions)>>());
-      }
-
-      // The child's completions are computed with __fwd_env_t<_Env>, so the child
-      // must be connected to a receiver whose environment is likewise forwarded.
-      static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
-        -> __fwd_env_t<env_of_t<decltype(__state.__rcvr_)>>
-      {
-        return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
-      };
-
-      static constexpr auto __get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
-          __nothrow_constructible_from<__state_for_t<_Sender, _Receiver>,
-                                       __data_of<_Sender>&,
-                                       __child_of<_Sender>&,
-                                       _Receiver>) -> __state_for_t<_Sender, _Receiver>
-      {
-        static_assert(__sender_for<_Sender, continues_on_t>);
-        auto& [__tag, __sched, __child] = __sndr;
-        return __state_for_t<_Sender, _Receiver>{__sched,
-                                                 __child,
-                                                 static_cast<_Receiver&&>(__rcvr)};
-      };
-
-      static constexpr auto __complete =
-        []<class _State, class _Tag, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag    __tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        // Write the tag and the args into the operation state so that we can forward the completion
-        // from within the scheduler's execution context.
-        if constexpr (__nothrow_callable<__mktuple_t, _Tag, _Args...>)
+        if constexpr (__nothrow_decay_copyable<_Args...>)
         {
-          __state.__data_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
+          __storage.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
         }
         else
         {
           STDEXEC_TRY
           {
-            __state.__data_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
+            __storage.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL
           {
-            __state.__data_.__emplace_from(__mktuple, set_error, std::current_exception());
+            __storage.__emplace_from(__mktuple, set_error, std::current_exception());
           }
         }
+        return __facade::__start_nested<_Key>(__op);
+      }
+    }
 
-        // Enqueue the schedule operation so the completion happens on the
-        // scheduler's execution context.
-        STDEXEC::start(__state.__state2_);
-      };
+    // Sends the completion that __save_and_start saved
+    template <class _Storage, class _Receiver>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __send_saved(_Storage& __storage, _Receiver& __rcvr) noexcept
+    {
+      return __facade::__visit(
+        __storage,
+        [&]<class _Tuple>(_Tuple& __tupl) noexcept
+        {
+          return STDEXEC::__apply(
+            [&]<class _Tag, class... _Args>(_Tag __tag, _Args&... __args) noexcept
+            { return __facade::__send(__rcvr, __tag, static_cast<_Args&&>(__args)...); },
+            __tupl);
+        });
+    }
+
+    template <class _Sender, class _Receiver>
+    struct __state
+    {
+      using __env_t       = env_of_t<_Receiver>;
+      using __child_t     = __child_of<_Sender>;
+      using __scheduler_t = __decay_t<__data_of<_Sender>>;
+      using __env2_t      = decltype(__trnsfr::__mk_env2(__declval<__decay_t<__child_t> const &>(),
+                                                    __declval<__decay_t<__env_t> const &>()));
+      using __storage_t =
+        __mapply_q<__results_storage,
+                   __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>>;
+      using __sched_rcvr_t =
+        __facade::__receiver_t<__algo, __sched_op, __state, _Sender, _Receiver>;
+      using __sched_sndr_t                    = schedule_result_t<__scheduler_t const &>;
+      static constexpr bool __child_stays_put = __trnsfr::__child_stays_put_v<__child_t, __env_t>;
+
+      constexpr explicit __state(_Sender&& __sndr, _Receiver&& __rcvr)
+        noexcept(__nothrow_decay_copyable<__data_of<_Sender>>
+                 && __nothrow_callable<schedule_t, __scheduler_t const &>
+                 && __nothrow_connectable<__sched_sndr_t, __sched_rcvr_t>)
+        : __state(__facade::__get_data(static_cast<_Sender&&>(__sndr)),
+                  __facade::__get_child<0>(__sndr),
+                  static_cast<_Receiver&&>(__rcvr))
+      {}
+
+      STDEXEC_IMMOVABLE(__state);
+
+      _Receiver                                        __rcvr_;
+      __env2_t const                                   __env2_;
+      __storage_t                                      __storage_{};
+      connect_result_t<__sched_sndr_t, __sched_rcvr_t> __op_;
+
+     private:
+      template <class _Child>
+      constexpr explicit __state(__scheduler_t __sch, _Child const & __child, _Receiver&& __rcvr)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __env2_(__trnsfr::__mk_env2(__child, STDEXEC::get_env(__rcvr_)))
+        , __op_(STDEXEC::connect(STDEXEC::schedule(static_cast<__scheduler_t const &>(__sch)),
+                                 __sched_rcvr_t{this}))
+      {}
+    };
+
+    // continues_on(sndr, sch): when the child completes, its results are saved, and a
+    // schedule operation on sch is started. When that completes with a value, the saved
+    // results are sent.
+    struct __algo : __facade::__defaults
+    {
+      // The value completion of the schedule operation, which (when the child completes with
+      // a value) is started from the child's value completion
+      using __sched_value_t =
+        __facade::__via<__sched_op,
+                        set_value_t,
+                        __facade::__via<__facade::__child<0>, set_value_t, __facade::__from_start>>;
+
+      // Customizations of continues_on are found in the domain where the schedule operation
+      // completes. Value completions happen there, even if the child never completes with a
+      // value (as with SCHED-ATTRS in the standard).
+      using __dispatch_source = __sched_value_t;
+
+      template <class _Tag>
+      using __empty_channel_source = __if_c<__same_as<_Tag, set_value_t>, __sched_value_t, void>;
+
+      // The child sees the forwarded environment of the receiver
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __env_for(__facade::__child<0>, _Sender const &, _Env&& __env) noexcept
+        -> __fwd_env_t<_Env>
+      {
+        return __fwd_env(static_cast<_Env&&>(__env));
+      }
+
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(__facade::__child<0>, _State const & __state) noexcept
+        -> decltype(auto)
+      {
+        // (The receiver's environment may be a reference to a forwarding environment,
+        // which __fwd_env returns as it is.)
+        return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
+      }
+
+      // The schedule operation sees where the child completed (see __mk_env2). Unless the
+      // child completes where it starts, that is not where the operation started, so the
+      // receiver's start scheduler and domain are hidden from it. (Otherwise, when the child
+      // does not say where it completes, a scheduler that completes where it starts would
+      // claim to complete where the operation started.)
+      //
+      // NOT TO SPEC: the specification gives the schedule operation the forwarded
+      // environment of the receiver.
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __env_for(__sched_op, _Sender const & __sndr, _Env&& __env) noexcept
+      {
+        if constexpr (__trnsfr::__child_stays_put_v<__facade::__nth_child_of_t<_Sender, 0>, _Env>)
+          return __env::__join(__trnsfr::__mk_env2(__facade::__get_child<0>(__sndr), __env),
+                               static_cast<_Env&&>(__env));
+        else
+          return __env::__join(__trnsfr::__mk_env2(__facade::__get_child<0>(__sndr), __env),
+                               __hide_scheduler{static_cast<_Env&&>(__env)});
+      }
+
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(__sched_op, _State const & __state) noexcept
+      {
+        using __env2_t = __decay_t<decltype(__state.__env2_)>;
+        if constexpr (_State::__child_stays_put)
+          return __env::__join(__env2_t(__state.__env2_), STDEXEC::get_env(__state.__rcvr_));
+        else
+          return __env::__join(__env2_t(__state.__env2_),
+                               __hide_scheduler{STDEXEC::get_env(__state.__rcvr_)});
+      }
+
+      using __facade::__defaults::__nested_sender;
+
+      template <class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __nested_attrs(__sched_op,
+                                           _Sender const & __sndr,
+                                           _Env const &...) noexcept
+      {
+        return __facade::__schedule_attrs<decltype(__facade::__get_data(__sndr))>{
+          __facade::__get_data(__sndr)};
+      }
+
+      template <class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __nested_sender(__sched_op, _Sender const & __sndr, _Env const &...)
+      {
+        return STDEXEC::schedule(__facade::__get_data(__sndr));
+      }
+
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
+        noexcept(__nothrow_constructible_from<__state<_Sender, _Receiver>, _Sender, _Receiver>)
+          -> __state<_Sender, _Receiver>
+      {
+        return __state<_Sender, _Receiver>(static_cast<_Sender&&>(__sndr),
+                                           static_cast<_Receiver&&>(__rcvr));
+      }
+
+      // The child completed: save the results, then hop to the scheduler.
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State& __state,
+                                       _Tag    __tag,
+                                       _Args&&... __args) noexcept
+      {
+        return __trnsfr::__save_and_start<continues_on_t, __sched_op>(__state.__storage_,
+                                                                      __state.__op_,
+                                                                      __tag,
+                                                                      static_cast<_Args&&>(
+                                                                        __args)...);
+      }
+
+      // On the scheduler: send the saved results.
+      template <class _State>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__sched_op, _State& __state, set_value_t) noexcept
+      {
+        return __trnsfr::__send_saved(__state.__storage_, __state.__rcvr_);
+      }
+
+      // The schedule operation failed or was stopped.
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__sched_op,
+                                       _State& __state,
+                                       _Tag    __tag,
+                                       _Args&&... __args) noexcept
+      {
+        return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args&&>(__args)...);
+      }
     };
   }  // namespace __trnsfr
 
@@ -558,9 +407,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto
     {
-      return __sexpr{continues_on_t(),
-                     static_cast<_Scheduler&&>(__sched),
-                     schedule_from(static_cast<_Sender&&>(__sndr))};
+      return __facade::__sender{continues_on_t(),
+                                static_cast<_Scheduler&&>(__sched),
+                                schedule_from(static_cast<_Sender&&>(__sndr))};
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
@@ -594,7 +443,7 @@ namespace STDEXEC
   inline constexpr continues_on_t continues_on{};
 
   template <>
-  struct __sexpr_impl<continues_on_t> : __trnsfr::__continues_on_impl
+  struct __facade::__algorithm<continues_on_t> : __trnsfr::__algo
   {};
 }  // namespace STDEXEC
 
