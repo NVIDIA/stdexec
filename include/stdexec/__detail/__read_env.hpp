@@ -27,7 +27,6 @@ import stdexec;
 
 // include these after __execution_fwd.hpp
 #  include "../stop_token.hpp"
-#  include "__basic_sender.hpp"
 #  include "__completion_behavior.hpp"
 #  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
@@ -38,10 +37,12 @@ import stdexec;
 #  include "__queries.hpp"
 #  include "__receivers.hpp"
 #  include "__schedulers.hpp"
+#  include "__sender_facade.hpp"
 #  include "__submit.hpp"  // IWYU pragma: keep
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
+#    include <type_traits>
 #  endif
 
 #  include "__prologue.hpp"
@@ -53,111 +54,83 @@ namespace STDEXEC
   {
     struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_;
 
-    template <class _Receiver,
-              class _Query,
-              class _Ty = __call_result_t<_Query, env_of_t<_Receiver>>>
-    struct __opstate
+    // The operation state, when the query returns a value: the result is stored here, and
+    // the value sent is an rvalue reference to it. (A CUDA stream algorithm can pass the
+    // value to a kernel by reference. A temporary on the host's stack would be gone by
+    // then, and the device may not be able to read it at all.)
+    template <class _Receiver, class _Query, class _Result>
+    struct __state : __facade::__basic_state<_Receiver, _Query>
     {
-      constexpr void start() noexcept
+      using __facade::__basic_state<_Receiver, _Query>::__basic_state;
+
+      __optional<_Result> __result_{__nullopt};
+    };
+
+    template <class _Receiver, class _Query, class _Env = env_of_t<_Receiver>>
+    struct __state_of
+    {
+      using __t = __facade::__basic_state<_Receiver, _Query>;
+    };
+
+    template <class _Receiver, class _Query, class _Env>
+      requires __callable<_Query, _Env> && (!std::is_reference_v<__call_result_t<_Query, _Env>>)
+    struct __state_of<_Receiver, _Query, _Env>
+    {
+      using __t = __state<_Receiver, _Query, __call_result_t<_Query, _Env>>;
+    };
+
+    // read_env(query) completes inline with the result of the query on the receiver's
+    // environment. Its completions depend on that environment.
+    struct __algo : __facade::__defaults
+    {
+      template <class _Sender>
+      static constexpr bool __depends_on_env = true;
+
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr) noexcept
+        -> __state_of<_Receiver, __decay_t<__facade::__data_of_t<_Sender>>>::__t
       {
-        constexpr bool _Nothrow   = __nothrow_callable<_Query, env_of_t<_Receiver>>;
-        auto           __query_fn = [&]() noexcept(_Nothrow) -> _Ty&&
+        using __state_t = __state_of<_Receiver, __decay_t<__facade::__data_of_t<_Sender>>>::__t;
+        return __state_t{static_cast<_Receiver&&>(__rcvr),
+                         __facade::__get_data(static_cast<_Sender&&>(__sndr))};
+      }
+
+      template <class _State, class _Children>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start(_State& __state, _Children&) noexcept
+      {
+        using __query_t = __decay_t<decltype(__state.__data_)>;
+        using __env_t   = decltype(STDEXEC::get_env(__state.__rcvr_));
+        if constexpr (!__callable<__query_t, __env_t>)
         {
-          auto& __result = __result_.__emplace_from(_Query(), STDEXEC::get_env(__rcvr_));
-          return static_cast<_Ty&&>(__result);
-        };
-        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_), __query_fn);
-      }
-
-      _Receiver       __rcvr_;
-      __optional<_Ty> __result_ = __nullopt;
-    };
-
-    template <class _Receiver, class _Query, class _Ty>
-      requires __same_as<_Ty, _Ty&&>
-    struct __opstate<_Receiver, _Query, _Ty>
-    {
-      constexpr void start() noexcept
-      {
-        // The query returns a reference type; pass it straight through to the
-        // receiver.
-        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_),
-                                  _Query(),
-                                  STDEXEC::get_env(__rcvr_));
-      }
-
-      _Receiver __rcvr_;
-    };
-
-    template <class _Query>
-    struct __attrs
-    {
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
-      {
-        return __completion_behavior::__inline_completion;
-      }
-
-      template <class _Env>
-        requires(!__nothrow_callable<_Query, _Env>)
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
-      {
-        return __completion_behavior::__inline_completion;
-      }
-    };
-
-    struct __read_env_impl : __sexpr_defaults
-    {
-      static constexpr auto __get_attrs = []<class _Query>(__ignore, _Query) noexcept
-      {
-        return __attrs<_Query>{};
-      };
-
-      template <class _Self, class _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        using __query_t = __data_of<_Self>;
-        if constexpr (__callable<__query_t, _Env>)
+          return __facade::__type_error(
+            __mexception<
+              _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
+              _WHERE_(_IN_ALGORITHM_, __read_env_t),
+              _WITH_QUERY_(__query_t),
+              _WITH_ENVIRONMENT_(__env_t)>());
+        }
+        else if constexpr (requires { __state.__result_; })
         {
-          using __result_t = __call_result_t<__query_t, _Env>;
-          if constexpr (__nothrow_callable<__query_t, _Env>)
-          {
-            return completion_signatures<set_value_t(__result_t)>();
-          }
-          else
-          {
-            return completion_signatures<set_value_t(__result_t),
-                                         set_error_t(std::exception_ptr)>();
-          }
+          using __rcvr_t   = decltype(__state.__rcvr_);
+          using __result_t = __call_result_t<__query_t, __env_t>;
+          STDEXEC::__set_value_from(
+            static_cast<__rcvr_t&&>(__state.__rcvr_),
+            [&]() noexcept(__nothrow_callable<__query_t, __env_t>) -> __result_t&&
+            {
+              return static_cast<__result_t&&>(
+                __state.__result_.__emplace_from(__query_t(), STDEXEC::get_env(__state.__rcvr_)));
+            });
+          return __facade::__set_value_from_token<__query_t, __env_t>();
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
-            _WHERE_(_IN_ALGORITHM_, __read_env_t),
-            _WITH_QUERY_(__query_t),
-            _WITH_ENVIRONMENT_(_Env)>();
+          return __facade::__set_value_from<__read_env_t>(__state.__rcvr_,
+                                                          __query_t(),
+                                                          STDEXEC::get_env(__state.__rcvr_));
         }
       }
-
-      static constexpr auto __connect =
-        []<class _Self, class _Receiver>(_Self const &, _Receiver&& __rcvr) noexcept
-      {
-        using __query_t = __data_of<_Self>;
-        return __opstate<_Receiver, __query_t>{static_cast<_Receiver&&>(__rcvr)};
-      };
-
-      static constexpr auto __submit =
-        []<class _Sender, class _Receiver>(_Sender const &, _Receiver&& __rcvr) noexcept
-        requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
-      {
-        static_assert(__sender_for<_Sender, __read_env_t>);
-        using __query_t = __data_of<_Sender>;
-        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr),
-                                  __query_t(),
-                                  STDEXEC::get_env(__rcvr));
-      };
     };
   }  // namespace __read_env
 
@@ -166,7 +139,7 @@ namespace STDEXEC
     template <class _Query>
     constexpr auto operator()(_Query) const noexcept
     {
-      return __sexpr{__read_env_t(), _Query()};
+      return __facade::__sender{__read_env_t(), _Query()};
     }
   };
 
@@ -248,7 +221,7 @@ namespace STDEXEC
   inline constexpr __read_env_t read_env{};
 
   template <>
-  struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl
+  struct __facade::__algorithm<__read_env_t> : __read_env::__algo
   {};
 
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
