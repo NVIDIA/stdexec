@@ -25,13 +25,9 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender.hpp"
 #  include "__completion_behavior.hpp"
-#  include "__completion_signatures.hpp"
-#  include "__meta.hpp"
-#  include "__receivers.hpp"
-#  include "__sender_introspection.hpp"
-#  include "__type_traits.hpp"
+#  include "__sender_facade.hpp"
+#  include "__tuple.hpp"
 
 #  include "__prologue.hpp"
 
@@ -53,44 +49,19 @@ namespace STDEXEC
       }
     };
 
-    template <class _SetTag, class _Tuple, class _Receiver>
-    struct __opstate
+    // just(vs...), just_error(err), and just_stopped() complete inline, from start()
+    template <class _SetTag>
+    struct __algo : __facade::__defaults
     {
-      constexpr void start() noexcept
+      template <class _State, class _Children>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __start(_State& __state, _Children&) noexcept
       {
-        __apply(_SetTag(), static_cast<_Tuple&&>(__data_), static_cast<_Receiver&&>(__rcvr_));
+        return STDEXEC::__apply(
+          [&]<class... _Ts>(_Ts&&... __vs) noexcept
+          { return __facade::__send(__state.__rcvr_, _SetTag(), static_cast<_Ts&&>(__vs)...); },
+          static_cast<decltype(__state.__data_)&&>(__state.__data_));
       }
-
-      _Receiver __rcvr_;
-      _Tuple    __data_;
-    };
-
-    template <class _JustTag>
-    struct __impl : __sexpr_defaults
-    {
-      using __set_tag_t = _JustTag::__tag_t;
-
-      static constexpr auto __get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t>
-      {
-        return {};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, _JustTag>);
-        return completion_signatures<__mapply<__qf<__set_tag_t>, __decay_t<__data_of<_Sender>>>>{};
-      }
-
-      static constexpr auto __connect =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
-          __nothrow_decay_copyable<_Sender>)
-      {
-        auto& [__tag, __data] = __sndr;
-        return __opstate<__set_tag_t, decltype(__data), _Receiver>{static_cast<_Receiver&&>(__rcvr),
-                                                                   STDEXEC::__forward_like<_Sender>(
-                                                                     __data)};
-      };
     };
   }  // namespace __just
 
@@ -172,11 +143,11 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<just_t> : __just::__impl<just_t>
+  struct __facade::__algorithm<just_t> : __just::__algo<set_value_t>
   {};
 
   template <class... _Ts>
-  struct just_t::__sender : __sexpr<just_t, __tuple<_Ts...>>
+  struct just_t::__sender : __facade::__sender<just_t, __tuple<_Ts...>>
   {};
 
   //! @brief Construct a sender that synchronously value-completes with the
@@ -254,11 +225,11 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<just_error_t> : __just::__impl<just_error_t>
+  struct __facade::__algorithm<just_error_t> : __just::__algo<set_error_t>
   {};
 
   template <class _Error>
-  struct just_error_t::__sender : __sexpr<just_error_t, __tuple<_Error>>
+  struct just_error_t::__sender : __facade::__sender<just_error_t, __tuple<_Error>>
   {};
 
   //! @brief Construct a sender that synchronously error-completes with the
@@ -325,10 +296,10 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<just_stopped_t> : __just::__impl<just_stopped_t>
+  struct __facade::__algorithm<just_stopped_t> : __just::__algo<set_stopped_t>
   {};
 
-  struct just_stopped_t::__sender : __sexpr<just_stopped_t, __tuple<>>
+  struct just_stopped_t::__sender : __facade::__sender<just_stopped_t, __tuple<>>
   {};
 
   //! @brief Construct a sender that synchronously stops-completes.
