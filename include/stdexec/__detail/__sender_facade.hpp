@@ -152,15 +152,27 @@ namespace STDEXEC
     template <class... _Items>
     struct __effects
     {
+      __effects() = default;
+
       // A token for fewer effects converts to a token for more effects, so a control-flow
       // path that does less can return into a superset. Paths that do nothing return
       // `__effects<>{}`.
+#  if STDEXEC_NVHPC()
+      // (nvc++ skips a call that returns a token if the token is converted without being
+      // read, and so loses the call's effects. This conversion reads it.)
       template <class... _Others>
-        requires(__one_of<_Items, _Others...> && ...)
-      constexpr operator __effects<_Others...>() const noexcept
-      {
-        return {};
-      }
+        requires(__one_of<_Others, _Items...> && ...)
+      constexpr __effects(__effects<_Others...> __other) noexcept
+        : __nvhpc_read_(__other.__nvhpc_read_)
+      {}
+
+      bool __nvhpc_read_ = false;
+#  else
+      template <class... _Others>
+        requires(__one_of<_Others, _Items...> && ...)
+      constexpr __effects(__effects<_Others...>) noexcept
+      {}
+#  endif
     };
 
     STDEXEC_MODULE_EXPORT_AUTHORING
