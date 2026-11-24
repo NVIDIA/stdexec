@@ -241,20 +241,23 @@ namespace STDEXEC
     }
 
     // Visits a variant that holds a value.
+    //
+    // (The result type is a template parameter so that it is not an expression in the
+    // signature, which nvc++ cannot mangle into the name of the lambda below.)
     STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Fn, class... _Ts>
+    template <class _Fn,
+              class... _Ts,
+              class _Result = __union_t<__effects<>, __call_result_t<_Fn &, _Ts &>...>>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto __visit(__variant<_Ts...> &__var, _Fn __fn) noexcept
-      -> __union_t<__effects<>, __call_result_t<_Fn &, _Ts &>...>
+    constexpr auto __visit(__variant<_Ts...> &__var, _Fn __fn) noexcept -> _Result
     {
-      using __result_t = __union_t<__effects<>, __call_result_t<_Fn &, _Ts &>...>;
       if constexpr (sizeof...(_Ts) == 0)
       {
-        return __result_t();
+        return _Result();
       }
       else
       {
-        return STDEXEC::__visit([&]<class _Alt>(_Alt &__alt) noexcept -> __result_t
+        return STDEXEC::__visit([&]<class _Alt>(_Alt &__alt) noexcept -> _Result
                                 { return __fn(__alt); },
                                 __var);
       }

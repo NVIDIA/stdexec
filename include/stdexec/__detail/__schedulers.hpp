@@ -720,6 +720,19 @@ namespace STDEXEC
   template <class _CvSender, class _Env, class... _SetTags>
   using __secondary_env_t = __call_result_t<__mk_secondary_env_t<_SetTags...>, _CvSender, _Env>;
 
+  //! Does the sender complete where it starts, however it completes? Then an operation
+  //! started from any of its completions starts where it started, so the environment of
+  //! the receiver connected to it says where. (Otherwise, it says where only if the sender
+  //! completes in one way, which @c __mk_secondary_env_t looks at.)
+  template <class _Tag, class _Sender, class _Env>
+  concept __stays_put_for = __never_sends<_Tag, _Sender, _Env>
+                         || __completes_where_it_starts<_Tag, env_of_t<_Sender>, _Env>;
+
+  template <class _Sender, class _Env>
+  concept __stays_put = sender_in<_Sender, _Env> && __stays_put_for<set_value_t, _Sender, _Env>
+                     && __stays_put_for<set_error_t, _Sender, _Env>
+                     && __stays_put_for<set_stopped_t, _Sender, _Env>;
+
   //////////////////////////////////////////////////////////////////////////////
   // __infallible_scheduler
   template <class _Env>

@@ -135,6 +135,55 @@ namespace
   using domain_probe   = probe<domain_attrs>;
   using behavior_probe = probe<behavior_attrs>;
 
+  // A scheduler whose schedule sender can fail with an int only if its environment says
+  // where it starts (that is, has a start scheduler). It shows which environment a schedule
+  // operation sees.
+  struct start_sensitive_scheduler
+  {
+    using scheduler_concept = ex::scheduler_tag;
+
+    struct sender
+    {
+      using sender_concept = ex::sender_tag;
+
+      template <class Self, class Env>
+      static consteval auto get_completion_signatures()
+      {
+        if constexpr (ex::__callable<ex::get_start_scheduler_t, Env const &>)
+          return ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>();
+        else
+          return ex::completion_signatures<ex::set_value_t()>();
+      }
+
+      template <class Rcvr>
+      struct opstate
+      {
+        using operation_state_concept = ex::operation_state_tag;
+
+        void start() & noexcept
+        {
+          ex::set_value(static_cast<Rcvr &&>(rcvr));
+        }
+
+        Rcvr rcvr;
+      };
+
+      template <class Rcvr>
+      auto connect(Rcvr rcvr) const -> opstate<Rcvr>
+      {
+        return {static_cast<Rcvr &&>(rcvr)};
+      }
+    };
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender
+    {
+      return {};
+    }
+
+    auto operator==(start_sensitive_scheduler const &) const noexcept -> bool = default;
+  };
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // Helpers
   template <class Sigs, class... Others>
@@ -400,6 +449,51 @@ namespace
     == (cb::__inline_completion | cb::__asynchronous));
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // 5. continues_on: completions are replayed from a nested schedule operation, so they
+  // happen where *it* completes.
+  using cont_t = decltype(ex::continues_on(ex::just(1), std::declval<run_loop_sch_t>()));
+  // A run_loop's schedule sender can be stopped only if the receiver's stop token is
+  // stoppable, and the derived signatures track that:
+  static_assert(has_sigs_v<cont_t, ex::set_value_t(int)>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<cont_t, stop_env_t>,
+                            ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>);
+  // "inline, then asynchronous" is asynchronous (not "inline or asynchronous")
+  static_assert(behavior_of_v<cont_t, ex::set_value_t, start_env_t> == cb::__asynchronous);
+
+  // The schedule operation starts where the child completed. So one that completes where it
+  // starts, as inline_scheduler's does, completes where the child completed: on the start
+  // scheduler, after just(1); and after a child that does not say on which scheduler it
+  // completes, on no scheduler that is known (not the one on which the operation started),
+  // in the domains of the child's completions.
+  using cont_inline_t       = decltype(ex::continues_on(ex::just(1), ex::inline_scheduler{}));
+  using cont_inline_probe_t = decltype(ex::continues_on(domain_probe{}, ex::inline_scheduler{}));
+  static_assert(std::is_same_v<decltype(ex::get_completion_scheduler<ex::set_value_t>(
+                                 ex::get_env(std::declval<cont_inline_t>()),
+                                 std::declval<start_env_t>())),
+                               run_loop_sch_t>);
+  static_assert(!has_completion_scheduler<cont_inline_probe_t, ex::set_value_t, start_env_t>);
+  static_assert(
+    is_indeterminate_of_v<domain_of_t<cont_inline_probe_t, ex::set_value_t, start_env_t>,
+                          value_domain,
+                          error_domain>);
+
+  // The schedule operation sees the receiver's start scheduler only if it starts there:
+  // after a child that completes where it starts, as then(just(1), fn) does, however it
+  // completes. After a child that completes elsewhere, it does not.
+  using loops_sndr_t =
+    decltype(ex::when_all(ex::starts_on(std::declval<run_loop_sch_t>(), ex::just(1)),
+                          ex::starts_on(std::declval<run_loop_sch_t>(), ex::just(2))));
+  using cont_stays_t = decltype(ex::continues_on(ex::then(ex::just(1), may_throw),
+                                                 start_sensitive_scheduler{}));
+  using cont_moves_t = decltype(ex::continues_on(std::declval<loops_sndr_t>(),
+                                                 start_sensitive_scheduler{}));
+  static_assert(
+    same_sigs_v<ex::completion_signatures_of_t<cont_stays_t, start_env_t>,
+                ex::completion_signatures<ex::set_value_t(int), eptr_sig_t, ex::set_error_t(int)>>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<cont_moves_t, start_env_t>,
+                            ex::completion_signatures<ex::set_value_t(int, int)>>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
 
   // Runs a run_loop on a thread of its own until destroyed
@@ -438,5 +532,29 @@ namespace
     auto result2 = ex::sync_wait(std::move(sndr));
     REQUIRE(result2.has_value());
     CHECK(std::get<0>(*result2) == ctx.worker.get_id());
+  }
+
+  // 5, continued.
+  TEST_CASE("facade: a completion scheduler is a runtime value read from the sender",
+            "[detail][facade]")
+  {
+    ex::run_loop            loop1;
+    ex::run_loop            loop2;
+    ex::inplace_stop_source stop;
+    auto                    sndr = ex::continues_on(ex::just(1), loop1.get_scheduler());
+    // (The props are named because Clang 16 miscompiles them when they are deduced in the
+    // braced initializer of the env.)
+    auto stop_prop  = ex::prop{ex::get_stop_token, stop.get_token()};
+    auto sched_prop = ex::prop{ex::get_start_scheduler, loop2.get_scheduler()};
+    auto env        = ex::env{stop_prop, sched_prop};
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), env)
+          == loop1.get_scheduler());
+    CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(sndr), env)
+          == loop1.get_scheduler());
+
+    // just completes inline, so it completes on the start scheduler.
+    auto just_sndr = ex::just(1);
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(just_sndr), env)
+          == loop2.get_scheduler());
   }
 }  // namespace
