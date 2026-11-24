@@ -20,197 +20,70 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../../exec/completion_signatures.hpp"
-
+#include "adaptor.cuh"
 #include "common.cuh"
-
-#include <concepts>
-#include <cstddef>
-#include <type_traits>
-#include <utility>
-
-#include <cuda/std/utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
+  // upon_error as a facade algorithm. The stream_domain customizes upon_error(sndr, fn) by
+  // re-tagging it with this tag (see transform_sender_for<upon_error_t> below).
+  struct upon_error_t : stream_tag_base
+  {};
+
   namespace _upon_error
   {
-    template <class... Args, class Fun>
-    STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _upon_error_kernel(Fun fn, Args... args)
+    // upon_error(sndr, fn): when the child completes with an error, fn is called with it in a
+    // kernel on the stream, and its result is the operation's value. The child's other
+    // completions are passed on.
+    struct algo : stream_adaptor<algo>
     {
-      static_assert(trivially_copyable<Fun, Args...>);
-      ::cuda::std::move(fn)(static_cast<Args&&>(args)...);
-    }
-
-    template <class ResultT, class... Args, class Fun>
-    STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__
-      void _upon_error_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result, Args... args)
-    {
-      static_assert(trivially_copyable<Fun, Args...>);
-      _store_result<ResultT>(result, ::cuda::std::move(fn), static_cast<Args&&>(args)...);
-    }
-
-    template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
-    struct receiver : stream_receiver_base
-    {
-      using receiver_concept = STDEXEC::receiver_tag;
-      using env_t            = _strm::opstate_base<Receiver>::env_t;
-
-      static constexpr std::size_t memory_allocation_size() noexcept
+      template <class State, class Error>
+      static auto
+      __complete(STDEXEC::__facade::__child<0>, State& state, set_error_t, Error&& err) noexcept
       {
-        return MemoryAllocationSize;
-      }
-
-      explicit receiver(Fun fun, _strm::opstate_base<Receiver>& opstate)
-        : f_(static_cast<Fun&&>(fun))
-        , opstate_(opstate)
-      {}
-
-      template <class... Args>
-      void set_value(Args&&... args) noexcept
-      {
-        opstate_.propagate_completion_signal(set_value_t(), static_cast<Args&&>(args)...);
-      }
-
-      template <class Error>
-        requires std::invocable<Fun, Error>
-      void set_error(Error&& error) noexcept
-      {
-        using result_t                         = std::invoke_result_t<Fun, Error>;
-        constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-        cudaStream_t   stream                  = opstate_.get_stream();
-
-        if constexpr (does_not_return_a_value)
+        using fn_t = decltype(state.data_);
+        if constexpr (!__invocable<fn_t, Error>)
         {
-          _upon_error_kernel<Error&&>
-            <<<1, 1, 0, stream>>>(std::move(f_), static_cast<Error&&>(error));
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_value);
-          }
-          else
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-          }
+          return STDEXEC::__facade::__type_error(
+            STDEXEC::__callable_error_t<STDEXEC::upon_error_t, fn_t, Error>());
         }
         else
         {
-          auto* d_result = static_cast<_stored_result_t<result_t>*>(opstate_.temp_storage_);
-          _upon_error_kernel_with_result<result_t, Error&&>
-            <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
-          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-          if (status == cudaSuccess)
-          {
-            status = _wait_for_result<result_t>(stream);
-          }
-          if (status == cudaSuccess)
-          {
-            opstate_.defer_temp_storage_destruction(d_result);
-            opstate_.propagate_completion_signal(STDEXEC::set_value,
-                                                 _load_result<result_t>(d_result));
-          }
-          else
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-          }
+          return _strm::_invoke_on_stream(state, state.data_, static_cast<Error&&>(err));
         }
       }
 
-      void set_stopped() noexcept
-      {
-        opstate_.propagate_completion_signal(set_stopped_t());
-      }
-
-      [[nodiscard]]
-      auto get_env() const noexcept -> env_t
-      {
-        return opstate_.make_env();
-      }
-
-      Fun                            f_;
-      _strm::opstate_base<Receiver>& opstate_;
+      using stream_adaptor<algo>::__complete;
     };
   }  // namespace _upon_error
-
-  template <class Sender, class Fun>
-  struct upon_error_sender : stream_sender_base
-  {
-    template <class Receiver>
-      requires sender_in<Sender, env_of_t<Receiver>>
-    struct max_result_size
-      : STDEXEC::__gather_completions_of_t<set_error_t,
-                                           Sender,
-                                           env_of_t<Receiver>,
-                                           __mbind_front<result_size_for, Fun>,
-                                           maxsize>
-    {};
-
-    template <class Receiver>
-    using receiver_t = _upon_error::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
-
-    explicit upon_error_sender(Sender sndr, Fun fun)
-      noexcept(__nothrow_move_constructible<Sender, Fun>)
-      : sndr_(static_cast<Sender&&>(sndr))
-      , fun_(static_cast<Fun&&>(fun))
-    {}
-
-    template <__decays_to<upon_error_sender> Self, receiver Receiver>
-    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
-      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
-    {
-      return stream_opstate<__copy_cvref_t<Self, Sender>>(
-        static_cast<Self&&>(self).sndr_,
-        static_cast<Receiver&&>(rcvr),
-        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-        { return receiver_t<Receiver>(static_cast<Self&&>(self).fun_, stream_provider); });
-    }
-    STDEXEC_EXPLICIT_THIS_END(connect)
-
-    template <__decays_to<upon_error_sender> Self, class... Env>
-    static consteval auto get_completion_signatures()
-    {
-      return exec::transform_completion_signatures(
-        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
-        {},
-        STDEXEC::__upon::__transform_completion<Fun, upon_error_t>(),
-        {},
-        _cuda_error_completion_t());
-    }
-
-    auto get_env() const noexcept -> stream_sender_attrs<Sender>
-    {
-      return {&sndr_};
-    }
-
-   private:
-    Sender sndr_;
-    Fun    fun_;
-  };
 
   template <>
   struct transform_sender_for<STDEXEC::upon_error_t>
   {
-    template <class Env, class Fun, class Sender>
-    auto operator()(Env const &, __ignore, Fun fun, Sender&& sndr) const
+    template <class Env, class Fun, class CvSender>
+    auto operator()(Env const &, __ignore, Fun&& fun, CvSender&& sndr) const
     {
-      if constexpr (stream_completing_sender<Sender, Env>)
+      if constexpr (stream_completing_sender<CvSender, Env>)
       {
-        using _sender_t = upon_error_sender<__decay_t<Sender>, Fun>;
-        return _sender_t{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun)};
+        return STDEXEC::__facade::__sender{_strm::upon_error_t(),
+                                           static_cast<Fun&&>(fun),
+                                           static_cast<CvSender&&>(sndr)};
       }
       else
       {
-        return _strm::_no_stream_scheduler_in_env<STDEXEC::upon_error_t, Sender, Env>();
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::upon_error_t, CvSender, Env>();
       }
     }
   };
 }  // namespace nv::execution::_strm
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::upon_error_t>
+  : nv::execution::_strm::_upon_error::algo
+{};
 
 namespace nvexec = nv::execution;
 
