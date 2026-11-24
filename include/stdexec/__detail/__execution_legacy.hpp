@@ -17,7 +17,8 @@
 
 #include "__config.hpp"
 
-#if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
+// When building the module, std::execution's policies come from `import std;`.
+#if !STDEXEC_NO_STDCPP_EXECUTION_POLICY() && !STDEXEC_USE_MODULES()
 // NVHPC's <execution> re-includes <stdexec/execution.hpp>. Including that from here, while
 // headers such as __bulk.hpp are only partially parsed, creates an include cycle that leaves
 // those headers' contents undefined for the headers pulled in by the cycle. Suppress NVHPC's

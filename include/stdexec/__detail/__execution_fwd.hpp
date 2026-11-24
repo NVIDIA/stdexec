@@ -95,11 +95,11 @@ namespace STDEXEC
   struct set_stopped_t;
 
   STDEXEC_MODULE_EXPORT
-  extern set_value_t const set_value;
+  extern STDEXEC_FWD_DECL_INLINE set_value_t const set_value;
   STDEXEC_MODULE_EXPORT
-  extern set_error_t const set_error;
+  extern STDEXEC_FWD_DECL_INLINE set_error_t const set_error;
   STDEXEC_MODULE_EXPORT
-  extern set_stopped_t const set_stopped;
+  extern STDEXEC_FWD_DECL_INLINE set_stopped_t const set_stopped;
 
   enum class __disposition
   {
@@ -116,7 +116,7 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
-  extern bool const enable_receiver;
+  extern STDEXEC_FWD_DECL_INLINE bool const enable_receiver;
 
   namespace __env
   {
@@ -136,7 +136,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   struct get_env_t;
   STDEXEC_MODULE_EXPORT
-  extern get_env_t const get_env;
+  extern STDEXEC_FWD_DECL_INLINE get_env_t const get_env;
 
   STDEXEC_MODULE_EXPORT
   template <class _EnvProvider>
@@ -176,25 +176,26 @@ namespace STDEXEC
 
   struct __debug_env_t;
 
-  extern __execute_may_block_caller_t const __execute_may_block_caller;
+  extern STDEXEC_FWD_DECL_INLINE __execute_may_block_caller_t const __execute_may_block_caller;
   STDEXEC_MODULE_EXPORT
-  extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
+  extern STDEXEC_FWD_DECL_INLINE get_forward_progress_guarantee_t const
+    get_forward_progress_guarantee;
   STDEXEC_MODULE_EXPORT
-  extern get_scheduler_t const get_scheduler;
+  extern STDEXEC_FWD_DECL_INLINE get_scheduler_t const get_scheduler;
   STDEXEC_MODULE_EXPORT
-  extern get_start_scheduler_t const get_start_scheduler;
+  extern STDEXEC_FWD_DECL_INLINE get_start_scheduler_t const get_start_scheduler;
   STDEXEC_MODULE_EXPORT
-  extern get_delegation_scheduler_t const get_delegation_scheduler;
+  extern STDEXEC_FWD_DECL_INLINE get_delegation_scheduler_t const get_delegation_scheduler;
   STDEXEC_MODULE_EXPORT
   template <__completion_tag _CPO>
-  extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
+  extern STDEXEC_FWD_DECL_INLINE get_completion_scheduler_t<_CPO> const get_completion_scheduler;
   STDEXEC_MODULE_EXPORT
   template <class _CPO = void>
-  extern get_completion_domain_t<_CPO> const get_completion_domain;
+  extern STDEXEC_FWD_DECL_INLINE get_completion_domain_t<_CPO> const get_completion_domain;
   STDEXEC_MODULE_EXPORT
-  extern get_domain_t const get_domain;
+  extern STDEXEC_FWD_DECL_INLINE get_domain_t const get_domain;
   STDEXEC_MODULE_EXPORT
-  extern get_await_completion_adaptor_t const get_await_completion_adaptor;
+  extern STDEXEC_FWD_DECL_INLINE get_await_completion_adaptor_t const get_await_completion_adaptor;
 
   template <class _Tag, class _Attrs, class... _Env>
   using __completion_domain_t = __call_result_or_t<get_completion_domain_t<_Tag>,
@@ -310,7 +311,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   struct connect_t;
   STDEXEC_MODULE_EXPORT
-  extern connect_t const connect;
+  extern STDEXEC_FWD_DECL_INLINE connect_t const connect;
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Receiver>
@@ -318,31 +319,31 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
-  extern bool const enable_sender;
+  extern STDEXEC_FWD_DECL_INLINE bool const enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct start_t;
   STDEXEC_MODULE_EXPORT
-  extern start_t const start;
+  extern STDEXEC_FWD_DECL_INLINE start_t const start;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct schedule_t;
   STDEXEC_MODULE_EXPORT
-  extern schedule_t const schedule;
+  extern STDEXEC_FWD_DECL_INLINE schedule_t const schedule;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct as_awaitable_t;
   STDEXEC_MODULE_EXPORT
-  extern as_awaitable_t const as_awaitable;
+  extern STDEXEC_FWD_DECL_INLINE as_awaitable_t const as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct transform_sender_t;
   STDEXEC_MODULE_EXPORT
-  extern transform_sender_t const transform_sender;
+  extern STDEXEC_FWD_DECL_INLINE transform_sender_t const transform_sender;
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class... _Env>
@@ -352,18 +353,18 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   struct starts_on_t;
   STDEXEC_MODULE_EXPORT
-  extern starts_on_t const starts_on;
+  extern STDEXEC_FWD_DECL_INLINE starts_on_t const starts_on;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct schedule_from_t;
   STDEXEC_MODULE_EXPORT
-  extern schedule_from_t const schedule_from;
+  extern STDEXEC_FWD_DECL_INLINE schedule_from_t const schedule_from;
 
   STDEXEC_MODULE_EXPORT
   struct continues_on_t;
   STDEXEC_MODULE_EXPORT
-  extern continues_on_t const continues_on;
+  extern STDEXEC_FWD_DECL_INLINE continues_on_t const continues_on;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
@@ -374,109 +375,109 @@ namespace STDEXEC
   struct bulk_unchunked_t;
 
   STDEXEC_MODULE_EXPORT
-  extern bulk_t const bulk;
+  extern STDEXEC_FWD_DECL_INLINE bulk_t const bulk;
   STDEXEC_MODULE_EXPORT
-  extern bulk_chunked_t const bulk_chunked;
+  extern STDEXEC_FWD_DECL_INLINE bulk_chunked_t const bulk_chunked;
   STDEXEC_MODULE_EXPORT
-  extern bulk_unchunked_t const bulk_unchunked;
+  extern STDEXEC_FWD_DECL_INLINE bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct just_t;
   STDEXEC_MODULE_EXPORT
-  extern just_t const just;
+  extern STDEXEC_FWD_DECL_INLINE just_t const just;
 
   STDEXEC_MODULE_EXPORT
   struct just_error_t;
   STDEXEC_MODULE_EXPORT
-  extern just_error_t const just_error;
+  extern STDEXEC_FWD_DECL_INLINE just_error_t const just_error;
 
   STDEXEC_MODULE_EXPORT
   struct just_stopped_t;
   STDEXEC_MODULE_EXPORT
-  extern just_stopped_t const just_stopped;
+  extern STDEXEC_FWD_DECL_INLINE just_stopped_t const just_stopped;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct then_t;
   STDEXEC_MODULE_EXPORT
-  extern then_t const then;
+  extern STDEXEC_FWD_DECL_INLINE then_t const then;
 
   STDEXEC_MODULE_EXPORT
   struct upon_error_t;
   STDEXEC_MODULE_EXPORT
-  extern upon_error_t const upon_error;
+  extern STDEXEC_FWD_DECL_INLINE upon_error_t const upon_error;
 
   STDEXEC_MODULE_EXPORT
   struct upon_stopped_t;
   STDEXEC_MODULE_EXPORT
-  extern upon_stopped_t const upon_stopped;
+  extern STDEXEC_FWD_DECL_INLINE upon_stopped_t const upon_stopped;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct let_value_t;
   STDEXEC_MODULE_EXPORT
-  extern let_value_t const let_value;
+  extern STDEXEC_FWD_DECL_INLINE let_value_t const let_value;
 
   STDEXEC_MODULE_EXPORT
   struct let_error_t;
   STDEXEC_MODULE_EXPORT
-  extern let_error_t const let_error;
+  extern STDEXEC_FWD_DECL_INLINE let_error_t const let_error;
 
   STDEXEC_MODULE_EXPORT
   struct let_stopped_t;
   STDEXEC_MODULE_EXPORT
-  extern let_stopped_t const let_stopped;
+  extern STDEXEC_FWD_DECL_INLINE let_stopped_t const let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct when_all_t;
   STDEXEC_MODULE_EXPORT
-  extern when_all_t const when_all;
+  extern STDEXEC_FWD_DECL_INLINE when_all_t const when_all;
 
   STDEXEC_MODULE_EXPORT
   struct when_all_with_variant_t;
   STDEXEC_MODULE_EXPORT
-  extern when_all_with_variant_t const when_all_with_variant;
+  extern STDEXEC_FWD_DECL_INLINE when_all_with_variant_t const when_all_with_variant;
 
   //////////////////////////////////////////////////////////////////////////////
   struct __read_env_t;
   STDEXEC_MODULE_EXPORT
-  extern __read_env_t const read_env;
+  extern STDEXEC_FWD_DECL_INLINE __read_env_t const read_env;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __write_env_t;
   STDEXEC_MODULE_EXPORT
-  extern __write_env_t const write_env;
+  extern STDEXEC_FWD_DECL_INLINE __write_env_t const write_env;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct into_variant_t;
   STDEXEC_MODULE_EXPORT
-  extern into_variant_t const into_variant;
+  extern STDEXEC_FWD_DECL_INLINE into_variant_t const into_variant;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct on_t;
   STDEXEC_MODULE_EXPORT
-  extern on_t const on;
+  extern STDEXEC_FWD_DECL_INLINE on_t const on;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct affine_t;
   STDEXEC_MODULE_EXPORT
-  extern affine_t const affine;
+  extern STDEXEC_FWD_DECL_INLINE affine_t const affine;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
   struct stopped_as_error_t;
   STDEXEC_MODULE_EXPORT
-  extern stopped_as_error_t const stopped_as_error;
+  extern STDEXEC_FWD_DECL_INLINE stopped_as_error_t const stopped_as_error;
 
   STDEXEC_MODULE_EXPORT
   struct stopped_as_optional_t;
   STDEXEC_MODULE_EXPORT
-  extern stopped_as_optional_t const stopped_as_optional;
+  extern STDEXEC_FWD_DECL_INLINE stopped_as_optional_t const stopped_as_optional;
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
@@ -488,17 +489,18 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_just_t;
   STDEXEC_MODULE_EXPORT_AUTHORING
-  extern __transfer_just_t const __transfer_just;
+  extern STDEXEC_FWD_DECL_INLINE __transfer_just_t const __transfer_just;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_t;
   STDEXEC_MODULE_EXPORT_AUTHORING
-  extern __transfer_when_all_t const __transfer_when_all;
+  extern STDEXEC_FWD_DECL_INLINE __transfer_when_all_t const __transfer_when_all;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_with_variant_t;
   STDEXEC_MODULE_EXPORT_AUTHORING
-  extern __transfer_when_all_with_variant_t const __transfer_when_all_with_variant;
+  extern STDEXEC_FWD_DECL_INLINE __transfer_when_all_with_variant_t const
+    __transfer_when_all_with_variant;
 }  // namespace STDEXEC
 
 // Moved to namespace experimental::execution from namespace STDEXEC because
@@ -510,10 +512,14 @@ namespace experimental::execution
   struct start_detached_t;
   struct __execute_t;
 
+  // These cannot be forward-declared `inline` because the deprecated aliases in
+  // __deprecations.hpp odr-use them without their definitions being visible.
+#  if !STDEXEC_GCC_MODULES_INLINE_REDECL_BUG()
   extern split_t const          split;
   extern ensure_started_t const ensure_started;
   extern start_detached_t const start_detached;
   extern __execute_t const      __execute;
+#  endif
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
@@ -528,11 +534,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   struct get_stop_token_t;
 
   STDEXEC_MODULE_EXPORT
-  extern forwarding_query_t const forwarding_query;
+  extern STDEXEC_FWD_DECL_INLINE forwarding_query_t const forwarding_query;
   STDEXEC_MODULE_EXPORT
-  extern get_allocator_t const get_allocator;
+  extern STDEXEC_FWD_DECL_INLINE get_allocator_t const get_allocator;
   STDEXEC_MODULE_EXPORT
-  extern get_stop_token_t const get_stop_token;
+  extern STDEXEC_FWD_DECL_INLINE get_stop_token_t const get_stop_token;
 
   STDEXEC_MODULE_EXPORT
   template <class _Env>
@@ -556,9 +562,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   struct sync_wait_with_variant_t;
   STDEXEC_MODULE_EXPORT
-  extern sync_wait_t const sync_wait;
+  extern STDEXEC_FWD_DECL_INLINE sync_wait_t const sync_wait;
   STDEXEC_MODULE_EXPORT
-  extern sync_wait_with_variant_t const sync_wait_with_variant;
+  extern STDEXEC_FWD_DECL_INLINE sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 // NOLINTEND(bugprone-std-namespace-modification)
 

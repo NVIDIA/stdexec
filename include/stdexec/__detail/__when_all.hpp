@@ -656,8 +656,17 @@ namespace STDEXEC
       template <class... _Env>
       static constexpr auto __fold_cmplsigs_fn = []<class... _Child>(__mlist_ptr<_Child...>)
       {
-        static_assert(sizeof...(_Env) == 0);  // __fold_cmplsigs_fn<_Env> is specialized below
-        return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child>()...);
+        // NB: not a partial specialization of __fold_cmplsigs_fn for a single _Env,
+        // which makes GCC write a module file that it cannot read back.
+        if constexpr (sizeof...(_Env) == 0)
+        {
+          return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child>()...);
+        }
+        else
+        {
+          using __env_t = __minvoke_q<__when_all::__env_t, _Env..., _Child...>;
+          return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child, __env_t>()...);
+        }
       };
 
       static constexpr auto __get_attrs =
@@ -825,14 +834,6 @@ namespace STDEXEC
 
         __state.__arrive();
       };
-    };
-
-    template <class _Env>
-    constexpr auto __when_all_impl::__fold_cmplsigs_fn<_Env> =
-      []<class... _Child>(__mlist_ptr<_Child...>)
-    {
-      using __env_t = __when_all::__env_t<_Env, _Child...>;
-      return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child, __env_t>()...);
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults

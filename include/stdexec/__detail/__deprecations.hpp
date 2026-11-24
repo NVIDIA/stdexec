@@ -92,6 +92,7 @@ namespace STDEXEC
 
   using execute_t [[deprecated]] = exec::__execute_t;
 
+#if !STDEXEC_GCC_MODULES_INLINE_REDECL_BUG()
   [[deprecated("Include <exec/split.hpp> and use exec::split instead")]]
   inline constexpr exec::split_t const & split = exec::split;
 
@@ -103,6 +104,7 @@ namespace STDEXEC
 
   [[deprecated]]
   inline constexpr exec::__execute_t const & execute = exec::__execute;
+#endif
 
   namespace [[deprecated("Use std::ranges directly")]] ranges
   {}
