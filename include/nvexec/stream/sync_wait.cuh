@@ -186,17 +186,22 @@ namespace nv::execution::_strm
         using state_t = _sync_wait::state<Sender>;
         state_t  state{};
         run_loop loop;
+        env      env_{loop.get_scheduler()};
 
-        auto sched = STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(sndr),
-                                                                    env{loop.get_scheduler()});
+        // The sender is customized by its domain before it is connected, and that sender
+        // reports the stream scheduler on which it completes (see stream_completing_sender).
+        // So connect that sender, and ask it for its scheduler.
+        auto&& tsndr    = STDEXEC::transform_sender(static_cast<Sender&&>(sndr), env_);
+        using tsender_t = __remove_rvalue_reference_t<decltype(tsndr)>;
+        auto sched = STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(tsndr), env_);
 
         cudaError_t status  = cudaSuccess;
-        auto        opstate = host_allocate<exit_opstate_t<Sender, receiver<Sender>>>(
+        auto        opstate = host_allocate<exit_opstate_t<tsender_t, receiver<Sender>>>(
           status,
           sched.ctx_.pinned_resource_,
           __emplace_from{[&]
                          {
-                           return exit_opstate(static_cast<Sender&&>(sndr),
+                           return exit_opstate(static_cast<tsender_t&&>(tsndr),
                                                receiver<Sender>{{}, &state, &loop},
                                                sched.ctx_);
                          }});

@@ -102,12 +102,18 @@ namespace nv::execution
            { sched.ctx_ } -> __decays_to<context>;
          };
 
+    // A sender completes on a stream scheduler if, as its domain customizes it for the
+    // environment, it reports a stream scheduler as its value completion scheduler. (The
+    // sender itself may not: some senders type-check, and so have completion attributes, only
+    // once the stream_domain has customized them. For example, starts_on(sch, get_stream())
+    // needs the stream that the stream_domain's starts_on gives get_stream().)
     template <class Sender, class Env>
     concept stream_completing_sender =
       sender_in<Sender, Env>
-      && gpu_stream_scheduler<
-        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
-        Env>;
+      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>,
+                                          env_of_t<transform_sender_result_t<Sender, Env>>,
+                                          Env>,
+                              Env>;
 
     template <class Sender, class Env>
     concept has_stream_transform =
@@ -144,6 +150,11 @@ namespace nv::execution
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain
   {
+    // The stream domain customizes the facade algorithms by re-tagging their senders, so
+    // the facade gives the senders it customizes the customized senders' attributes. (See
+    // __facade::__retagging_domain.)
+    static constexpr bool __retags_facade_senders = true;
+
     template <::exec::sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
       requires _strm::has_stream_transform<Sender, Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
@@ -332,6 +343,22 @@ namespace nv::execution
       }
     };
 
+    // The base of the tags of the stream algorithms that are facade algorithms. The
+    // stream_domain customizes a facade sender by re-tagging it: it gives the sender's data
+    // and children to the stream algorithm. (So the facade computes the attributes of the
+    // customized sender from the uncustomized one; see __facade::__nested_attrs_of.)
+    struct stream_tag_base
+    {};
+
+    // Is the sender a facade sender of a stream algorithm?
+    template <class Sender>
+    inline constexpr bool _is_stream_facade_sender_v = false;
+
+    template <class Tag, class Data, class... Child>
+    inline constexpr bool
+      _is_stream_facade_sender_v<STDEXEC::__facade::__sender<Tag, Data, Child...>> =
+        STDEXEC_IS_BASE_OF(stream_tag_base, Tag);
+
     struct stream_env_base
     {
       cudaStream_t stream_;
@@ -461,16 +488,20 @@ namespace nv::execution
       }
     };
 
+    // The attributes of a stream sender are those of its child. Queries are forwarded with
+    // their arguments, because a child's completion attributes can depend on the environment
+    // (as with an environment-dependent child of continues_on).
     template <class Sender>
     struct stream_sender_attrs
     {
-      template <class _Env2 = env_of_t<Sender>, __forwarding_query Query>
-        requires __queryable_with<_Env2, Query>
+      template <class _Env2 = env_of_t<Sender>, __forwarding_query Query, class... Args>
+        requires __queryable_with<_Env2, Query, Args...>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<_Env2, Query>)
-        -> __query_result_t<_Env2, Query>
+      constexpr auto query(Query, Args&&... args) const
+        noexcept(__nothrow_queryable_with<_Env2, Query, Args...>)
+          -> __query_result_t<_Env2, Query, Args...>
       {
-        return STDEXEC::get_env(*child_).query(Query());
+        return STDEXEC::get_env(*child_).query(Query(), static_cast<Args&&>(args)...);
       }
 
       Sender const * child_{};
@@ -513,10 +544,12 @@ namespace nv::execution
     using make_terminal_stream_env_t = terminal_stream_env_t<BaseEnv>;
 
     template <class Sender, class E>
-    concept stream_sender = sender_in<Sender, E>
-                         && STDEXEC_IS_BASE_OF(stream_sender_base,
-                                               STDEXEC_REMOVE_REFERENCE(
-                                                 STDEXEC::transform_sender_result_t<Sender, E>));
+    concept stream_sender =
+      sender_in<Sender, E>
+      && (STDEXEC_IS_BASE_OF(stream_sender_base,
+                             STDEXEC_REMOVE_REFERENCE(
+                               STDEXEC::transform_sender_result_t<Sender, E>))
+          || _is_stream_facade_sender_v<__decay_t<STDEXEC::transform_sender_result_t<Sender, E>>>);
 
     template <class Receiver>
     concept stream_receiver = receiver<Receiver>
@@ -809,6 +842,240 @@ namespace nv::execution
       void*           temp_storage_{nullptr};
       OuterReceiver   rcvr_;
       stream_provider stream_provider_;
+    };
+
+    // For a stream algorithm that is a facade algorithm: completes the receiver of the
+    // algorithm's state (an opstate_base) the way stream operations do, and returns the
+    // facade's token for the completion.
+    template <class State, class Tag, class... Args>
+    auto _propagate(State& state, Tag, Args&&... args) noexcept
+      -> STDEXEC::__facade::__effects<Tag(Args...)>
+    {
+      state.propagate_completion_signal(Tag(), static_cast<Args&&>(args)...);
+      return {};
+    }
+
+    template <class State, __decays_to<cudaError_t> Error>
+    auto _propagate(State& state, set_error_t, Error&& status) noexcept
+      -> STDEXEC::__facade::__effects<set_error_t(cudaError_t)>
+    {
+      state.propagate_completion_signal(set_error_t(), cudaError_t(status));
+      return {};
+    }
+
+    // The operation of a sender that would complete a stream receiver from a kernel. (A
+    // stream operation completes a receiver that is not a stream receiver from a kernel,
+    // and a sender that is not a stream sender can wrap one; a_sender in the tests is
+    // such a sender.) The sender is connected to a receiver that stores its result in pinned
+    // memory, on the device, and enqueues a task. The task completes the stream receiver,
+    // on the host, from a thread that services the queue.
+    template <class CvSender, class Receiver>
+    struct enqueue_opstate
+    {
+      using operation_state_concept = STDEXEC::operation_state_tag;
+      using env_t                   = env_of_t<Receiver>;
+      using variant_t               = variant_storage_t<CvSender, env_t>;
+      using task_t                  = continuation_task<Receiver, variant_t>;
+      using enqueue_receiver_t      = stream_enqueue_receiver<env_t, variant_t>;
+      using inner_opstate_t         = connect_result_t<CvSender, enqueue_receiver_t>;
+
+      // state is the opstate_base of the algorithm whose child or nested operation this is.
+      template <class State>
+      explicit enqueue_opstate(CvSender&& sndr, Receiver rcvr, State& state)
+        : rcvr_(rcvr)
+        , storage_(host_allocate<variant_t>(status_, state.ctx_.pinned_resource_))
+        , task_(host_allocate<task_t>(status_,
+                                      state.get_stream_context().pinned_resource_,
+                                      rcvr,
+                                      storage_.get(),
+                                      state.get_stream(),
+                                      state.get_stream_context().pinned_resource_)
+                  .release())
+        , env_(host_allocate<env_t>(status_, state.ctx_.pinned_resource_, STDEXEC::get_env(rcvr)))
+        , inner_op_{
+            STDEXEC::connect(static_cast<CvSender&&>(sndr),
+                             enqueue_receiver_t{env_.get(),
+                                                storage_.get(),
+                                                task_,
+                                                state.get_stream_context().hub_->producer()})}
+      {
+        if (status_ == cudaSuccess)
+        {
+          status_ = task_->status();
+        }
+      }
+
+      ~enqueue_opstate()
+      {
+        if (!started_ && task_)
+        {
+          task_->free_(task_);
+        }
+      }
+
+      STDEXEC_IMMOVABLE(enqueue_opstate);
+
+      void start() & noexcept
+      {
+        if (status_ != cudaSuccess)
+        {
+          // The task is freed with the operation state, since it was never enqueued.
+          STDEXEC::set_error(static_cast<Receiver&&>(rcvr_), cudaError_t(status_));
+          return;
+        }
+        started_ = true;
+        STDEXEC::start(inner_op_);
+      }
+
+     private:
+      Receiver                     rcvr_;
+      cudaError_t                  status_{cudaSuccess};
+      host_ptr_t<variant_t>        storage_;
+      task_t*                      task_{};
+      host_ptr_t<__decay_t<env_t>> env_;
+      inner_opstate_t              inner_op_;
+      bool                         started_{false};
+    };
+
+    // Does the sender report a stream scheduler as its value completion scheduler?
+    template <class Sender, class Env>
+    concept _completes_on_stream = gpu_stream_scheduler<
+      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
+      Env>;
+
+    // Does connecting the sender to the stream receiver need enqueue_opstate? A stream sender
+    // completes a stream receiver on the host, and so does a sender that completes inline
+    // (as read_env does, in start), and one that does not complete on a stream scheduler (a
+    // CPU scheduler's sender, say, or just_error). A sender that is none of those completes
+    // on a stream scheduler without being a stream sender, which means it wraps one with a
+    // receiver of its own, and that receiver is completed from a kernel.
+    template <class Sender, class Receiver>
+    concept _needs_enqueue =
+      stream_receiver<Receiver> && !stream_sender<Sender, env_of_t<Receiver>>
+      && !STDEXEC::__completes_inline<set_value_t, env_of_t<Sender>, env_of_t<Receiver>>
+      && _completes_on_stream<Sender, env_of_t<Receiver>>;
+
+    template <class Sender, class Receiver>
+    using stream_child_op_t = __if_c<_needs_enqueue<Sender, Receiver>,
+                                     enqueue_opstate<Sender, Receiver>,
+                                     connect_result_t<Sender, Receiver>>;
+
+    // Connects a child or nested operation of a stream algorithm whose state is an
+    // opstate_base
+    template <class State, class Sender, class Receiver>
+    auto connect_stream_child(State& state, Sender&& sndr, Receiver rcvr)
+      -> stream_child_op_t<Sender, Receiver>
+    {
+      if constexpr (_needs_enqueue<Sender, Receiver>)
+      {
+        return enqueue_opstate<Sender, Receiver>(static_cast<Sender&&>(sndr),
+                                                 static_cast<Receiver&&>(rcvr),
+                                                 state);
+      }
+      else
+      {
+        return STDEXEC::connect(static_cast<Sender&&>(sndr), static_cast<Receiver&&>(rcvr));
+      }
+    }
+
+    // The key of the operation through which a stream algorithm reports a CUDA error. It is
+    // only known by its type: it sends set_error_t(cudaError_t), on the stream. (Reporting
+    // such errors from the algorithm's own handlers would attribute them to wherever the
+    // algorithm started, or to its child.)
+    struct stream_error
+    {};
+
+    // The attributes of a stream operation's completions that are known only to happen on
+    // the stream
+    struct _stream_attrs
+    {
+      template <class Tag, class... Env>
+      constexpr auto
+      query(get_completion_domain_t<Tag>, Env const &...) const noexcept -> stream_domain
+      {
+        return {};
+      }
+    };
+
+    struct _stream_error_sender
+    {
+      using sender_concept        = STDEXEC::sender_tag;
+      using completion_signatures = STDEXEC::completion_signatures<set_error_t(cudaError_t)>;
+
+      auto get_env() const noexcept -> _stream_attrs
+      {
+        return {};
+      }
+    };
+
+    // The key of the operation through which a stream algorithm reports that it stopped,
+    // when it does so other than by passing on a completion (because its receiver asked it
+    // to stop, say). It is only known by its type: it sends set_stopped_t(), on the stream.
+    struct stream_stopped
+    {};
+
+    struct _stream_stopped_sender
+    {
+      using sender_concept        = STDEXEC::sender_tag;
+      using completion_signatures = STDEXEC::completion_signatures<set_stopped_t()>;
+
+      auto get_env() const noexcept -> _stream_attrs
+      {
+        return {};
+      }
+    };
+
+    // Reports a CUDA error, on the stream
+    template <class State>
+    auto _report_error(State& state, cudaError_t status) noexcept
+      -> STDEXEC::__facade::__effects<STDEXEC::__facade::__starts<stream_error>>
+    {
+      state.propagate_completion_signal(set_error_t(), status);
+      return {};
+    }
+
+    // Reports that the operation stopped, on the stream (see stream_stopped)
+    template <class State>
+    auto _report_stopped(State& state) noexcept
+      -> STDEXEC::__facade::__effects<STDEXEC::__facade::__starts<stream_stopped>>
+    {
+      state.propagate_completion_signal(set_stopped_t());
+      return {};
+    }
+
+    // The base of the stream algorithms that are facade algorithms. Their children and
+    // nested operations are connected to stream receivers, which stream operations complete
+    // on the host, with the work enqueued on the stream. A child that could complete its
+    // receiver from a kernel is connected through enqueue_opstate. (States that connect
+    // operations themselves use connect_stream_child.)
+    struct stream_algorithm : STDEXEC::__facade::__defaults
+    {
+      using __receiver_base = stream_receiver_base;
+
+      using STDEXEC::__facade::__defaults::__nested_sender;
+
+      template <class Sender, class... Env>
+      static auto __nested_sender(stream_error, Sender const &, Env const &...) noexcept
+        -> __mtype<_stream_error_sender>
+      {
+        return {};
+      }
+
+      template <class Sender, class... Env>
+      static auto __nested_sender(stream_stopped, Sender const &, Env const &...) noexcept
+        -> __mtype<_stream_stopped_sender>
+      {
+        return {};
+      }
+
+      template <class Key, class State, class Sender, class Receiver>
+      static auto __connect(Key, State& state, Sender&& sndr, Receiver rcvr)
+        -> stream_child_op_t<Sender, Receiver>
+      {
+        return _strm::connect_stream_child(state,
+                                           static_cast<Sender&&>(sndr),
+                                           static_cast<Receiver&&>(rcvr));
+      }
     };
 
     template <class OpState, class Env = decltype(__declval<OpState&>().make_env())>
