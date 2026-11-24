@@ -20,6 +20,7 @@ set(nvexec_test_sources
     bulk.cpp
     ensure_started.cpp
     start_detached.cpp
+    starts_on.cpp
     variant.cpp
     monotonic_buffer.cpp
     synchronized_pool.cpp
