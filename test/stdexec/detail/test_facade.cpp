@@ -675,6 +675,82 @@ namespace
                 decay_copy_error_t<move_only const &>>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // 7. An algorithm whose own completions depend on its environment opts in to
+  // __depends_on_env, as read_env does. Its senders are then dependent, and so is any
+  // sender with one as a child.
+  inline constexpr auto identity = [](auto x) noexcept
+  {
+    return x;
+  };
+
+  using read_token_t = decltype(ex::read_env(ex::get_stop_token));
+  using then_read_t  = decltype(ex::then(ex::read_env(ex::get_stop_token), identity));
+
+  static_assert(ex::dependent_sender<read_token_t> && ex::dependent_sender<then_read_t>);
+  static_assert(
+    ex::dependent_sender<decltype(ex::when_all(ex::just(1), ex::read_env(ex::get_stop_token)))>);
+
+  // Without an environment, there are no completion attributes either:
+  static_assert(!has_completion_scheduler<read_token_t, ex::set_value_t>);
+  static_assert(has_completion_scheduler<read_token_t, ex::set_value_t, start_env_t>);
+
+  // Given an environment, the completions follow, and a parent's do too:
+  static_assert(has_sigs_v<read_token_t, ex::set_value_t(ex::never_stop_token)>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<read_token_t, stop_env_t>,
+                            ex::completion_signatures<ex::set_value_t(ex::inplace_stop_token)>>);
+  static_assert(has_sigs_v<then_read_t, ex::set_value_t(ex::never_stop_token)>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<then_read_t, stop_env_t>,
+                            ex::completion_signatures<ex::set_value_t(ex::inplace_stop_token)>>);
+
+  // A query the environment can't answer is a type error, reported only once there is an
+  // environment.
+  using read_sched_t     = decltype(ex::read_env(ex::get_scheduler));
+  using no_value_error_t = ex::__mexception<
+    ex::__read_env::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
+    ex::_WHERE_(ex::_IN_ALGORITHM_, ex::__read_env_t),
+    ex::_WITH_QUERY_(ex::get_scheduler_t),
+    ex::_WITH_ENVIRONMENT_(ex::env<>)>;
+
+  static_assert(ex::dependent_sender<read_sched_t>);
+  static_assert(reports<read_sched_t, no_value_error_t>());
+
+  // Without the opt-in, the walk answers as if for env<> when there is no environment.
+  // read_env(get_stop_token) then claims to send a never_stop_token in every environment,
+  // and read_env(get_scheduler) is rejected as ill-typed when it is constructed.
+  struct read_env_without_opt_in : ex::__read_env::__algo
+  {
+    template <class Sndr>
+    static constexpr bool __depends_on_env = false;
+  };
+
+  template <class Query>
+  using read_env_without_opt_in_t = test_sender_t<read_env_without_opt_in, Query>;
+
+  static_assert(!ex::dependent_sender<read_env_without_opt_in_t<ex::get_stop_token_t>>);
+  static_assert(
+    same_sigs_v<ex::completion_signatures_of_t<read_env_without_opt_in_t<ex::get_stop_token_t>>,
+                ex::completion_signatures<ex::set_value_t(ex::never_stop_token)>>);
+  static_assert(!ex::__well_formed_sender<read_env_without_opt_in_t<ex::get_scheduler_t>>);
+
+  // An algorithm with children can opt in, too. The children are checked first, so a
+  // child's type error is still reported without an environment, and the sender is still
+  // rejected when it is constructed:
+  struct then_depending_on_env : ex::__upon::__algo<ex::then_t, ex::set_value_t>
+  {
+    template <class Sndr>
+    static constexpr bool __depends_on_env = true;
+  };
+
+  template <class Child>
+  using then_depending_on_env_t =
+    test_sender_t<then_depending_on_env, std::decay_t<decltype(no_throw)>, Child>;
+  using bad_child_t = then_sender_t<just_sender_t, bad_fn_t>;
+
+  static_assert(ex::dependent_sender<then_depending_on_env_t<just_sender_t>>);
+  static_assert(!ex::__well_formed_sender<then_depending_on_env_t<bad_child_t>>);
+  static_assert(reports_without_env<then_depending_on_env_t<bad_child_t>, then_error_t>());
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // 9. A sender that is lowered to another sender has that sender's completions and
   // attributes. when_all_with_variant(sndrs...) is lowered to when_all(into_variant(sndrs)...),
   // and __transfer_when_all(sch, sndrs...) to continues_on(when_all(sndrs...), sch).
@@ -798,6 +874,24 @@ namespace
     CHECK(caught == 42);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // 7, continued.
+  TEST_CASE("facade: read_env reads the environment of the receiver it is connected to",
+            "[detail][facade]")
+  {
+    ex::inplace_stop_source stop;
+    auto                    env = ex::prop{ex::get_stop_token, stop.get_token()};
+
+    auto result1 = ex::sync_wait(ex::write_env(ex::read_env(ex::get_stop_token), env));
+    REQUIRE(result1.has_value());
+    CHECK(std::get<0>(*result1) == stop.get_token());
+
+    // As a child:
+    auto result2 = ex::sync_wait(
+      ex::write_env(ex::then(ex::read_env(ex::get_stop_token), identity), env));
+    REQUIRE(result2.has_value());
+    CHECK(std::get<0>(*result2) == stop.get_token());
+  }
 
   // 9, continued. connect lowers when_all_with_variant(sndrs...) to
   // when_all(into_variant(sndrs)...), but the facade derives the sender's attributes from

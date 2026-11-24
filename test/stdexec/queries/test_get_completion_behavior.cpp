@@ -68,12 +68,17 @@ static_assert(cb::__may_be_asynchronous(cb::__asynchronous_affine | cb::__inline
 // get_scheduler() | let_value(schedule) look like it completed inline, and the
 // awaiter then kept the composed operation state in its own stack frame while a
 // nested schedule() operation was still queued (see #2098).
+//
+// read_env's completions depend on its environment, so it reports how it completes only
+// when it is asked with an environment.
 using __get_scheduler_sndr_t  = decltype(ex::get_scheduler());
 using __get_scheduler_attrs_t = ex::env_of_t<__get_scheduler_sndr_t>;
+using __scheduler_env_t       = ex::prop<ex::get_scheduler_t, ex::inline_scheduler>;
 
-static_assert(ex::__completes_inline<ex::set_value_t, __get_scheduler_attrs_t>);
-static_assert(!ex::__completes_inline<ex::set_error_t, __get_scheduler_attrs_t>);
-static_assert(!ex::__completes_inline<ex::set_stopped_t, __get_scheduler_attrs_t>);
+static_assert(ex::__completes_inline<ex::set_value_t, __get_scheduler_attrs_t, __scheduler_env_t>);
+static_assert(!ex::__completes_inline<ex::set_error_t, __get_scheduler_attrs_t, __scheduler_env_t>);
+static_assert(
+  !ex::__completes_inline<ex::set_stopped_t, __get_scheduler_attrs_t, __scheduler_env_t>);
 
 // The same expression from #2098, composed: the successor sender schedule(sch) may
 // complete asynchronously, so the composition must not be treated as completing
