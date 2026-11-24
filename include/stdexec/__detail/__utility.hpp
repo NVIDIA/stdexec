@@ -213,6 +213,7 @@ namespace STDEXEC
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")
+  // NOLINTBEGIN(modernize-avoid-c-style-cast)
 
   // A derived-to-base cast that works even when the base is not accessible from
   // derived.
@@ -236,6 +237,7 @@ namespace STDEXEC
     return (__copy_cvref_t<_Up&&, _Tp>) static_cast<_Up&&>(u);
   }
 
+  // NOLINTEND(modernize-avoid-c-style-cast)
   STDEXEC_PRAGMA_POP()
 
   template <class _Ty>
