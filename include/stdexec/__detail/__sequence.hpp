@@ -26,10 +26,11 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__connect.hpp"
 #  include "__just.hpp"
 #  include "__schedulers.hpp"
+#  include "__sender_facade.hpp"
+#  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__subscribe.hpp"
 #  include "__transform_completion_signatures.hpp"
@@ -95,15 +96,26 @@ namespace STDEXEC
      private:
       using __joined_t = env<env_of_t<_Sender2>, env_of_t<_Sender1>>;
 
-      // The env to use when querying _CvSender2:
+      // The env to use when querying _CvSender2: where the first sender completed, joined
+      // with the outer environment, as __rcvr2 provides it.
       template <class _Env>
-      using __env2_t = __secondary_env_t<_Sender1, _Env, set_value_t>;
+      using __env2_t = decltype(__env::__join(__mk_env2_t()(__declval<_Sender1 const &>(),
+                                                            __declval<_Env &>()),
+                                              __declval<_Env &>()));
 
       template <class _Env>
       constexpr auto __mk_env2(_Env &__env) const noexcept -> __env2_t<_Env>
       {
-        return __mk_env2_t()(__sndr1_, __env);
+        return __env::__join(__mk_env2_t()(__sndr1_, __env), __env);
       }
+
+      // Whether the first (second) sender can complete with _Tag. A sender that cannot has
+      // no say in where the sequence completes that way.
+      template <class _Tag, class... _Env>
+      static constexpr bool __sends1 = !__never_sends<_Tag, _Sender1, __fwd_env_t<_Env>...>;
+
+      template <class _Tag, class... _Env>
+      static constexpr bool __sends2 = !__never_sends<_Tag, _Sender2, __env2_t<_Env>...>;
 
      public:
       template <class... _Env>
@@ -115,15 +127,18 @@ namespace STDEXEC
                                                               __mk_env2(__env)...);
       }
 
-      // We only know the error or stopped completion scheduler if exactly one
-      // of the two senders knows its error/stopped completion scheduler.
+      // We know the error or stopped completion scheduler only if just one of the two
+      // senders can complete that way, and it knows its scheduler. (If both can, the
+      // sequence completes on one of two schedulers, which can differ at run time.)
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
-        requires(__has_completion_scheduler_for<_Tag, _Sender1, __fwd_env_t<_Env>...>
-                 != __has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
+        requires(__sends1<_Tag, _Env...> != __sends2<_Tag, _Env...>)
+             && (__sends1<_Tag, _Env...>
+                   ? __has_completion_scheduler_for<_Tag, _Sender1, __fwd_env_t<_Env>...>
+                   : __has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
       [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<_Tag>, _Env &&...__env) const noexcept
       {
-        if constexpr (__has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
+        if constexpr (__sends2<_Tag, _Env...>)
         {
           return STDEXEC::get_completion_scheduler<_Tag>(STDEXEC::get_env(__sndr2_),
                                                          __mk_env2(__env)...);
@@ -146,16 +161,21 @@ namespace STDEXEC
         return __domain_t();
       }
 
-      // The set_error/set_stopped completion domains are the common domain of
-      // the two senders.
+      // The set_error/set_stopped completion domain is the domain of the sender that can
+      // complete that way, or the common domain of the two senders if both can (or neither
+      // can).
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
       {
-        using __domain_t =
-          __common_domain_t<__completion_domain_t<_Tag, env_of_t<_Sender1>, __fwd_env_t<_Env>...>,
-                            __completion_domain_t<_Tag, env_of_t<_Sender2>, __env2_t<_Env>...>>;
-        return __domain_t();
+        using __domain1_t = __completion_domain_t<_Tag, env_of_t<_Sender1>, __fwd_env_t<_Env>...>;
+        using __domain2_t = __completion_domain_t<_Tag, env_of_t<_Sender2>, __env2_t<_Env>...>;
+        if constexpr (__sends1<_Tag, _Env...> == __sends2<_Tag, _Env...>)
+          return __common_domain_t<__domain1_t, __domain2_t>();
+        else if constexpr (__sends1<_Tag, _Env...>)
+          return __domain1_t();
+        else
+          return __domain2_t();
       }
 
       // The completion behavior of a pair of senders in sequence is the weakest
@@ -498,19 +518,329 @@ namespace STDEXEC
       : __sndr<__sndr<_Sender1, _Sender2>, _Senders...>
     {};
 
-    struct __impls : __sexpr_defaults
+    // The secondary environment of the _Idx-th sender (_Idx >= 1): where the sender before it
+    // completed, in that sender's environment. The receiver's environment is passed by
+    // reference, so that this has the same type at run time as in the walk.
+    // The first sender is connected from the sequence, with the sequence's value category.
+    // The later ones are stored decayed, and connected as rvalues.
+    template <std::size_t _Idx, class _Sender>
+    struct __sender_of
     {
-      static constexpr auto __get_attrs =  //
-        []<class... _Child>(auto, auto, _Child const &...__child) noexcept -> __attrs<_Child...>
+      using __t = __decay_t<__facade::__nth_child_of_t<_Sender, _Idx>>;
+    };
+
+    template <class _Sender>
+    struct __sender_of<0, _Sender>
+    {
+      using __t = __facade::__nth_child_of_t<_Sender, 0>;
+    };
+
+    template <std::size_t _Idx, class _Sender>
+    using __sender_of_t = __sender_of<_Idx, _Sender>::__t;
+
+    // Whether connecting the later senders can throw depends on the receiver, so without an
+    // environment the completions of a sequence of two or more senders are not known,
+    // unless one of the senders can already complete with an exception_ptr.
+    template <class _Sexpr, class _Indices>
+    inline constexpr bool __may_throw_unknown = false;
+
+    template <class _Sexpr, std::size_t... _Is>
+    inline constexpr bool __may_throw_unknown<_Sexpr, __indices<_Is...>> =
+      sizeof...(_Is) >= 2 && (sender_in<__facade::__nth_child_of_t<_Sexpr, _Is>> && ...)
+      && !(__has_eptr_completion<__facade::__nth_child_of_t<_Sexpr, _Is>> || ...);
+
+    template <std::size_t _Idx, class _Sender, class _Env>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __env2_for(_Sender const &__sndr, _Env const &__env) noexcept
+    {
+      static_assert(_Idx != 0);
+      if constexpr (_Idx == 1)
       {
-        return __attrs<_Child...>{__child...};
+        return __mk_env2_t()(__facade::__get_child<0>(__sndr), __fwd_env(__env));
+      }
+      else
+      {
+        return __mk_env2_t()(__facade::__get_child<_Idx - 1>(__sndr),
+                             __env::__join(__seq::__env2_for<_Idx - 1>(__sndr, __env), __env));
+      }
+    }
+
+    // Is the last sender a sequence sender? Then so is the sequence, which is lowered to a
+    // __seq::__sndr (see __sequence_t::transform_sender), because the facade cannot connect
+    // a sequence sender. (This matches the sender's template arguments, so that it does not
+    // require the sender to be complete.)
+    template <class _Sender>
+    inline constexpr bool __ends_in_sequence_sender_v = false;
+
+    template <class _Tag, class _Data, class _Child0, class... _Child>
+    inline constexpr bool
+      __ends_in_sequence_sender_v<__facade::__sender<_Tag, _Data, _Child0, _Child...>> =
+        __sequence_sender_tagged<__m_at_c<sizeof...(_Child), _Child0, _Child...>>;
+
+    template <class _Sender>
+    concept __ends_in_sequence_sender = __ends_in_sequence_sender_v<__decay_t<_Sender>>;
+
+    struct __algo;
+
+    template <class _Sender, class _Receiver, class _Indices>
+    struct __seq_state;
+
+    template <class _Sender, class _Receiver, std::size_t... _Is>
+    struct __seq_state<_Sender, _Receiver, __indices<_Is...>>
+    {
+      static constexpr std::size_t __nbr = sizeof...(_Is);
+      using __env_t                      = env_of_t<_Receiver>;
+
+      // The later senders are connected and started when the one before them completes.
+      template <std::size_t _Idx>
+      using __sender_t = __sender_of_t<_Idx, _Sender>;
+
+      template <std::size_t _Idx>
+      using __receiver_t =
+        __facade::__receiver_t<__algo, __facade::__child<_Idx>, __seq_state, _Sender, _Receiver>;
+
+      template <std::size_t _Idx>
+      using __env2_t = decltype(__seq::__env2_for<_Idx>(__declval<__decay_t<_Sender> const &>(),
+                                                        __declval<__env_t const &>()));
+
+      template <class _Indices>
+      struct __later;
+
+      template <std::size_t... _Js>
+      struct __later<__indices<_Js...>>
+      {
+        using __senders_t = __tuple<__decay_t<__facade::__nth_child_of_t<_Sender, _Js + 1>>...>;
+        using __env2s_t   = __tuple<__env2_t<_Js + 1>...>;
+
+        static constexpr auto
+        __mk_env2s(__decay_t<_Sender> const &__sndr, __env_t const &__env) noexcept -> __env2s_t
+        {
+          return __env2s_t{__seq::__env2_for<_Js + 1>(__sndr, __env)...};
+        }
+
+        static constexpr bool __nothrow_take =
+          (__nothrow_decay_copyable<__facade::__nth_child_of_t<_Sender, _Js + 1>> && ...);
+
+        static constexpr auto
+        __take_senders(_Sender &&__sndr) noexcept(__nothrow_take) -> __senders_t
+        {
+          return __senders_t{__facade::__get_child<_Js + 1>(static_cast<_Sender &&>(__sndr))...};
+        }
       };
 
-      template <class _Self>
+      using __later_t = __later<__make_indices<(__nbr == 0 ? 0 : __nbr - 1)>>;
+
+      static consteval auto __nothrow_connect_first() noexcept -> bool
+      {
+        if constexpr (__nbr == 0)
+          return true;
+        else
+          return __nothrow_connectable<__sender_t<0>, __receiver_t<0>>;
+      }
+
+      static constexpr bool __nothrow_v = __later_t::__nothrow_take && __nothrow_connect_first();
+
+      constexpr explicit __seq_state(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(__nothrow_v)
+        : __rcvr_(static_cast<_Receiver &&>(__rcvr))
+        , __env2s_(__later_t::__mk_env2s(__sndr, STDEXEC::get_env(__rcvr_)))
+        , __sndrs_(__later_t::__take_senders(static_cast<_Sender &&>(__sndr)))
+      {
+        if constexpr (__nbr != 0)
+        {
+          __ops_.__emplace_from(
+            [&]
+            {
+              return STDEXEC::connect(__facade::__get_child<0>(static_cast<_Sender &&>(__sndr)),
+                                      __receiver_t<0>{this});
+            });
+        }
+      }
+
+      STDEXEC_IMMOVABLE(__seq_state);
+
+      _Receiver                                                          __rcvr_;
+      typename __later_t::__env2s_t                                      __env2s_;
+      typename __later_t::__senders_t                                    __sndrs_;
+      __variant<connect_result_t<__sender_t<_Is>, __receiver_t<_Is>>...> __ops_{__no_init};
+    };
+
+    // __sequence(sndrs...): starts the senders one after the other. Each but the last must
+    // complete with set_value_t(), which starts the next. Other completions of any of them,
+    // and every completion of the last, are the operation's.
+    struct __algo : __facade::__defaults
+    {
+      static constexpr bool __connects_children = false;
+
+      // A sequence whose last sender is a sequence sender has the completions and the
+      // attributes of the __seq::__sndr it is lowered to.
+      template <class _Sender>
+        requires __ends_in_sequence_sender<_Sender>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_attrs(_Sender const &__sndr) noexcept
+      {
+        return STDEXEC::__apply([]<class... _Child>(auto const &,
+                                                    auto const &,
+                                                    _Child const &...__child) noexcept
+                                { return __attrs<_Child...>{__child...}; },
+                                __sndr);
+      }
+
+      template <class _Sender, class... _Env>
+        requires __ends_in_sequence_sender<_Sender>
       static consteval auto __get_completion_signatures()
       {
-        using __sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Self, env<>>>;
-        return STDEXEC::get_completion_signatures<__sndr_t>();
+        using __sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Sender, env<>>>;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+      }
+
+      template <class _Sender>
+      static constexpr bool __depends_on_env =
+        __may_throw_unknown<_Sender, __make_indices<__nbr_children_of<_Sender>>>;
+
+      // Each sender after the first sees where the one before it completed.
+      template <std::size_t _Idx, class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __env_for(__facade::__child<_Idx>,
+                                      _Sender const &__sndr,
+                                      _Env         &&__env) noexcept
+      {
+        if constexpr (_Idx == 0)
+        {
+          return __fwd_env(static_cast<_Env &&>(__env));
+        }
+        else
+        {
+          auto __env2 = __seq::__env2_for<_Idx>(__sndr, __env);
+          return __env::__join(static_cast<decltype(__env2) &&>(__env2),
+                               static_cast<_Env &&>(__env));
+        }
+      }
+
+      template <std::size_t _Idx, class _State>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_env(__facade::__child<_Idx>, _State const &__state) noexcept
+      {
+        if constexpr (_Idx == 0)
+        {
+          return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
+        }
+        else
+        {
+          using __env2_t = __decay_t<decltype(STDEXEC::__get<_Idx - 1>(__state.__env2s_))>;
+          return __env::__join(__env2_t(STDEXEC::__get<_Idx - 1>(__state.__env2s_)),
+                               STDEXEC::get_env(__state.__rcvr_));
+        }
+      }
+
+      // Forwarding queries are answered by the last sender.
+      template <class _Sender>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __fwd_sender(_Sender const &__sndr) noexcept -> decltype(auto)
+      {
+        if constexpr (__facade::__nbr_children_v<_Sender> != 0)
+          return __facade::__get_child<__facade::__nbr_children_v<_Sender> - 1>(__sndr);
+        else
+          return __facade::__no_attrs();
+      }
+
+      template <class _Sender, class _Receiver>
+      using __state_t = __seq_state<_Sender, _Receiver, __make_indices<__nbr_children_of<_Sender>>>;
+
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender &&__sndr, _Receiver __rcvr)
+        noexcept(__state_t<_Sender, _Receiver>::__nothrow_v) -> __state_t<_Sender, _Receiver>
+      {
+        return __state_t<_Sender, _Receiver>(static_cast<_Sender &&>(__sndr),
+                                             static_cast<_Receiver &&>(__rcvr));
+      }
+
+      template <class _State, class _Children>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start(_State &__state, _Children &) noexcept
+      {
+        if constexpr (_State::__nbr == 0)
+          return __facade::__send(__state.__rcvr_, set_value);
+        else
+          return __facade::__start_nested<__facade::__child<0>>(__var::__get<0>(__state.__ops_));
+      }
+
+      // A sender completed with a value: the next one starts, unless this was the last.
+      template <std::size_t _Idx, class _State, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<_Idx>,
+                                       _State &__state,
+                                       set_value_t,
+                                       _Args &&...__args) noexcept
+      {
+        if constexpr (_Idx + 1 == _State::__nbr)
+        {
+          return __facade::__send(__state.__rcvr_, set_value, static_cast<_Args &&>(__args)...);
+        }
+        else if constexpr (sizeof...(_Args) != 0)
+        {
+          return __facade::__type_error(
+            __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                         _WHERE_(_IN_ALGORITHM_, __sequence_t),
+                         _WHY_(_ALL_SENDERS_BUT_THE_LAST_MUST_BE_SENDERS_OF_VOID_),
+                         _WITH_SENDER_<typename _State::template __sender_t<_Idx>>>());
+        }
+        else
+        {
+          return __algo::__start_next<_Idx + 1>(__state);
+        }
+      }
+
+      template <std::size_t _Idx, class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __complete(__facade::__child<_Idx>,
+                                       _State &__state,
+                                       _Tag    __tag,
+                                       _Args &&...__args) noexcept
+      {
+        return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args &&>(__args)...);
+      }
+
+     private:
+      template <std::size_t _Idx, class _State>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start_next(_State &__state) noexcept
+      {
+        using __sender_t   = _State::template __sender_t<_Idx>;
+        using __receiver_t = _State::template __receiver_t<_Idx>;
+
+        // Connecting the next sender destroys the operation of the one that just completed.
+        auto __start = [&]()
+        {
+          auto &__op = __state.__ops_.__emplace_from(
+            [&]
+            {
+              return STDEXEC::connect(static_cast<__sender_t &&>(
+                                        STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
+                                      __receiver_t{&__state});
+            });
+          return __facade::__start_nested<__facade::__child<_Idx>>(__op);
+        };
+
+        if constexpr (__nothrow_connectable<__sender_t, __receiver_t>)
+        {
+          return __start();
+        }
+        else
+        {
+          using __result_t =
+            __facade::__union_t<decltype(__start()),
+                                __facade::__effects<set_error_t(std::exception_ptr)>>;
+          STDEXEC_TRY
+          {
+            return __result_t(__start());
+          }
+          STDEXEC_CATCH_ALL
+          {
+            return __result_t(
+              __facade::__send(__state.__rcvr_, set_error, std::current_exception()));
+          }
+        }
       }
     };
   }  // namespace __seq
@@ -522,10 +852,15 @@ namespace STDEXEC
     constexpr auto operator()(_Senders &&...__sndrs) const  //
       noexcept(__nothrow_decay_copyable<_Senders...>) -> __well_formed_sender auto
     {
-      return __sexpr{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...};
+      return __facade::__sender{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...};
     }
 
+    // A sequence whose last sender is a sequence sender is itself a sequence sender. Only
+    // __seq::__sndr implements that, so such a sequence is lowered to one.
     template <class _Self>
+      requires(__nbr_children_of<_Self> != 0)
+           && __sequence_sender_tagged<
+                __decay_t<__tuple_element_t<__nbr_children_of<_Self> + 1, __decay_t<_Self>>>>
     static constexpr auto transform_sender(set_value_t, _Self &&__self, __ignore)  //
       noexcept(__nothrow_transform<_Self>()) -> decltype(auto)
     {
@@ -577,7 +912,7 @@ namespace STDEXEC
   inline constexpr __sequence_t __sequence{};
 
   template <>
-  struct __sexpr_impl<__sequence_t> : __seq::__impls
+  struct __facade::__algorithm<__sequence_t> : __seq::__algo
   {};
 
   // __seq::__sndr is the result of a sender transform. It should not be
