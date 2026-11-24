@@ -183,8 +183,58 @@ namespace STDEXEC
       }
     };
 
+    // The attributes of a __stop_when sender. Completion queries are answered by the child,
+    // in the environment the child sees, which has the fused stop token.
+    template <class _Token, class _Child>
+    struct __attrs
+    {
+      template <class _Env>
+      using __env2_t =
+        __call_result_t<__mk_env2_fn,
+                        __call_result_t<__fuse_token_fn, _Token, stop_token_of_t<_Env>>,
+                        _Env const &>;
+
+      template <class _Env>
+      [[nodiscard]]
+      constexpr auto __mk_env2(_Env const & __env) const noexcept -> __env2_t<_Env>
+      {
+        return __mk_env2_fn()(__fuse_token_fn()(__token_, get_stop_token(__env)), __env);
+      }
+
+      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Env>
+        requires __completion_query<_Query> && __queryable_with<_Attrs, _Query, __env2_t<_Env>...>
+      [[nodiscard]]
+      constexpr auto query(_Query, _Env const &... __env) const
+        noexcept(__nothrow_queryable_with<_Attrs, _Query, __env2_t<_Env>...>)
+          -> __query_result_t<_Attrs, _Query, __env2_t<_Env>...>
+      {
+        return STDEXEC::get_env(__child_).query(_Query(), __mk_env2(__env)...);
+      }
+
+      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>) && __queryable_with<_Attrs, _Query, _Args...>
+      [[nodiscard]]
+      constexpr auto query(_Query, _Args&&... __args) const
+        noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>)
+          -> __query_result_t<_Attrs, _Query, _Args...>
+      {
+        return STDEXEC::get_env(__child_).query(_Query(), static_cast<_Args&&>(__args)...);
+      }
+
+      _Token const & __token_;
+      _Child const & __child_;
+    };
+
     struct __stop_when_impl : __sexpr_defaults
     {
+      static constexpr auto __get_attrs =
+        []<class _Token, class _Child>(__ignore,
+                                       _Token const & __token,
+                                       _Child const & __child) noexcept
+      {
+        return __attrs<_Token, _Child>{__token, __child};
+      };
+
       static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
       {
         return __mk_env2_fn()(__state.__token_, STDEXEC::get_env(__state.__rcvr_));
