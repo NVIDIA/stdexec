@@ -240,9 +240,9 @@ namespace STDEXEC
 
     template <class _Env2 = _Env, __none_of<_Queries...> _Query, class... _As>
       requires __queryable_with<_Env2, _Query, _As...>
-    constexpr auto operator()(_Query, _As &&...__as) const
-      noexcept(__nothrow_queryable_with<_Env2, _Query, _As...>)
-        -> __query_result_t<_Env2, _Query, _As...>
+    constexpr auto
+    query(_Query, _As &&...__as) const noexcept(__nothrow_queryable_with<_Env2, _Query, _As...>)
+      -> __query_result_t<_Env2, _Query, _As...>
     {
       return __env_.query(_Query(), static_cast<_As &&>(__as)...);
     }
@@ -258,10 +258,10 @@ namespace STDEXEC
   //! @brief A wrapper around an environment that hides the get_start_scheduler
   //! and get_domain queries.
   template <class _Env>
-  struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t>
+  struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t, get_domain_t>
   {
     constexpr explicit __hide_scheduler(_Env &&__env) noexcept
-      : __hide_query<_Env, get_start_scheduler_t>{static_cast<_Env &&>(__env), {}}
+      : __hide_query<_Env, get_start_scheduler_t, get_domain_t>{static_cast<_Env &&>(__env), {}, {}}
     {}
   };
 
