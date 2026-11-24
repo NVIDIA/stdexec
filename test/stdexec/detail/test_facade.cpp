@@ -15,8 +15,8 @@
  */
 
 // Tests for the sender facade in <stdexec/__detail/__sender_facade.hpp>, through algorithms
-// that are written with it for the tests. None of them has hand-written completion
-// signatures or hand-written completion attributes.
+// that are written with it: some for the tests, and the library's own. None of them has
+// hand-written completion signatures or hand-written completion attributes.
 
 // Catch2 must come before any potential import statements
 #include <catch2/catch_all.hpp>
@@ -356,6 +356,10 @@ namespace
   // well-formed.
   static_assert(
     !ex::__well_formed_sender<decltype(t_then(t_just(1), [](std::string) { return 0; }))>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // 1. Completion signatures fall out of the code.
+  static_assert(has_sigs_v<decltype(ex::just(1)), ex::set_value_t(int)>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
