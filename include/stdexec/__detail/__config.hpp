@@ -642,6 +642,11 @@ namespace STDEXEC
 // field from a function returning an object of class type by value. See:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98995
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#elif STDEXEC_APPLE_CLANG()
+// AppleClang (21, at least) miscompiles optimized builds as Clang 15-18 does: a
+// [[no_unique_address]] member initialized from a function call clobbers the member it
+// overlaps.
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #elif STDEXEC_CLANG() && (__clang_major__ >= 15 && __clang_major__ < 19)
 // See https://github.com/llvm/llvm-project/issues/93563
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS

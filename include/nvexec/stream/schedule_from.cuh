@@ -20,181 +20,95 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../../exec/completion_signatures.hpp"
-
-#include <memory>
 #include <utility>
 
+#include "adaptor.cuh"
 #include "common.cuh"
 
 namespace nv::execution
 {
   namespace _strm
   {
+    // schedule_from as a facade algorithm. The stream_domain customizes schedule_from(sndr)
+    // for a sender that completes on a stream scheduler by re-tagging it with this tag (see
+    // transform_sender_for<schedule_from_t> below).
+    struct schedule_from_t : stream_tag_base
+    {};
+
     namespace _schfr
     {
-      template <class Sender, class Receiver>
-      struct opstate : _strm::opstate_base<Receiver>
+      // schedule_from(sndr): moves the child's completions off the device. The child is
+      // connected to a receiver that stores its completion on the device and enqueues a task,
+      // which completes the receiver on the host once the stream has reached it. (A stream
+      // sender is connected that way too: completing a stream receiver on the host would not
+      // wait for its work.)
+      struct algo : stream_adaptor<algo>
       {
-        struct receiver;
-        using env_t              = _strm::opstate_base<Receiver>::env_t;
-        using variant_t          = variant_storage_t<Sender, env_t>;
-        using task_t             = continuation_task<receiver, variant_t>;
-        using enqueue_receiver_t = stream_enqueue_receiver<env_t, variant_t>;
-        using inner_opstate_t    = connect_result_t<Sender, enqueue_receiver_t>;
-
-        struct receiver
+        template <class Key, class State, class Sender, class Receiver>
+        static auto __connect(Key, State& state, Sender&& sndr, Receiver rcvr)
+          -> enqueue_opstate<Sender, Receiver>
         {
-          using receiver_concept = STDEXEC::receiver_tag;
-
-          template <class... Args>
-          void set_value(Args&&... args) noexcept
-          {
-            STDEXEC::set_value(std::move(opstate_.rcvr_), static_cast<Args&&>(args)...);
-          }
-
-          template <class Error>
-          void set_error(Error&& __err) noexcept
-          {
-            STDEXEC::set_error(std::move(opstate_.rcvr_), static_cast<Error&&>(__err));
-          }
-
-          void set_stopped() noexcept
-          {
-            STDEXEC::set_stopped(std::move(opstate_.rcvr_));
-          }
-
-          [[nodiscard]]
-          auto get_env() const noexcept -> env_t
-          {
-            return opstate_.make_env();
-          }
-
-          opstate& opstate_;
-        };
-
-        struct task_deleter
-        {
-          void operator()(task_t* task) const noexcept
-          {
-            if (task != nullptr)
-            {
-              task->free_(task);
-            }
-          }
-        };
-
-        using task_ptr_t = std::unique_ptr<task_t, task_deleter>;
-
-        opstate(Sender&& sndr, Receiver&& rcvr, context ctx)
-          : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), ctx)
-          , ctx_(ctx)
-          , storage_(host_allocate<variant_t>(this->status_, ctx.pinned_resource_))
-          , task_(task_ptr_t{host_allocate<task_t>(this->status_,
-                                                   this->get_stream_context().pinned_resource_,
-                                                   receiver{*this},
-                                                   storage_.get(),
-                                                   this->get_stream(),
-                                                   this->get_stream_context().pinned_resource_)
-                               .release()})
-          , env_(host_allocate(this->status_, ctx_.pinned_resource_, this->make_env()))
-          , inner_op_{connect(static_cast<Sender&&>(sndr),
-                              enqueue_receiver_t{env_.get(),
-                                                 storage_.get(),
-                                                 task_.get(),
-                                                 this->get_stream_context().hub_->producer()})}
-        {
-          if (this->status_ == cudaSuccess)
-          {
-            this->status_ = task_->status();
-          }
+          return enqueue_opstate<Sender, Receiver>(static_cast<Sender&&>(sndr),
+                                                   static_cast<Receiver&&>(rcvr),
+                                                   state);
         }
 
-        STDEXEC_IMMOVABLE(opstate);
-
-        void start() & noexcept
+        // A stream that could not be created is reported on the host.
+        template <class State, class Children>
+        static auto __start(State& state, Children& children) noexcept
         {
-          if (status_ != cudaSuccess)
-          {
-            // Couldn't allocate memory for operation state, complete with error
-            STDEXEC::set_error(std::move(this->rcvr_), std::move(status_));
-            return;
-          }
-
-          task_.release();
-          STDEXEC::start(inner_op_);
+          cudaError_t status = state.stream_provider_.status_;
+          return STDEXEC::__facade::__choose(
+            status == cudaSuccess,
+            [&]() noexcept { return children.__start_all(); },
+            [&]() noexcept
+            { return STDEXEC::__facade::__send(state.rcvr_, set_error_t(), status); });
         }
 
-        cudaError_t                  status_{cudaSuccess};
-        context                      ctx_;
-        host_ptr_t<variant_t>        storage_;
-        task_ptr_t                   task_;
-        host_ptr_t<__decay_t<env_t>> env_{};
-        inner_opstate_t              inner_op_;
+        // The child's completion, which the task sends from the host
+        template <class State, class Tag, class... Args>
+        static auto
+        __complete(STDEXEC::__facade::__child<0>, State& state, Tag tag, Args&&... args) noexcept
+        {
+          return STDEXEC::__facade::__send(state.rcvr_,
+                                           tag,
+                                           __decay_t<Args>(static_cast<Args&&>(args))...);
+        }
+
+        using stream_adaptor<algo>::__complete;
       };
     }  // namespace _schfr
-
-    template <class Sender>
-    struct schedule_from_sender : stream_sender_base
-    {
-      template <class Self, class Receiver>
-      using opstate_t = _schfr::opstate<__copy_cvref_t<Self, Sender>, Receiver>;
-
-      explicit schedule_from_sender(context ctx, Sender sndr)
-        : ctx_(ctx)
-        , sndr_{static_cast<Sender&&>(sndr)}
-      {}
-
-      template <__decays_to<schedule_from_sender> Self, STDEXEC::receiver Receiver>
-      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
-        -> opstate_t<Self, Receiver>
-      {
-        return opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,
-                                         static_cast<Receiver&&>(rcvr),
-                                         self.ctx_};
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
-
-      template <__decays_to<schedule_from_sender> Self, class... Env>
-      static consteval auto get_completion_signatures()
-      {
-        return exec::transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
-          exec::decay_arguments<STDEXEC::set_value_t, STDEXEC::schedule_from_t>(),
-          exec::decay_arguments<STDEXEC::set_error_t, STDEXEC::schedule_from_t>(),
-          exec::keep_completion<STDEXEC::set_stopped_t>(),
-          STDEXEC::completion_signatures<STDEXEC::set_stopped_t(),
-                                         STDEXEC::set_error_t(cudaError_t)>());
-      }
-
-      auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>>
-      {
-        return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
-      }
-
-      context ctx_;
-      Sender  sndr_;
-    };
 
     template <>
     struct transform_sender_for<STDEXEC::schedule_from_t>
     {
-      template <class Env, class Sender>
-      constexpr auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
+      template <class Env, class Data, class Sender>
+      constexpr auto operator()(Env const &, __ignore, Data&& data, Sender&& sndr) const
       {
         if constexpr (stream_completing_sender<Sender, Env>)
         {
-          using _sender_t   = schedule_from_sender<__decay_t<Sender>>;
-          auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
-          return _sender_t{stream_sched.ctx_, static_cast<Sender&&>(sndr)};
+          return STDEXEC::__facade::__sender{_strm::schedule_from_t(),
+                                             static_cast<Data&&>(data),
+                                             static_cast<Sender&&>(sndr)};
         }
         else
         {
-          return _strm::_no_stream_scheduler_in_env<STDEXEC::schedule_from_t, Sender, Env>();
+          // The child does not complete on one stream scheduler (as when_all, whose children
+          // may complete on several), so there is no stream to wait for. Such a sender
+          // completes a receiver that is not a stream receiver on the host (when_all does,
+          // once its children's streams are done), so schedule_from has nothing to do.
+          return STDEXEC::__facade::__sender{STDEXEC::schedule_from_t(),
+                                             static_cast<Data&&>(data),
+                                             static_cast<Sender&&>(sndr)};
         }
       }
     };
   }  // namespace _strm
 }  // namespace nv::execution
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::schedule_from_t>
+  : nv::execution::_strm::_schfr::algo
+{};
 
 namespace nvexec = nv::execution;
