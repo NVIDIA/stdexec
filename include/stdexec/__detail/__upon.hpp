@@ -29,7 +29,6 @@ import stdexec;
 #  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
 #  include "__diagnostics.hpp"
-#  include "__meta.hpp"
 #  include "__partition_completion_signatures.hpp"
 #  include "__receivers.hpp"
 #  include "__sender_facade.hpp"
@@ -47,25 +46,6 @@ namespace STDEXEC
   // Helpers for [exec.then]
   namespace __upon
   {
-    template <class _SetTag>
-    inline constexpr auto __complete =
-      []<class _Tag, class _State, class... _Args>(__ignore,
-                                                   _State& __state,
-                                                   _Tag,
-                                                   _Args&&... __args) noexcept -> void
-    {
-      if constexpr (__same_as<_Tag, _SetTag>)
-      {
-        STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
-                                  static_cast<_State&&>(__state).__data_,
-                                  static_cast<_Args&&>(__args)...);
-      }
-      else
-      {
-        _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-      }
-    };
-
     // then(sndr, fn), upon_error(sndr, fn), and upon_stopped(sndr, fn): the child's _SetTag
     // completions invoke the function, and its result is sent as a value. Other completions
     // are passed through. _AlgoTag names the algorithm in diagnostics.

@@ -64,9 +64,10 @@ namespace
             "[cuda][stream][adaptors][upon_stopped]")
   {
     auto fun = []() noexcept {};
-    using sender_t =
-      nvexec::_strm::upon_stopped_sender<a_sender_of<ex::set_stopped_t()>, decltype(fun)>;
-    sender_t snd{a_sender_of<ex::set_stopped_t()>{}, std::move(fun)};
+    // The sender as the stream domain customizes it
+    ex::__facade::__sender snd{nvexec::_strm::upon_stopped_t(),
+                               std::move(fun),
+                               a_sender_of<ex::set_stopped_t()>{}};
 
     check_err_types<ex::__mset<cudaError_t>>(snd);
   }

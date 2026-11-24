@@ -25,8 +25,8 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
@@ -39,25 +39,6 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
-  namespace __upon_stopped
-  {
-    struct __impl : __sexpr_defaults
-    {
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, upon_stopped_t>);
-        using __fn_t = __decay_t<__data_of<_Sender>>;
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
-          {},
-          {},
-          __upon::__transform_completion<__fn_t, upon_stopped_t>());
-      }
-
-      static constexpr auto __complete = __upon::__complete<set_stopped_t>;
-    };
-  }  // namespace __upon_stopped
 
   //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that handles a predecessor sender's
@@ -198,11 +179,11 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__impl
+  struct __facade::__algorithm<upon_stopped_t> : __upon::__algo<upon_stopped_t, set_stopped_t>
   {};
 
   template <class _Fun, class _Sender>
-  struct upon_stopped_t::__sender : __sexpr<upon_stopped_t, _Fun, _Sender>
+  struct upon_stopped_t::__sender : __facade::__sender<upon_stopped_t, _Fun, _Sender>
   {};
 
   template <sender _Sender, __movable_value _Fun>
