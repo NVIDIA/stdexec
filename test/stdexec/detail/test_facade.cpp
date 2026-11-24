@@ -360,6 +360,30 @@ namespace
   //////////////////////////////////////////////////////////////////////////////////////////
   // 1. Completion signatures fall out of the code.
   static_assert(has_sigs_v<decltype(ex::just(1)), ex::set_value_t(int)>);
+  static_assert(
+    has_sigs_v<decltype(ex::then(ex::just(1), may_throw)), ex::set_value_t(int), eptr_sig_t>);
+  static_assert(has_sigs_v<decltype(ex::then(ex::just(1), no_throw)), ex::set_value_t(int)>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // 2. then: when fn may throw, error completions also come from the child's *value*
+  // completions, so they may happen in either domain, inline or asynchronously.
+  using then_throw_t = decltype(ex::then(domain_probe{}, may_throw));
+  static_assert(
+    std::is_same_v<domain_of_t<then_throw_t, ex::set_value_t, ex::env<>>, value_domain>);
+  static_assert(is_indeterminate_of_v<domain_of_t<then_throw_t, ex::set_error_t, ex::env<>>,
+                                      value_domain,
+                                      error_domain>);
+  static_assert(
+    behavior_of_v<decltype(ex::then(behavior_probe{}, may_throw)), ex::set_error_t, ex::env<>>
+    == (cb::__inline_completion | cb::__asynchronous));
+
+  // When fn cannot throw, the error channel is exactly the child's.
+  using then_nothrow_t = decltype(ex::then(domain_probe{}, no_throw));
+  static_assert(
+    std::is_same_v<domain_of_t<then_nothrow_t, ex::set_error_t, ex::env<>>, error_domain>);
+  static_assert(
+    behavior_of_v<decltype(ex::then(behavior_probe{}, no_throw)), ex::set_error_t, ex::env<>>
+    == cb::__inline_completion);
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests

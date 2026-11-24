@@ -25,13 +25,9 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender.hpp"
-#  include "__meta.hpp"
-#  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
-#  include "__sender_introspection.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
-#  include "__transform_completion_signatures.hpp"
 #  include "__upon.hpp"
 
 #  include "__prologue.hpp"
@@ -41,29 +37,6 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
-  namespace __then
-  {
-    struct __impl : __sexpr_defaults
-    {
-      static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
-      {
-        return __sync_attrs{__child};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, then_t>);
-        using __fn_t = __decay_t<__data_of<_Sender>>;
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
-          __upon::__transform_completion<__fn_t, then_t>());
-      }
-
-      static constexpr auto __complete = __upon::__complete<set_value_t>;
-    };
-  }  // namespace __then
 
   //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that transforms a predecessor sender's
@@ -206,11 +179,11 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<then_t> : __then::__impl
+  struct __facade::__algorithm<then_t> : __upon::__algo<then_t, set_value_t>
   {};
 
   template <class _Fun, class _Sender>
-  struct then_t::__sender : __sexpr<then_t, _Fun, _Sender>
+  struct then_t::__sender : __facade::__sender<then_t, _Fun, _Sender>
   {};
 
   template <sender _Sender, __movable_value _Fun>

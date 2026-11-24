@@ -137,10 +137,15 @@ namespace
                                 STDEXEC::on(sched_C, STDEXEC::then(ForwardingThen{})))
               | STDEXEC::then(ForwardingThen{});
 
-    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    // The on() closures make the sender dependent: where on() returns depends on the
+    // environment. In the root environment (that of sync_wait), it returns to the inline
+    // scheduler, so the completion domain and scheduler are reported for that environment.
+    auto env    = STDEXEC::__root_env{};
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
     static_assert(std::same_as<decltype(domain), identifiable_domain<'A'>>);
 
-    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr),
+                                                                         env);
     static_assert(std::same_as<decltype(sched), decltype(sched_A)>);
   }
 

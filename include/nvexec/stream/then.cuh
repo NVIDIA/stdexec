@@ -20,15 +20,7 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../../exec/completion_signatures.hpp"
-
-#include <concepts>
-#include <cstddef>
-#include <type_traits>
-#include <utility>
-
-#include <cuda/std/utility>
-
+#include "adaptor.cuh"
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
@@ -36,161 +28,37 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
+  // then as a facade algorithm. The stream_domain customizes then(sndr, fn) by re-tagging
+  // it with this tag (see transform_sender_for<then_t> below).
+  struct then_t : stream_tag_base
+  {};
 
   namespace _then
   {
-    template <class... Args, class Fun>
-    STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _then_kernel(Fun fn, Args... args)
+    // then(sndr, fn): when the child completes with values, fn is called with them in a
+    // kernel on the stream, and its result is the operation's value. The child's other
+    // completions are passed on.
+    struct algo : stream_adaptor<algo>
     {
-      static_assert(trivially_copyable<Fun, Args...>);
-      ::cuda::std::move(fn)(static_cast<Args&&>(args)...);
-    }
-
-    template <class ResultT, class... Args, class Fun>
-    STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__
-      void _then_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result, Args... args)
-    {
-      static_assert(trivially_copyable<Fun, Args...>);
-      _store_result<ResultT>(result, ::cuda::std::move(fn), static_cast<Args&&>(args)...);
-    }
-
-    template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
-    struct receiver : public stream_receiver_base
-    {
-      using receiver_concept = STDEXEC::receiver_tag;
-      static constexpr std::size_t memory_allocation_size() noexcept
+      template <class State, class... Args>
+      static auto
+      __complete(STDEXEC::__facade::__child<0>, State& state, set_value_t, Args&&... args) noexcept
       {
-        return MemoryAllocationSize;
-      }
-
-      explicit receiver(Fun fun, _strm::opstate_base<Receiver>& opstate)
-        : f_(static_cast<Fun&&>(fun))
-        , opstate_(opstate)
-      {}
-
-      template <class... Args>
-        requires std::invocable<Fun, Args...>
-      void set_value(Args&&... args) noexcept
-      {
-        using result_t                         = std::invoke_result_t<Fun, Args...>;
-        constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-        cudaStream_t   stream                  = opstate_.get_stream();
-
-        if constexpr (does_not_return_a_value)
+        using fn_t = decltype(state.data_);
+        if constexpr (!__invocable<fn_t, Args...>)
         {
-          _then_kernel<Args&&...><<<1, 1, 0, stream>>>(std::move(f_), static_cast<Args&&>(args)...);
-
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_value);
-          }
-          else
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-          }
+          return STDEXEC::__facade::__type_error(
+            STDEXEC::__callable_error_t<STDEXEC::then_t, fn_t, Args...>());
         }
         else
         {
-          auto* d_result = static_cast<_stored_result_t<result_t>*>(opstate_.temp_storage_);
-          _then_kernel_with_result<result_t, Args&&...>
-            <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Args&&>(args)...);
-          opstate_.defer_temp_storage_destruction(d_result);
-
-          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-          if (status == cudaSuccess)
-          {
-            status = _wait_for_result<result_t>(stream);
-          }
-          if (status == cudaSuccess)
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_value,
-                                                 _load_result<result_t>(d_result));
-          }
-          else
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-          }
+          return _strm::_invoke_on_stream(state, state.data_, static_cast<Args&&>(args)...);
         }
       }
 
-      template <class Error>
-      void set_error(Error&& err) noexcept
-      {
-        opstate_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-      }
-
-      void set_stopped() noexcept
-      {
-        opstate_.propagate_completion_signal(set_stopped_t());
-      }
-
-      auto get_env() const noexcept -> _strm::opstate_base<Receiver>::env_t
-      {
-        return opstate_.make_env();
-      }
-
-     private:
-      Fun                            f_;
-      _strm::opstate_base<Receiver>& opstate_;
+      using stream_adaptor<algo>::__complete;
     };
   }  // namespace _then
-
-  template <class Sender, class Fun>
-  struct then_sender : stream_sender_base
-  {
-    template <class Receiver>
-      requires sender_in<Sender, env_of_t<Receiver>>
-    struct max_result_size
-      : __gather_completions_of_t<set_value_t,
-                                  Sender,
-                                  env_of_t<Receiver>,
-                                  __mbind_front<result_size_for, Fun>,
-                                  maxsize>
-    {};
-
-    template <class Receiver>
-    using receiver_t = _then::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
-
-    explicit then_sender(Sender sndr, Fun fun) noexcept(__nothrow_move_constructible<Sender, Fun>)
-      : sndr_(static_cast<Sender&&>(sndr))
-      , fun_(static_cast<Fun&&>(fun))
-    {}
-
-    template <__decays_to<then_sender> Self, STDEXEC::receiver Receiver>
-    auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
-      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
-    {
-      return stream_opstate<__copy_cvref_t<Self, Sender>>(
-        static_cast<Self&&>(self).sndr_,
-        static_cast<Receiver&&>(rcvr),
-        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-        { return receiver_t<Receiver>(static_cast<Self&&>(self).fun_, stream_provider); });
-    }
-    STDEXEC_EXPLICIT_THIS_END(connect)
-
-    template <__decays_to<then_sender> Self, class... Env>
-    static consteval auto get_completion_signatures()
-    {
-      return exec::transform_completion_signatures(
-        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
-        STDEXEC::__upon::__transform_completion<Fun, then_t>(),
-        {},
-        {},
-        _cuda_error_completion_t());
-    }
-
-    auto get_env() const noexcept -> stream_sender_attrs<Sender>
-    {
-      return {&sndr_};
-    }
-
-   private:
-    Sender sndr_;
-    Fun    fun_;
-  };
 
   template <>
   struct transform_sender_for<STDEXEC::then_t>
@@ -200,8 +68,9 @@ namespace nv::execution::_strm
     {
       if constexpr (stream_completing_sender<CvSender, Env>)
       {
-        using _sender_t = then_sender<__decay_t<CvSender>, __decay_t<Fn>>;
-        return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fn&&>(fun)};
+        return STDEXEC::__facade::__sender{_strm::then_t(),
+                                           static_cast<Fn&&>(fun),
+                                           static_cast<CvSender&&>(sndr)};
       }
       else
       {
@@ -210,6 +79,11 @@ namespace nv::execution::_strm
     }
   };
 }  // namespace nv::execution::_strm
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::then_t>
+  : nv::execution::_strm::_then::algo
+{};
 
 namespace nvexec = nv::execution;
 
