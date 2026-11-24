@@ -449,6 +449,22 @@ namespace
     == (cb::__inline_completion | cb::__asynchronous));
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // 4. when_all: the last child to finish delivers the result, in any channel. So an error
+  // can be delivered from another child's value completion, in its domain, and
+  // asynchronously, and there is no one scheduler on which errors happen.
+  using when_all_d_t = decltype(ex::when_all(domain_probe{}, domain_probe{}));
+  using when_all_b_t = decltype(ex::when_all(behavior_probe{}, behavior_probe{}));
+  static_assert(has_sigs_v<when_all_d_t, ex::set_value_t(), ex::set_error_t(int)>);
+  static_assert(
+    std::is_same_v<domain_of_t<when_all_d_t, ex::set_value_t, ex::env<>>, value_domain>);
+  static_assert(is_indeterminate_of_v<domain_of_t<when_all_d_t, ex::set_error_t, ex::env<>>,
+                                      value_domain,
+                                      error_domain>);
+  static_assert(behavior_of_v<when_all_b_t, ex::set_error_t, ex::env<>>
+                == (cb::__inline_completion | cb::__asynchronous));
+  static_assert(!has_completion_scheduler<when_all_b_t, ex::set_error_t, start_env_t>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // 5. continues_on: completions are replayed from a nested schedule operation, so they
   // happen where *it* completes.
   using cont_t = decltype(ex::continues_on(ex::just(1), std::declval<run_loop_sch_t>()));
@@ -492,6 +508,202 @@ namespace
                 ex::completion_signatures<ex::set_value_t(int), eptr_sig_t, ex::set_error_t(int)>>);
   static_assert(same_sigs_v<ex::completion_signatures_of_t<cont_moves_t, start_env_t>,
                             ex::completion_signatures<ex::set_value_t(int, int)>>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // 6. Type errors are reported where stdexec reports them. A sender that does not depend
+  // on its environment is checked when it is constructed. Otherwise,
+  // get_completion_signatures reports the error once it is asked with an environment: by
+  // throwing it when constexpr exceptions are available, and by returning it otherwise.
+  struct _TEST_ERROR_
+  {};
+
+  // A sender that can't say how it completes until it knows its environment. In any
+  // environment, needs_env<> completes with set_value_t(int), and needs_env<true> does
+  // not type-check.
+  template <bool IllTyped = false>
+  struct needs_env
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (sizeof...(Env) == 0)
+        return ex::__throw_dependent_sender_error<Self>();
+      else if constexpr (IllTyped)
+        return ex::__throw_compile_time_error<ex::_WHAT_(_TEST_ERROR_)>();
+      else
+        return ex::completion_signatures<ex::set_value_t(int)>();
+    }
+  };
+
+  using ill_typed = needs_env<true>;
+  using bad_fn_t  = decltype([](std::string) { return 0; });
+
+  // 6a. An ill-typed sender that doesn't depend on its environment is rejected when it is
+  // constructed: ex::then(ex::just(1), bad_fn_t()) is a hard error. The types can still be
+  // named:
+  template <class Sndr, class Fn>
+  using then_sender_t = ex::then_t::__sender<Fn, Sndr>;
+  template <class... Sndrs>
+  using when_all_sender_t = ex::__facade::__sender<ex::when_all_t, ex::__, Sndrs...>;
+  using just_sender_t     = decltype(ex::just(1));
+
+  static_assert(!ex::__well_formed_sender<then_sender_t<just_sender_t, bad_fn_t>>);
+  static_assert(!ex::__well_formed_sender<
+                when_all_sender_t<just_sender_t, then_sender_t<just_sender_t, bad_fn_t>>>);
+
+  // 6b. Otherwise the sender can be constructed. These are all dependent senders.
+  // An ill-typed child, directly and two levels down:
+  using child_error_t  = decltype(ex::then(ill_typed{}, no_throw));
+  using nested_error_t = decltype(ex::when_all(ex::just(1),
+                                               ex::continues_on(ill_typed{},
+                                                                std::declval<run_loop_sch_t>())));
+  // The algorithm's own type error, directly and one level down:
+  using own_error_t  = decltype(ex::then(needs_env{}, bad_fn_t()));
+  using deep_error_t = decltype(ex::when_all(ex::just(1), ex::then(needs_env{}, bad_fn_t())));
+  // A type error reported by __get_state (a child with two value completions):
+  using state_error_t = decltype(ex::when_all(needs_env{},
+                                              ex::upon_error(domain_probe{}, no_throw)));
+
+  static_assert(ex::dependent_sender<child_error_t> && ex::dependent_sender<nested_error_t>
+                && ex::dependent_sender<own_error_t> && ex::dependent_sender<deep_error_t>
+                && ex::dependent_sender<state_error_t>);
+
+  // None is a sender in env<>, and none has completion attributes there (rather than
+  // causing hard errors when asked).
+  template <class Sndr>
+  concept has_domain_query = requires(ex::env_of_t<Sndr> const &attrs) {
+    attrs.query(ex::get_completion_domain_t<ex::set_value_t>(), ex::env<>());
+  };
+
+  template <class Sndr>
+  inline constexpr bool ill_typed_v = !ex::sender_in<Sndr, ex::env<>> && !has_domain_query<Sndr>;
+
+  static_assert(ill_typed_v<child_error_t> && ill_typed_v<nested_error_t>
+                && ill_typed_v<own_error_t> && ill_typed_v<deep_error_t>
+                && ill_typed_v<state_error_t>);
+
+  // The errors each case must report in env<>
+  using test_error_t     = ex::__mexception<ex::_WHAT_(_TEST_ERROR_)>;
+  using then_error_t     = ex::__callable_error_t<ex::then_t, bad_fn_t, int>;
+  using when_all_error_t = ex::__mexception<
+    ex::_WHAT_(ex::_INVALID_ARGUMENT_),
+    ex::_WHERE_(ex::_IN_ALGORITHM_, ex::when_all_t),
+    ex::_WHY_(ex::__when_all::_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+    ex::_TO_FIX_THIS_ERROR_(ex::__when_all::_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>;
+
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+  // get_completion_signatures returns the error reported by the ill-typed part.
+  template <class Sndr, class Error, class... Env>
+  consteval bool reports_impl()
+  {
+    return std::is_same_v<decltype(ex::get_completion_signatures<Sndr, Env...>()), Error>;
+  }
+#else
+  // get_completion_signatures throws the error reported by the ill-typed part, as the
+  // exception stdexec throws for an __mexception.
+  template <class Error>
+  struct thrown;
+
+  template <class... What>
+  struct thrown<ex::_ERROR_<What...>>
+  {
+    using type = ex::__sender_type_check_failure<ex::__tuple<>, What...>;
+  };
+
+  template <class Sndr, class Error, class... Env>
+  consteval bool reports_impl()
+  {
+    try
+    {
+      (void) ex::get_completion_signatures<Sndr, Env...>();
+      return false;
+    }
+    catch (typename thrown<Error>::type const &)
+    {
+      return true;
+    }
+    catch (...)
+    {
+      return false;
+    }
+  }
+#endif
+
+  template <class Sndr, class Error, class Env = ex::env<>>
+  consteval bool reports()
+  {
+    return reports_impl<Sndr, Error, Env>();
+  }
+
+  template <class Sndr, class Error>
+  consteval bool reports_without_env()
+  {
+    return reports_impl<Sndr, Error>();
+  }
+
+  static_assert(reports<ill_typed, test_error_t>());
+  static_assert(reports<child_error_t, test_error_t>());
+  static_assert(reports<nested_error_t, test_error_t>());
+  static_assert(reports<own_error_t, then_error_t>());
+  static_assert(reports<deep_error_t, then_error_t>());
+  static_assert(reports<state_error_t, when_all_error_t>());
+
+  // The error for results that an algorithm must store but cannot decay-copy names the
+  // first such result.
+  struct move_only
+  {
+    move_only()                  = default;
+    move_only(move_only &&)      = default;
+    move_only(move_only const &) = delete;
+  };
+
+  template <class Type>
+  using decay_copy_error_t =
+    ex::__facade::__effects<ex::__mexception<ex::_WHAT_(ex::_TYPE_IS_NOT_DECAY_COPYABLE_),
+                                             ex::_WHERE_(ex::_IN_ALGORITHM_, ex::continues_on_t),
+                                             ex::_WITH_TYPE_<Type>>>;
+
+  static_assert(std::is_same_v<decltype(ex::__facade::__decay_copy_error<ex::continues_on_t,
+                                                                         int,
+                                                                         move_only &,
+                                                                         move_only const &>()),
+                               decay_copy_error_t<move_only &>>);
+  static_assert(std::is_same_v<
+                decltype(ex::__facade::__decay_copy_error<ex::continues_on_t, move_only const &>()),
+                decay_copy_error_t<move_only const &>>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // 9. A sender that is lowered to another sender has that sender's completions and
+  // attributes. when_all_with_variant(sndrs...) is lowered to when_all(into_variant(sndrs)...),
+  // and __transfer_when_all(sch, sndrs...) to continues_on(when_all(sndrs...), sch).
+  using variant_of_void_t = std::variant<std::tuple<>>;
+  using wawv_d_t          = decltype(ex::when_all_with_variant(domain_probe{}, domain_probe{}));
+  using wawv_b_t          = decltype(ex::when_all_with_variant(behavior_probe{}, behavior_probe{}));
+  // (into_variant always declares an exception_ptr error.)
+  static_assert(has_sigs_v<wawv_d_t,
+                           ex::set_value_t(variant_of_void_t, variant_of_void_t),
+                           ex::set_error_t(int),
+                           eptr_sig_t>);
+  static_assert(std::is_same_v<domain_of_t<wawv_d_t, ex::set_value_t, ex::env<>>, value_domain>);
+  static_assert(is_indeterminate_of_v<domain_of_t<wawv_d_t, ex::set_error_t, ex::env<>>,
+                                      value_domain,
+                                      error_domain>);
+  static_assert(behavior_of_v<wawv_b_t, ex::set_error_t, ex::env<>>
+                == (cb::__inline_completion | cb::__asynchronous));
+
+  // Every completion, an error too, is replayed on the scheduler.
+  using transfer_t =
+    decltype(ex::__transfer_when_all(std::declval<run_loop_sch_t>(), domain_probe{}, ex::just(1)));
+  static_assert(has_sigs_v<transfer_t, ex::set_value_t(int), ex::set_error_t(int)>);
+  static_assert(std::is_same_v<decltype(ex::get_completion_scheduler<ex::set_error_t>(
+                                 ex::get_env(std::declval<transfer_t>()),
+                                 std::declval<start_env_t>())),
+                               run_loop_sch_t>);
+  static_assert(behavior_of_v<transfer_t, ex::set_value_t, start_env_t> == cb::__asynchronous);
+  static_assert(
+    ex::__sender_for<ex::transform_sender_result_t<transfer_t, start_env_t>, ex::continues_on_t>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
@@ -556,5 +768,75 @@ namespace
     auto just_sndr = ex::just(1);
     CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(just_sndr), env)
           == loop2.get_scheduler());
+  }
+
+  // The derived information is enough to run real pipelines.
+  TEST_CASE("facade: senders run real pipelines", "[detail][facade]")
+  {
+    loop_thread ctx;
+    auto work   = ex::then(ex::when_all(ex::continues_on(ex::just(20), ctx.loop.get_scheduler()),
+                                      ex::just(1)),
+                         [](int a, int b) { return 2 * a + b; });
+    auto result = ex::sync_wait(std::move(work));
+    REQUIRE(result.has_value());
+    CHECK(std::get<0>(*result) == 41);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("facade: an exception from a function becomes an error completion", "[detail][facade]")
+  {
+    auto failing = ex::when_all(ex::just(1), ex::then(ex::just(), []() -> int { throw 42; }));
+    int  caught  = 0;
+    try
+    {
+      (void) ex::sync_wait(std::move(failing));
+    }
+    catch (int i)
+    {
+      caught = i;
+    }
+    CHECK(caught == 42);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // 9, continued. connect lowers when_all_with_variant(sndrs...) to
+  // when_all(into_variant(sndrs)...), but the facade derives the sender's attributes from
+  // what when_all's algorithm does for it. That must be what the lowered sender does.
+  // Connecting the sender with its own connect runs that algorithm.
+  template <class... Values>
+  struct values_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value(Values... values) noexcept
+    {
+      result_->emplace(std::move(values)...);
+    }
+
+    void set_error(std::exception_ptr) noexcept {}
+
+    void set_stopped() noexcept {}
+
+    std::optional<std::tuple<Values...>> *result_;
+  };
+
+  TEST_CASE("facade: when_all_with_variant's algorithm does what the lowered sender does",
+            "[detail][facade]")
+  {
+    using int_variant_t    = std::variant<std::tuple<int>>;
+    using double_variant_t = std::variant<std::tuple<double>>;
+    std::optional<std::tuple<int_variant_t, double_variant_t>> result;
+    auto op = ex::when_all_with_variant(ex::just(2), ex::just(3.5))
+                .connect(values_receiver<int_variant_t, double_variant_t>{&result});
+    ex::start(op);
+    REQUIRE(result.has_value());
+    CHECK(std::get<0>(*result) == int_variant_t{std::tuple{2}});
+    CHECK(std::get<1>(*result) == double_variant_t{std::tuple{3.5}});
+
+    // when_all_with_variant() is just():
+    std::optional<std::tuple<>> no_result;
+    auto op2 = ex::when_all_with_variant().connect(values_receiver<>{&no_result});
+    ex::start(op2);
+    CHECK(no_result.has_value());
   }
 }  // namespace
