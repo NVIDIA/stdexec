@@ -159,8 +159,8 @@ namespace STDEXEC
       {
         using __receiver_t = __debug::__receiver_t<_CvSender, _Env, _Sigs>;
         //static_assert(receiver_of<__receiver_t, _Sigs>);
-        // Skip senders that cannot be connected to the debug receiver, like the
-        // senders built around __sender_proxy that `on` uses for its attributes.
+        // Skip senders that cannot be connected to the debug receiver, like
+        // senders built around a __sender_proxy.
         if constexpr (__callable<connect_t, _CvSender, __receiver_t>)
         {
           if (__mnever<_CvSender>)
