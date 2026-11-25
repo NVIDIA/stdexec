@@ -23,11 +23,11 @@ import stdexec;
 
 #else
 
-#  include "__basic_sender.hpp"
 #  include "__completion_behavior.hpp"
 #  include "__finally.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 #  include "__unstoppable.hpp"
 
@@ -70,7 +70,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __sexpr{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
+      return __facade::__sender{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
     // Keeps the older spelling `sndr | affine()` working.
@@ -183,17 +183,27 @@ namespace STDEXEC
 
     template <class _Sender>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __attrs(_Sender const &) -> __attrs<_Sender>;
+
+    // affine(sndr) is lowered by transform_sender, to sndr or to a sender that completes on
+    // the start scheduler (see affine_t::transform_sender), so its completions are the
+    // child's. Its attributes are given, not derived: its completions happen where the
+    // operation started, unless they happen inline, which the attributes of the sender it is
+    // lowered to cannot say. (A schedule operation on the start scheduler does not say that
+    // it completes where it starts.)
+    struct __algo : __facade::__defaults
+    {
+      template <class _Sender>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_attrs(_Sender const &__sndr) noexcept
+      {
+        return __attrs{__facade::__get_child<0>(__sndr)};
+      }
+    };
   }  // namespace __affine
 
   template <>
-  struct __sexpr_impl<affine_t> : __sexpr_defaults
-  {
-    static constexpr auto __get_attrs =  //
-      []<class _Child>(affine_t, __ignore, _Child const &__child) noexcept
-    {
-      return __affine::__attrs{__child};
-    };
-  };
+  struct __facade::__algorithm<affine_t> : __affine::__algo
+  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
