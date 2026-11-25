@@ -26,14 +26,15 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender.hpp"
 #  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
 #  include "__operation_states.hpp"
+#  include "__optional.hpp"
 #  include "__receivers.hpp"
 #  include "__scope_concepts.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__sender_concepts.hpp"
+#  include "__sender_facade.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__type_traits.hpp"
@@ -165,9 +166,9 @@ namespace STDEXEC
         noexcept(__nothrow_constructible_from<__associate_data<_Token, _Sender>, _Token, _Sender>)
           -> __well_formed_sender auto
       {
-        return __sexpr{associate_t(),
-                       __associate_data(static_cast<_Token&&>(__token),
-                                        static_cast<_Sender&&>(__sndr))};
+        return __facade::__sender{associate_t(),
+                                  __associate_data(static_cast<_Token&&>(__token),
+                                                   static_cast<_Sender&&>(__sndr))};
       }
 
       template <scope_token _Token>
@@ -178,111 +179,92 @@ namespace STDEXEC
       }
     };
 
+    // The key of the operation of the wrapped sender
+    struct __wrapped_op
+    {};
+
+    struct __algo;
+
     // NOTE: the spec declares this class template inside the get_state function
     //       but I couldn't get that to build with Clang 21 so I moved it out to
     //       this namespace-scoped template and __uglified all the symbols
     template <class _Sender, class _Receiver>
-    struct __op_state
+    struct __state
     {
       using __associate_data_t = std::remove_cvref_t<__data_of<_Sender>>;
       using __assoc_t          = __associate_data_t::__assoc_t;
       using __sender_ref_t     = __associate_data_t::__sender_ref;
+      using __wrap_sender_t    = __associate_data_t::__wrap_sender_t;
+      using __wrapped_rcvr_t =
+        __facade::__receiver_t<__algo, __wrapped_op, __state, _Sender, _Receiver>;
+      using __op_t = connect_result_t<__wrap_sender_t, __wrapped_rcvr_t>;
 
-      using __op_t = connect_result_t<typename __sender_ref_t::element_type, _Receiver>;
-
-      __assoc_t __assoc_;
-      union
-      {
-        _Receiver __rcvr_;
-        __op_t    __op_;
-      };
-
-      explicit __op_state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
-        : __assoc_(STDEXEC::__allocator_aware_forward(std::move(__parts.first), __rcvr))
+      // The wrapped sender's operation is connected only if the association succeeded.
+      explicit __state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __assoc_(STDEXEC::__allocator_aware_forward(std::move(__parts.first), __rcvr_))
       {
         if (__assoc_)
         {
-          ::new ((void*) std::addressof(__op_))
-            __op_t(connect(std::move(*__parts.second), std::move(__rcvr)));
-        }
-        else
-        {
-          std::construct_at(std::addressof(__rcvr_), std::move(__rcvr));
+          __op_.__emplace_from(STDEXEC::connect,
+                               std::move(*__parts.second),
+                               __wrapped_rcvr_t{this});
         }
       }
 
-      explicit __op_state(__associate_data_t&& __ad, _Receiver&& __rcvr)
-        : __op_state(std::move(__ad).release(), std::move(__rcvr))
+      explicit __state(__associate_data_t&& __ad, _Receiver&& __rcvr)
+        : __state(std::move(__ad).release(), static_cast<_Receiver&&>(__rcvr))
       {}
 
-      explicit __op_state(__associate_data_t const & __ad, _Receiver&& __rcvr)
+      explicit __state(__associate_data_t const & __ad, _Receiver&& __rcvr)
         requires __std::copy_constructible<__associate_data_t>
-        : __op_state(__associate_data_t(__ad).release(), std::move(__rcvr))
+        : __state(__associate_data_t(__ad).release(), static_cast<_Receiver&&>(__rcvr))
       {}
 
-      ~__op_state()
-      {
-        if (__assoc_)
-        {
-          std::destroy_at(std::addressof(__op_));
-        }
-        else
-        {
-          std::destroy_at(std::addressof(__rcvr_));
-        }
-      }
+      STDEXEC_IMMOVABLE(__state);
 
-      void __run() noexcept
-      {
-        if (__assoc_)
-        {
-          STDEXEC::start(__op_);
-        }
-        else
-        {
-          STDEXEC::set_stopped(std::move(__rcvr_));
-        }
-      }
+      _Receiver          __rcvr_;
+      __assoc_t          __assoc_;
+      __optional<__op_t> __op_{};
     };
 
-    struct __associate_impl : __sexpr_defaults
+    // associate(sndr, token): if the token associated the wrapped sender with its scope,
+    // the wrapped sender's operation runs, and its completions are the operation's.
+    // Otherwise the operation completes with set_stopped_t() from start.
+    struct __algo : __facade::__defaults
     {
-#  if 0  // TODO: I don't know how to implement this correctly
-      static constexpr auto __get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
-        return __sync_attrs{__child};
-      };
-#  endif
+      using __facade::__defaults::__nested_sender;
 
-      template <class _Sender>
-      using __wrap_sender_of_t =
-        __copy_cvref_t<_Sender, typename __data_of<std::remove_cvref_t<_Sender>>::__wrap_sender_t>;
-
+      // The wrapped sender, which the data holds only if the association succeeded, so
+      // only its type is known
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_sender(__wrapped_op, _Sender const &, _Env const &...) noexcept
+        -> __mtype<typename __decay_t<__facade::__data_of_t<_Sender>>::__wrap_sender_t>
       {
-        static_assert(__sender_for<_Sender, associate_t>);
-        return STDEXEC::__concat_completion_signatures(
-          STDEXEC::get_completion_signatures<__wrap_sender_of_t<_Sender>, _Env...>(),
-          completion_signatures<set_stopped_t()>());
+        return {};
       }
 
-      static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept(
-          (__std::same_as<_Self, std::remove_cvref_t<_Self>> || __nothrow_decay_copyable<_Self>) &&
-            __nothrow_callable<connect_t,
-                               typename std::remove_cvref_t<__data_of<_Self>>::__wrap_sender_t,
-                               _Receiver>)
+      template <class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
+        noexcept((!std::is_lvalue_reference_v<_Sender>
+                  || __nothrow_copy_constructible<std::remove_cvref_t<__data_of<_Sender>>>)
+                 && __nothrow_connectable<typename __state<_Sender, _Receiver>::__wrap_sender_t,
+                                          typename __state<_Sender, _Receiver>::__wrapped_rcvr_t>)
+          -> __state<_Sender, _Receiver>
       {
-        auto& [__tag, __data] = __self;
+        return __state<_Sender, _Receiver>(__facade::__get_data(static_cast<_Sender&&>(__sndr)),
+                                           static_cast<_Receiver&&>(__rcvr));
+      }
 
-        using op_state_t = __op_state<std::remove_cvref_t<_Self>, _Receiver>;
-        return op_state_t{STDEXEC::__forward_like<_Self>(__data), std::move(__rcvr)};
-      };
-
-      static constexpr auto __start = [](auto& __state) noexcept -> void
+      template <class _State, class _Children>
+      static constexpr auto __start(_State& __state, _Children&) noexcept
       {
-        __state.__run();
-      };
+        return __facade::__choose(
+          static_cast<bool>(__state.__assoc_),
+          [&]() noexcept { return __facade::__start_nested<__wrapped_op>(*__state.__op_); },
+          [&]() noexcept { return __facade::__send(__state.__rcvr_, set_stopped_t()); });
+      }
     };
   }  // namespace __associate
 
@@ -296,7 +278,7 @@ namespace STDEXEC
   inline constexpr associate_t associate{};
 
   template <>
-  struct __sexpr_impl<associate_t> : __associate::__associate_impl
+  struct __facade::__algorithm<associate_t> : __associate::__algo
   {};
 }  // namespace STDEXEC
 
