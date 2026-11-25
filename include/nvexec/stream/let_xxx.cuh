@@ -291,13 +291,10 @@ namespace nv::execution::_strm
             }
 
             state.defer_temp_storage_destruction(sndr2);
-            auto& op = state.result_ops_.__emplace_from(
-              [&]
-              {
-                return _strm::connect_stream_child(state,
-                                                   static_cast<sndr2_t&&>(*sndr2),
-                                                   rcvr2_t{&state});
-              });
+            auto& op = state.result_ops_.__emplace_from(_strm::connect_stream_child,
+                                                        state,
+                                                        static_cast<sndr2_t&&>(*sndr2),
+                                                        rcvr2_t{&state});
             return result_t(__facade::__start_nested<key_t>(op));
           }
         }

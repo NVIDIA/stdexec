@@ -464,13 +464,9 @@ namespace experimental::execution
                   this,
                   __env_fn_t{&__rcvr_, &__nested_stop_}
                 };
-                __error_op_.__emplace_from(
-                  [&]()
-                  {
-                    return STDEXEC::connect(static_cast<__error_next_sender_t&&>(__next_sender),
-                                            static_cast<__error_next_receiver_t&&>(
-                                              __next_receiver));
-                  });
+                __error_op_.__emplace_from(STDEXEC::connect,
+                                           static_cast<__error_next_sender_t&&>(__next_sender),
+                                           static_cast<__error_next_receiver_t&&>(__next_receiver));
                 STDEXEC::start(__error_op_.value());
               }
               else
@@ -482,13 +478,10 @@ namespace experimental::execution
                     this,
                     __env_fn_t{&__rcvr_, &__nested_stop_}
                   };
-                  __error_op_.__emplace_from(
-                    [&]()
-                    {
-                      return STDEXEC::connect(static_cast<__error_next_sender_t&&>(__next_sender),
-                                              static_cast<__error_next_receiver_t&&>(
-                                                __next_receiver));
-                    });
+                  __error_op_.__emplace_from(STDEXEC::connect,
+                                             static_cast<__error_next_sender_t&&>(__next_sender),
+                                             static_cast<__error_next_receiver_t&&>(
+                                               __next_receiver));
                   STDEXEC::start(__error_op_.value());
                 }
                 STDEXEC_CATCH_ALL
