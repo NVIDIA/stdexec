@@ -26,10 +26,10 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__meta.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
 #  include "__utility.hpp"
@@ -49,59 +49,69 @@ namespace STDEXEC
   // [exec.into.variant]
   namespace __into_variant
   {
+    // A variant of decayed tuples of the child's values, one for each of its value
+    // completions
+    template <class _Completions>
+    using __variant_of_t =
+      __value_types_t<_Completions, __qq<__decayed_std_tuple>, __qq<__std_variant>>;
+
     template <class _Receiver, class _Variant>
     struct __state
     {
       using __variant_t = _Variant;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
     };
 
-    struct __into_variant_impl : __sexpr_defaults
+    // into_variant(sndr): the child's values become a variant of tuples of them. Other
+    // completions are forwarded.
+    struct __algo : __facade::__defaults
     {
-      static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender &&, _Receiver __rcvr) noexcept
       {
-        using __variant_t = value_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>;
-        return __state<_Receiver, __variant_t>{static_cast<_Receiver&&>(__rcvr)};
-      };
+        using __completions_t =
+          __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>;
+        return __state<_Receiver, __variant_of_t<__completions_t>>{
+          static_cast<_Receiver &&>(__rcvr)};
+      }
 
-      static constexpr auto __complete =
-        []<class _State, class _Tag, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State &__state,
+                                       _Tag    __tag,
+                                       _Args &&...__args) noexcept
       {
         if constexpr (__same_as<_Tag, set_value_t>)
         {
           using __variant_t = _State::__variant_t;
-          STDEXEC_TRY
-          {
-            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               __variant_t{std::in_place_type<__decayed_std_tuple<_Args...>>,
-                                           std::tuple<_Args&&...>{
-                                             static_cast<_Args&&>(__args)...}});
-          }
-          STDEXEC_CATCH_ALL
-          {
-            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-          }
+          return __facade::__set_value_from<into_variant_t>(
+            __state.__rcvr_,
+            [&]() noexcept(__nothrow_decay_copyable<_Args...>)
+            {
+              return __variant_t{std::in_place_type<__decayed_std_tuple<_Args...>>,
+                                 std::tuple<_Args &&...>{static_cast<_Args &&>(__args)...}};
+            });
         }
         else
         {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+          return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args &&>(__args)...);
         }
-      };
+      }
 
-      template <class _Self, class... _Env>
+      // The standard says that the sender sends a variant, and an exception_ptr error, even
+      // if the child never completes with a value, or if saving its values cannot throw. So
+      // the completion signatures are given here, not derived.
+      template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(__sender_for<_Self, into_variant_t>);
-        auto __completions = STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>();
+        static_assert(__sender_for<_Sender, into_variant_t>);
+        auto __completions = STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
         STDEXEC_IF_OK(__completions)
         {
-          using __completions_t = decltype(__completions);
-          using __variant_t =
-            __value_types_t<__completions_t, __qq<__decayed_std_tuple>, __qq<__std_variant>>;
+          using __variant_t = __variant_of_t<decltype(__completions)>;
           return STDEXEC::__transform_completion_signatures(
             __completions,
             __ignore_completion(),
@@ -204,9 +214,9 @@ namespace STDEXEC
     //!          argument is a @c std::variant of `std::tuple<Vs...>`
     //!          alternatives.
     template <sender _Sender>
-    constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __sexpr{into_variant_t(), __(), static_cast<_Sender&&>(__sndr)};
+      return __facade::__sender{into_variant_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
     //! @brief Returns @c *this, so that the older spelling
@@ -230,7 +240,7 @@ namespace STDEXEC
   inline constexpr into_variant_t into_variant{};
 
   template <>
-  struct __sexpr_impl<into_variant_t> : __into_variant::__into_variant_impl
+  struct __facade::__algorithm<into_variant_t> : __into_variant::__algo
   {};
 }  // namespace STDEXEC
 
