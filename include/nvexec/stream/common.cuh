@@ -1242,45 +1242,6 @@ namespace nv::execution
         { return propagate_receiver<opstate_base<OuterReceiver>>(op); },
         ctx);
     }
-
-    template <class InnerReceiverProvider, class OuterReceiver>
-    using inner_receiver_t = __call_result_t<InnerReceiverProvider, opstate_base<OuterReceiver>&>;
-
-    template <class CvSender, class InnerReceiver, class OuterReceiver>
-    using stream_opstate_t = _strm::opstate<CvSender, InnerReceiver, OuterReceiver>;
-
-    template <class CvSender, class OuterReceiver, class ReceiverProvider>
-      requires stream_completing_sender<CvSender, env_of_t<OuterReceiver>>
-    auto stream_opstate(CvSender&&       sndr,
-                        OuterReceiver&&  out_receiver,
-                        ReceiverProvider receiver_provider)
-      -> stream_opstate_t<CvSender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-    {
-      auto    sch = get_completion_scheduler<set_value_t>(get_env(sndr), get_env(out_receiver));
-      context ctx = sch.ctx_;
-
-      return stream_opstate_t<CvSender,
-                              inner_receiver_t<ReceiverProvider, OuterReceiver>,
-                              OuterReceiver>(static_cast<CvSender&&>(sndr),
-                                             static_cast<OuterReceiver&&>(out_receiver),
-                                             receiver_provider,
-                                             ctx);
-    }
-
-    template <class CvSender, class OuterReceiver, class ReceiverProvider>
-    auto stream_opstate(CvSender&&       sndr,
-                        OuterReceiver&&  out_receiver,
-                        ReceiverProvider receiver_provider,
-                        context          ctx)
-      -> stream_opstate_t<CvSender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-    {
-      return stream_opstate_t<CvSender,
-                              inner_receiver_t<ReceiverProvider, OuterReceiver>,
-                              OuterReceiver>(static_cast<CvSender&&>(sndr),
-                                             static_cast<OuterReceiver&&>(out_receiver),
-                                             receiver_provider,
-                                             ctx);
-    }
   }  // namespace _strm
 
   inline constexpr _strm::get_stream_t get_stream{};
@@ -1298,19 +1259,6 @@ namespace nv::execution
                                   stream);
   }
 #endif
-
-  template <class Ty>
-  inline constexpr std::size_t _sizeof_v = sizeof(Ty);
-
-  template <>
-  inline constexpr std::size_t _sizeof_v<void> = 0;
-
-  struct maxsize
-  {
-    template <class... Sizes>
-    using __f = STDEXEC::__msize_t<STDEXEC::__umax({std::size_t(0), Sizes::value...})>;
-  };
-
   // How a callable's result is kept in temporary storage: a reference result is
   // kept as a pointer to the referenced object, anything else as a decayed value.
   template <class Ty>
@@ -1361,20 +1309,6 @@ namespace nv::execution
       return std::move(*storage);
     }
   }
-
-  struct result_size_for
-  {
-    template <class Fun, class... Args>
-    using __f =
-      STDEXEC::__msize_t<_sizeof_v<_stored_result_t<STDEXEC::__call_result_t<Fun, Args...>>>>;
-  };
-
-  using _cuda_error_completion_t =
-    STDEXEC::completion_signatures<STDEXEC::set_error_t(cudaError_t)>;
-
-  template <class _NoExcept>
-  using _cuda_error_completion_unless_t =
-    STDEXEC::__if<_NoExcept, STDEXEC::completion_signatures<>, _cuda_error_completion_t>;
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;

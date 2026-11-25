@@ -36,17 +36,16 @@ namespace repeat_receiver_lifetime_test
         , invalidated_(invalidated)
       {}
 
-      // Invalidates the receiver of the repeating algorithm, which the sequence that the
-      // algorithm repeats connects this operation to. (The sequence is a facade algorithm,
-      // whose receivers point to its state.)
+      // Invalidates the receiver of the repeating algorithm, which connects this operation to
+      // it. (The algorithm is a facade algorithm, whose receivers point to its state.)
       ~operation()
       {
-        if constexpr (requires { rcvr_.__state_->__rcvr_.__state_ = nullptr; })
+        if constexpr (requires { rcvr_.__state_ = nullptr; })
         {
           if (started_)
           {
-            rcvr_.__state_->__rcvr_.__state_ = nullptr;
-            *invalidated_                    = true;
+            rcvr_.__state_ = nullptr;
+            *invalidated_  = true;
           }
         }
       }
