@@ -167,6 +167,30 @@ TEST_CASE("static_thread_pool::get_scheduler_on_thread Test start on a specific 
   REQUIRE(thread_ids.size() == num_of_threads);
 }
 
+TEST_CASE("static_thread_pool's schedule operation completes on the pool, however it completes",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{1};
+  ex::run_loop             loop;
+  ex::inplace_stop_source  stop;
+  auto                     stop_prop  = ex::prop{ex::get_stop_token, stop.get_token()};
+  auto                     sched_prop = ex::prop{ex::get_start_scheduler, loop.get_scheduler()};
+  auto                     env        = ex::env{stop_prop, sched_prop};
+
+  // With a stop token that can be stopped, the schedule operation can complete with a value
+  // or stopped, and the function can throw, all on the pool. inline_scheduler's schedule
+  // operation completes where it starts, so the whole operation completes on the pool, however
+  // it completes.
+  auto sndr = ex::schedule(pool.get_scheduler()) | ex::then([] {})
+            | ex::continues_on(ex::inline_scheduler{});
+  CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), env)
+        == pool.get_scheduler());
+  CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(sndr), env)
+        == pool.get_scheduler());
+  CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(sndr), env)
+        == pool.get_scheduler());
+}
+
 TEST_CASE("bulk on static_thread_pool executes on multiple threads", "[types][static_thread_pool]")
 {
   constexpr size_t const   num_of_threads = 5;

@@ -78,6 +78,9 @@ namespace experimental::execution
 
     struct __attrs
     {
+      // The operation completes where it started, however it completes.
+      static constexpr bool __one_completion_scheduler = true;
+
       template <__one_of<set_value_t, set_stopped_t>    _Tag,
                 __queryable_with<get_start_scheduler_t> _Env>
       [[nodiscard]]

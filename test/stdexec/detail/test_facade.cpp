@@ -929,6 +929,27 @@ namespace
                                           ex::set_value_t,
                                           start_env_t>);
 
+  // A sender that is not a facade sender can say that its attributes report one completion
+  // scheduler, however it completes (see __reports_one_completion_scheduler). run_loop's
+  // schedule sender does: it completes with a value or stopped on the run_loop. So
+  // continues_on with a scheduler that completes where it starts, and upon_stopped, over it
+  // complete on the run_loop too. Attributes that join its attributes with others do not
+  // say so, because the others may report other schedulers.
+  using loop_sched_t = ex::schedule_result_t<run_loop_sch_t>;
+  static_assert(ex::__facade::__reports_one_completion_scheduler<ex::env_of_t<loop_sched_t>>);
+  static_assert(has_completion_scheduler<decltype(ex::continues_on(std::declval<loop_sched_t>(),
+                                                                   ex::inline_scheduler{})),
+                                         ex::set_value_t,
+                                         stop_env_t>);
+  static_assert(
+    has_completion_scheduler<decltype(ex::upon_stopped(std::declval<loop_sched_t>(), no_throw)),
+                             ex::set_value_t,
+                             stop_env_t>);
+  static_assert(
+    !ex::__facade::__reports_one_completion_scheduler<
+      ex::__join_env_t<ex::prop<ex::get_completion_scheduler_t<ex::set_stopped_t>, run_loop_sch_t>,
+                       ex::env_of_t<loop_sched_t>>>);
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
 
@@ -1033,6 +1054,17 @@ namespace
     CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(cont_sndr), env)
           == loop1.get_scheduler());
     CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(cont_sndr), env)
+          == loop1.get_scheduler());
+
+    // With a stop token that can be stopped, run_loop's schedule sender completes with a
+    // value or stopped, both on its run_loop, and says so. So upon_stopped over it completes
+    // with a value there, however it completes.
+    ex::inplace_stop_source stop;
+    auto                    stop_prop  = ex::prop{ex::get_stop_token, stop.get_token()};
+    auto                    sched_prop = ex::prop{ex::get_start_scheduler, loop2.get_scheduler()};
+    auto                    stop_env   = ex::env{stop_prop, sched_prop};
+    auto upon_stopped_sndr = ex::upon_stopped(ex::schedule(loop1.get_scheduler()), no_throw);
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(upon_stopped_sndr), stop_env)
           == loop1.get_scheduler());
   }
 
