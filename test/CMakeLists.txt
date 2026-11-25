@@ -72,6 +72,7 @@ set(stdexec_test_sources
     stdexec/detail/test_any.cpp
     stdexec/detail/test_common_domain.cpp
     stdexec/detail/test_completion_signatures.cpp
+    stdexec/detail/test_get_completion_signatures.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/detail/test_intrusive_queue.cpp
     stdexec/detail/test_tuple.cpp

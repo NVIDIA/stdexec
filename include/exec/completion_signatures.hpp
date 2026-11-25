@@ -20,10 +20,17 @@
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import stdexec;
 #else
+#  include "../stdexec/__detail/__completion_signatures_of.hpp"
 #  include "../stdexec/__detail/__get_completion_signatures.hpp"
 #  include "../stdexec/__detail/__meta.hpp"
 #  include "../stdexec/__detail/__sender_concepts.hpp"
 #  include "../stdexec/__detail/__transform_completion_signatures.hpp"
+
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+#    include <initializer_list>
+#    include <meta>
+#    include <vector>
+#  endif
 
 namespace experimental::execution
 {
@@ -52,6 +59,43 @@ namespace experimental::execution
 STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+  namespace detail
+  {
+    template <class Sender, class... Env>
+    consteval void check_completion_signatures()
+    {
+      (void) STDEXEC::get_completion_signatures<Sender, Env...>();
+    }
+  }  // namespace detail
+
+  //////////////////////////////////////////////////////////////////////////////
+  // get_completion_signatures_type (P4357)
+
+  //! @brief Reflects the completion signatures of a sender.
+  //!
+  //! @param sender A reflection of the sender type.
+  //! @param env    Reflections of at most one environment type.
+  //!
+  //! @returns A reflection of @c STDEXEC::completion_signatures_of_t<Sender,
+  //!          Env...> with aliases removed. If the completion signatures
+  //!          cannot be computed the exception thrown by
+  //!          @c STDEXEC::get_completion_signatures is propagated.
+  template <std::meta::reflection_range Range = std::initializer_list<std::meta::info>>
+  consteval std::meta::info get_completion_signatures_type(std::meta::info sender,
+                                                           Range&&         env = {})
+  {
+    std::vector<std::meta::info> args{sender};
+    for (std::meta::info e: env)
+    {
+      args.push_back(e);
+    }
+    std::meta::extract<void (*)()>(
+      std::meta::substitute(^^detail::check_completion_signatures, args))();
+    return std::meta::dealias(std::meta::substitute(^^STDEXEC::completion_signatures_of_t, args));
+  }
+#  endif
+
   //! Creates a compile-time completion signatures type from explicit and
   //! deduced signature types.
   //!
