@@ -20,13 +20,12 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../../exec/completion_signatures.hpp"
-
 #include <concepts>
 #include <cstddef>
 
 #include <cuda/std/utility>
 
+#include "adaptor.cuh"
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
@@ -55,134 +54,72 @@ namespace nv::execution
         ::cuda::std::move(fn)(stream, args...);
       }
 
-      template <class Receiver, class Fun>
-      class receiver : public stream_receiver_base
+      // The data of a launch sender
+      template <class Fun>
+      struct data
       {
-        _strm::opstate_base<Receiver>& opstate_;
-        Fun                            fun_;
-        launch_params                  params_;
-
-       public:
-        explicit receiver(_strm::opstate_base<Receiver>& opstate, Fun fun, launch_params params)
-          : opstate_(opstate)
-          , fun_(static_cast<Fun&&>(fun))
-          , params_(params)
-        {}
-
-        template <class... Args>
-          requires std::invocable<Fun, cudaStream_t, Args&...>
-        void set_value(Args&&... args) noexcept
-        {
-          cudaStream_t  stream = opstate_.get_stream();
-          launch_params p      = params_;
-          _launch_kernel<Args&...>
-            <<<p.grid_size, p.block_size, p.shared_memory, stream>>>(std::move(fun_),
-                                                                     stream,
-                                                                     args...);
-
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_value, static_cast<Args&&>(args)...);
-          }
-          else
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-          }
-        }
-
-        template <class Error>
-        void set_error(Error&& err) noexcept
-        {
-          opstate_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-        }
-
-        void set_stopped() noexcept
-        {
-          opstate_.propagate_completion_signal(set_stopped_t());
-        }
-
-        [[nodiscard]]
-        auto get_env() const noexcept -> _strm::opstate_base<Receiver>::env_t
-        {
-          return opstate_.make_env();
-        }
+        Fun           fun_;
+        launch_params params_;
       };
 
-      template <class Fun>
-      constexpr auto get_value_cmplsig_transform()
+      // launch(sndr, params, fn): when the child completes with values, a kernel with the
+      // given launch parameters calls fn with the stream and the values, and then the values
+      // are sent. The child's other completions are passed on.
+      struct algo : stream_adaptor<algo>
       {
-        return []<class... Args>()
+        template <class State, class... Args>
+        static auto __complete(STDEXEC::__facade::__child<0>,
+                               State& state,
+                               set_value_t,
+                               Args&&... args) noexcept
         {
-          if constexpr (__callable<Fun, cudaStream_t, Args&...>)
+          using fun_t = decltype(state.data_.fun_);
+          if constexpr (!std::invocable<fun_t, cudaStream_t, Args&...>)
           {
-            return completion_signatures<set_value_t(Args...), set_error_t(cudaError_t)>();
+            return STDEXEC::__facade::__type_error(
+              __callable_error_t<launch_t, fun_t, cudaStream_t, Args&...>());
           }
           else
           {
-            return exec::throw_compile_time_error(
-              __callable_error_t<launch_t, Fun, cudaStream_t, Args&...>());
+            cudaStream_t  stream = state.get_stream();
+            launch_params p      = state.data_.params_;
+            _launch_kernel<Args&...>
+              <<<p.grid_size, p.block_size, p.shared_memory, stream>>>(std::move(state.data_.fun_),
+                                                                       stream,
+                                                                       args...);
+            cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+            return STDEXEC::__facade::__choose(
+              status == cudaSuccess,
+              [&]() noexcept
+              { return _strm::_propagate(state, set_value_t(), static_cast<Args&&>(args)...); },
+              [&]() noexcept { return _strm::_report_error(state, status); });
           }
-        };
-      }
+        }
+
+        using stream_adaptor<algo>::__complete;
+      };
     }  // namespace _launch
 
-    template <class Sender, class Fun>
-    struct launch_sender : stream_sender_base
+    struct launch_t : stream_tag_base
     {
-      template <class Receiver>
-      using receiver_t = _launch::receiver<Receiver, Fun>;
-
-      template <__decays_to<launch_sender> Self, STDEXEC::receiver Receiver>
-      auto STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this Self&& self, Receiver rcvr)
-        -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
-      {
-        return stream_opstate<__copy_cvref_t<Self, Sender>>(
-          static_cast<Self&&>(self).sndr_,
-          static_cast<Receiver&&>(rcvr),
-          [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-          {
-            return receiver_t<Receiver>(stream_provider,
-                                        static_cast<Self&&>(self).fun_,
-                                        self.params_);
-          });
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
-
-      template <__decays_to<launch_sender> Self, class... Env>
-      static consteval auto get_completion_signatures()
-      {
-        return exec::transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
-          _launch::get_value_cmplsig_transform<Fun>());
-      }
-
-      auto get_env() const noexcept -> stream_sender_attrs<Sender>
-      {
-        return {&sndr_};
-      }
-
-      Sender        sndr_;
-      Fun           fun_;
-      launch_params params_;
-    };
-
-    struct launch_t
-    {
-      template <class CvSender, class Fun>
-      using sender_t = launch_sender<__decay_t<CvSender>, Fun>;
-
       template <sender CvSender, __movable_value Fun>
-      constexpr auto operator()(CvSender&& sndr, Fun&& fun) const -> sender_t<CvSender, Fun>
+      constexpr auto operator()(CvSender&& sndr, Fun&& fun) const
       {
-        return {{}, static_cast<CvSender&&>(sndr), static_cast<Fun&&>(fun), {}};
+        return STDEXEC::__facade::__sender{
+          launch_t(),
+          _launch::data<__decay_t<Fun>>{static_cast<Fun&&>(fun), {}},
+          static_cast<CvSender&&>(sndr)
+        };
       }
 
       template <sender CvSender, __movable_value Fun>
-      constexpr auto operator()(CvSender&& sndr, launch_params params, Fun&& fun) const  //
-        -> sender_t<CvSender, Fun>
+      constexpr auto operator()(CvSender&& sndr, launch_params params, Fun&& fun) const
       {
-        return {{}, static_cast<CvSender&&>(sndr), static_cast<Fun&&>(fun), params};
+        return STDEXEC::__facade::__sender{
+          launch_t(),
+          _launch::data<__decay_t<Fun>>{static_cast<Fun&&>(fun), params},
+          static_cast<CvSender&&>(sndr)
+        };
       }
 
       template <__movable_value Fun>
@@ -204,6 +141,11 @@ namespace nv::execution
   inline constexpr _strm::launch_t launch{};
 
 }  // namespace nv::execution
+
+template <>
+struct STDEXEC::__facade::__algorithm<nv::execution::_strm::launch_t>
+  : nv::execution::_strm::_launch::algo
+{};
 
 namespace nvexec = nv::execution;
 
