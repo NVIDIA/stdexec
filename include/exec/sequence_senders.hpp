@@ -33,6 +33,7 @@ import stdexec;
 #  include "../stdexec/__detail/__meta.hpp"
 #  include "../stdexec/__detail/__normalize_completion_signature.hpp"
 #  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__sender_facade.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
 #  include "../stdexec/__detail/__subscribe.hpp"
@@ -326,6 +327,11 @@ namespace experimental::execution
   template <class _Tag, class _Data, class... _Child>
     requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_Tag, _Data, _Child...>>
   inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_Tag, _Data, _Child...>> = true;
+
+  template <class _Tag, class _Data, class... _Child>
+    requires __transparent_sequence_adaptor<STDEXEC::__facade::__sender<_Tag, _Data, _Child...>>
+  inline constexpr bool
+    enable_sequence_sender<STDEXEC::__facade::__sender<_Tag, _Data, _Child...>> = true;
 
   STDEXEC_MODULE_EXPORT
   template <class... _Senders>

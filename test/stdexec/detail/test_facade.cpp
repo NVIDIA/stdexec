@@ -982,6 +982,35 @@ namespace
     CHECK(std::get<0>(*result2) == stop.get_token());
   }
 
+  // 7, continued. write_env(sndr, env): the child sees env joined with the receiver's
+  // environment, which it shadows. The child's completions and attributes are those it has
+  // in that environment.
+  using write_token_t = decltype(ex::write_env(ex::read_env(ex::get_stop_token),
+                                               ex::prop{ex::get_stop_token,
+                                                        ex::never_stop_token()}));
+  using write_start_t = decltype(ex::write_env(ex::just(),
+                                               ex::prop{ex::get_start_scheduler,
+                                                        std::declval<run_loop_sch_t>()}));
+
+  static_assert(ex::dependent_sender<write_token_t>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<write_token_t, stop_env_t>,
+                            ex::completion_signatures<ex::set_value_t(ex::never_stop_token)>>);
+  // just() completes inline, so it completes on the start scheduler that write_env writes:
+  static_assert(has_completion_scheduler<write_start_t, ex::set_value_t, ex::env<>>);
+
+  TEST_CASE("facade: write_env's child sees the written environment", "[detail][facade]")
+  {
+    ex::run_loop loop;
+    auto sndr = ex::write_env(ex::just(), ex::prop{ex::get_start_scheduler, loop.get_scheduler()});
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), ex::env<>())
+          == loop.get_scheduler());
+
+    auto result = ex::sync_wait(
+      ex::write_env(ex::read_env(ex::get_stop_token),
+                    ex::prop{ex::get_stop_token, ex::never_stop_token()}));
+    REQUIRE(result.has_value());
+  }
+
   // 9, continued. connect lowers when_all_with_variant(sndrs...) to
   // when_all(into_variant(sndrs)...), but the facade derives the sender's attributes from
   // what when_all's algorithm does for it. That must be what the lowered sender does.

@@ -1610,13 +1610,16 @@ namespace STDEXEC
       }
 
       // Other forwarding queries are answered by the attributes the algorithm names. (The
-      // attributes' type is a template parameter so that it is checked only on use.)
+      // attributes' type is a template parameter so that it is checked only on use. The result
+      // type is deduced: compilers that substitute into the return type before checking the
+      // constraints, as Clang does through version 19, would otherwise ask those attributes a
+      // completion query, such as get_completion_domain<>(), in the environment of the query.
+      // The child must be asked in the environment that the algorithm gives it.)
       template <class _FwdAttrs = __fwd_attrs_t, __forwarding_query _Query, class... _Args>
         requires(!__completion_query<_Query>) && __queryable_with<_FwdAttrs, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       constexpr auto query(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<_FwdAttrs, _Query, _Args...>)
-          -> __query_result_t<_FwdAttrs, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_FwdAttrs, _Query, _Args...>) -> decltype(auto)
       {
         return STDEXEC::get_env(_Algo::__fwd_sender(__sndr_))
           .query(_Query(), static_cast<_Args &&>(__args)...);
