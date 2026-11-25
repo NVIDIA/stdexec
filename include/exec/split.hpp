@@ -18,8 +18,8 @@
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../stdexec/__detail/__basic_sender.hpp"
 #include "../stdexec/__detail/__sender_adaptor_closure.hpp"
+#include "../stdexec/__detail/__sender_facade.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__transform_sender.hpp"
 #include "detail/shared.hpp"
@@ -30,15 +30,18 @@ namespace experimental::execution
   //////////////////////////////////////////////////////////////////////////////
   struct split_t
   {
+    // Makes a sender that describes the split sender, which its domain customizes (see
+    // __shared::__describe_algo).
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
     [[nodiscard]]
     auto
     operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::transform_sender(STDEXEC::__sexpr{split_t(),
-                                                        static_cast<_Env&&>(__env),
-                                                        static_cast<_CvSender&&>(__sndr)},
-                                       __env);
+      return STDEXEC::transform_sender(
+        STDEXEC::__facade::__sender{split_t(),
+                                    __shared::__env_copy(static_cast<_Env&&>(__env)),
+                                    static_cast<_CvSender&&>(__sndr)},
+        __env);
     }
 
     [[nodiscard]]
@@ -47,14 +50,16 @@ namespace experimental::execution
       return STDEXEC::__closure(*this);
     }
 
+    // The split sender, unless a domain customizes it
     template <class _CvSender>
     static constexpr auto
     transform_sender(STDEXEC::set_value_t, _CvSender&& __sndr, STDEXEC::__ignore)
     {
       static_assert(sender_for<_CvSender, split_t>);
-      return __shared::__sndr{split_t(),
-                              STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
-                              STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
+      return __shared::__make_sender(
+        split_t(),
+        STDEXEC::__facade::__get_child<0>(static_cast<_CvSender&&>(__sndr)),
+        STDEXEC::__facade::__get_data(static_cast<_CvSender&&>(__sndr)));
     }
   };
 
@@ -67,6 +72,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::split_t> : exec::__shared::__impls<exec::split_t>
+  struct __facade::__algorithm<exec::split_t> : exec::__shared::__describe_algo<exec::split_t>
   {};
 }  // namespace STDEXEC

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include <exec/ensure_started.hpp>
 #include <exec/split.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
@@ -25,6 +26,8 @@
 
 #include <test_common/catch2.hpp>
 
+#include <memory>
+
 namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
@@ -32,13 +35,185 @@ using namespace std::chrono_literals;
 namespace
 {
 
+  // A query whose answer a move of the environment takes away
+  struct get_probe_t
+  {
+    template <class Env>
+      requires ex::__queryable_with<Env, get_probe_t>
+    auto operator()(Env const &env) const noexcept
+    {
+      return env.query(*this);
+    }
+  };
+
+  inline constexpr get_probe_t get_probe{};
+
+  // A domain that records what the environment says when it customizes the sender that
+  // split or ensure_started makes
+  struct probe_domain : ex::default_domain
+  {
+    template <class Sender, class Env>
+      requires exec::sender_for<Sender, exec::split_t>
+            || exec::sender_for<Sender, exec::ensure_started_t>
+    static auto transform_sender(ex::set_value_t, Sender &&sndr, Env const &env)
+    {
+      auto const probe = get_probe(env);
+      seen             = probe ? *probe : -1;
+      return ex::tag_of_t<Sender>::transform_sender(ex::set_value,
+                                                    static_cast<Sender &&>(sndr),
+                                                    env);
+    }
+
+    using ex::default_domain::transform_sender;
+
+    inline static int seen = 0;
+  };
+
+  // Completes with no values, in probe_domain
+  struct probe_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto
+      query(ex::get_completion_domain_t<ex::set_value_t>) noexcept -> probe_domain
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver &&>(rcvr_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) const noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("split and ensure_started give transform_sender the environment they get",
+            "[adaptors][split][ensure_started]")
+  {
+    probe_domain::seen = 0;
+    auto snd1 = exec::split(probe_sender{}, ex::prop{get_probe, std::make_shared<int>(42)});
+    CHECK(probe_domain::seen == 42);
+    auto op1 = ex::connect(std::move(snd1), expect_void_receiver{});
+    ex::start(op1);
+
+    probe_domain::seen = 0;
+    auto snd2          = exec::ensure_started(probe_sender{},
+                                     ex::prop{get_probe, std::make_shared<int>(42)});
+    CHECK(probe_domain::seen == 42);
+    auto op2 = ex::connect(std::move(snd2), expect_void_receiver{});
+    ex::start(op2);
+  }
+
+  // Completes with a value in value_domain, or with an error in error_domain. Copying its
+  // value can throw.
+  struct value_domain : ex::default_domain
+  {};
+
+  struct error_domain
+  {};
+
+  struct throwing_copy
+  {
+    throwing_copy() = default;
+
+    throwing_copy(throwing_copy const &) noexcept(false) {}
+  };
+
+  struct two_domain_sender
+  {
+    using sender_concept = ex::sender_tag;
+    using completion_signatures =
+      ex::completion_signatures<ex::set_value_t(throwing_copy), ex::set_error_t(int)>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto
+      query(ex::get_completion_domain_t<ex::set_value_t>) noexcept -> value_domain
+      {
+        return {};
+      }
+
+      [[nodiscard]]
+      static constexpr auto
+      query(ex::get_completion_domain_t<ex::set_error_t>) noexcept -> error_domain
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver &&>(rcvr_), throwing_copy{});
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) const noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  template <class Domain, class Domains>
+  constexpr bool has_domain = std::same_as<Domain, Domains>;
+
+  template <class Domain, class... Domains>
+  constexpr bool has_domain<Domain, ex::indeterminate_domain<Domains...>> =
+    (std::same_as<Domain, Domains> || ...);
+
+  TEST_CASE("split's errors can complete where its child completes with a value",
+            "[adaptors][split]")
+  {
+    // An operation that waits for the shared operation receives an exception from copying
+    // the child's value where the child completes with the value. So the errors of split
+    // can complete in the child's value domain, not only in its error domain.
+    auto snd     = exec::split(two_domain_sender{});
+    using env_t  = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
+    using domain = decltype(ex::get_completion_domain<ex::set_error_t>(ex::get_env(snd), env_t{}));
+    STATIC_REQUIRE(has_domain<error_domain, domain>);
+    STATIC_REQUIRE(has_domain<value_domain, domain>);
+  }
+
   TEST_CASE("split returns a sender", "[adaptors][split]")
   {
     auto snd  = exec::split(ex::just(19));
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -48,7 +223,6 @@ namespace
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender_in<Snd, ex::env<>>);
-    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -551,6 +725,27 @@ namespace
     (void) snd;
   }
 
+  TEST_CASE("split's completion attributes are honest", "[adaptors][split]")
+  {
+    // An operation that starts after the shared operation completes completes where it
+    // starts, and one that waits for the shared operation completes where that does. Here
+    // the start scheduler and the child's differ, so there is no value completion
+    // scheduler. Customizations of split are found where the child completes.
+    exec::static_thread_pool pool{1};
+    ex::run_loop             loop;
+    auto                     snd = ex::schedule(pool.get_scheduler()) | exec::split();
+    auto                     env = ex::prop{ex::get_start_scheduler, loop.get_scheduler()};
+    using attrs_t                = ex::env_of_t<decltype(snd)>;
+    using env_t                  = decltype(env);
+    using pool_domain_t          = ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>,
+                                                       decltype(pool.get_scheduler()),
+                                                       env_t>;
+    static_assert(!ex::__callable<ex::get_completion_scheduler_t<ex::set_value_t>, attrs_t, env_t>);
+    static_assert(std::same_as<ex::__call_result_t<ex::get_completion_domain_t<>, attrs_t, env_t>,
+                               pool_domain_t>);
+    (void) snd;
+  }
+
   struct my_sender
   {
     using sender_concept = ex::sender_tag;
@@ -574,7 +769,6 @@ namespace
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }
