@@ -751,6 +751,61 @@ namespace
   static_assert(reports_without_env<then_depending_on_env_t<bad_child_t>, then_error_t>());
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // 8. on returns to where it started (or, given a closure, to where its child completed).
+  // It depends on its environment for that, and it is an error if the environment does not
+  // say.
+  using on_sndr_t = decltype(ex::on(std::declval<run_loop_sch_t>(), ex::just(1)));
+  using on_closure_sndr_t =
+    decltype(ex::on(ex::just(1), std::declval<run_loop_sch_t>(), ex::then(identity)));
+
+  static_assert(ex::dependent_sender<on_sndr_t> && ex::dependent_sender<on_closure_sndr_t>);
+  static_assert(ex::sender_in<on_sndr_t, start_env_t>);
+  static_assert(ex::sender_in<on_closure_sndr_t, start_env_t>);
+
+  using cannot_return_error_t = ex::__mexception<
+    ex::_WHAT_(ex::_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
+    ex::_WHY_(ex::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
+    ex::_WHERE_(ex::_IN_ALGORITHM_, ex::on_t),
+    ex::_WITH_SENDER_<just_sender_t>,
+    ex::_WITH_ENVIRONMENT_(ex::env<>)>;
+
+  static_assert(reports<on_sndr_t, cannot_return_error_t>());
+
+  // on(sndr, sch, closure) runs sndr inside the closure's sender. sndr is checked in the
+  // environment it sees if the closure does not change the environment, which is also the
+  // environment in which on asks sndr where it completes.
+  using bad_closure_child_t = decltype(ex::on(ex::read_env(ex::get_allocator),
+                                              std::declval<run_loop_sch_t>(),
+                                              ex::then(identity)));
+  static_assert(!ex::sender_in<bad_closure_child_t, start_env_t>);
+
+  // on(sch, sndr) is lowered to continues_on(starts_on(sch, sndr), orig_sch), whose
+  // schedule operation back starts where starts_on(sch, sndr) completed. So it sees, as its
+  // start scheduler, the scheduler on which that completes, if that is known (here, the
+  // run_loop), or the receiver's, if that sender completes where it starts. Otherwise it
+  // sees none.
+  using start_sensitive_env_t = decltype(ex::prop{ex::get_start_scheduler,
+                                                  start_sensitive_scheduler{}});
+  using on_stays_t            = decltype(ex::on(ex::inline_scheduler{}, ex::just()));
+  using on_loop_t             = decltype(ex::on(std::declval<run_loop_sch_t>(), ex::just()));
+  using on_moves_t = decltype(ex::on(std::declval<run_loop_sch_t>(), std::declval<loops_sndr_t>()));
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<on_stays_t, start_sensitive_env_t>,
+                            ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<on_loop_t, start_sensitive_env_t>,
+                            ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>>);
+  static_assert(same_sigs_v<ex::completion_signatures_of_t<on_moves_t, start_sensitive_env_t>,
+                            ex::completion_signatures<ex::set_value_t(int, int)>>);
+  // `on` completes where that schedule operation completes. Here the start scheduler, and so
+  // the scheduler that `on` returns to, is inline_scheduler, so `on` completes where
+  // starts_on(sch, sndr) completed: on the run_loop.
+  using on_inline_return_t = decltype(ex::starts_on(ex::inline_scheduler{},
+                                                    std::declval<on_loop_t>()));
+  static_assert(std::is_same_v<decltype(ex::get_completion_scheduler<ex::set_value_t>(
+                                 ex::get_env(std::declval<on_inline_return_t>()),
+                                 ex::env<>{})),
+                               run_loop_sch_t>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // 9. A sender that is lowered to another sender has that sender's completions and
   // attributes. when_all_with_variant(sndrs...) is lowered to when_all(into_variant(sndrs)...),
   // and __transfer_when_all(sch, sndrs...) to continues_on(when_all(sndrs...), sch).
@@ -846,6 +901,25 @@ namespace
           == loop2.get_scheduler());
   }
 
+  // 8, continued.
+  TEST_CASE("facade: on completes on the scheduler it returns to", "[detail][facade]")
+  {
+    ex::run_loop loop1;
+    ex::run_loop loop2;
+    auto         env = ex::prop{ex::get_start_scheduler, loop2.get_scheduler()};
+
+    // on(sch, sndr) returns to the start scheduler.
+    auto sndr = ex::on(loop1.get_scheduler(), ex::just(1));
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), env)
+          == loop2.get_scheduler());
+
+    // on(sndr, sch, closure) returns to where sndr completes, which for just is where it
+    // starts.
+    auto closure_sndr = ex::on(ex::just(1), loop1.get_scheduler(), ex::then(identity));
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(closure_sndr), env)
+          == loop2.get_scheduler());
+  }
+
   // The derived information is enough to run real pipelines.
   TEST_CASE("facade: senders run real pipelines", "[detail][facade]")
   {
@@ -856,6 +930,21 @@ namespace
     auto result = ex::sync_wait(std::move(work));
     REQUIRE(result.has_value());
     CHECK(std::get<0>(*result) == 41);
+  }
+
+  TEST_CASE("facade: on hops there and back", "[detail][facade]")
+  {
+    loop_thread ctx;
+    auto        here = std::this_thread::get_id();
+    auto        work = ex::on(ctx.loop.get_scheduler(),
+                       ex::just() | ex::then([] { return std::this_thread::get_id(); }))
+              | ex::then([](std::thread::id there)
+                         { return std::pair{there, std::this_thread::get_id()}; });
+    auto result = ex::sync_wait(std::move(work));
+    REQUIRE(result.has_value());
+    auto [there, back] = std::get<0>(*result);
+    CHECK(there == ctx.worker.get_id());
+    CHECK(back == here);
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
