@@ -74,8 +74,8 @@ namespace STDEXEC
     // `co_return with_stopped{}` completes the task with set_stopped, unless _Ty
     // can be constructed from with_stopped, in which case it is an ordinary value.
     template <class _Ty, class _Value>
-    inline constexpr bool __co_returns_stopped_v =
-      __same_as<__decay_t<_Value>, with_stopped> && !__std::convertible_to<with_stopped, _Ty>;
+    inline constexpr bool __co_returns_stopped_v = __same_as<__decay_t<_Value>, with_stopped>
+                                                && !__std::convertible_to<with_stopped, _Ty>;
 
     ////////////////////////////////////////////////////////////////////////////
     // A base class for task::promise_type so it can be specialized when _Ty is
