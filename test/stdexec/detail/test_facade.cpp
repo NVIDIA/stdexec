@@ -1051,4 +1051,36 @@ namespace
     ex::start(op2);
     CHECK(no_result.has_value());
   }
+
+  // Likewise, connect lowers stopped_as_error(sndr, err) to let_stopped(sndr, [err] { return
+  // just_error(err); }). Its algorithm turns the child's stopped completion into the error,
+  // where the child stops, as the lowered sender does.
+  struct int_error_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value() noexcept {}
+
+    void set_error(int error) noexcept
+    {
+      *error_ = error;
+    }
+
+    void set_stopped() noexcept {}
+
+    int *error_;
+  };
+
+  using stopped_as_error_t = decltype(ex::stopped_as_error(ex::just_stopped(), 42));
+  static_assert(has_sigs_v<stopped_as_error_t, ex::set_error_t(int)>);
+  static_assert(ex::__completes_inline<ex::set_error_t, ex::env_of_t<stopped_as_error_t>>);
+
+  TEST_CASE("facade: stopped_as_error's algorithm does what the lowered sender does",
+            "[detail][facade]")
+  {
+    int  error = 0;
+    auto op    = ex::stopped_as_error(ex::just_stopped(), 42).connect(int_error_receiver{&error});
+    ex::start(op);
+    CHECK(error == 42);
+  }
 }  // namespace

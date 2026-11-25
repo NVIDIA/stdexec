@@ -26,7 +26,6 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__diagnostics.hpp"
 #  include "__domain.hpp"
@@ -34,6 +33,7 @@ import stdexec;
 #  include "__let.hpp"
 #  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 
 #  include "__prologue.hpp"
@@ -50,7 +50,7 @@ namespace STDEXEC
     {
       constexpr auto operator()() noexcept(__nothrow_move_constructible<_Error>)
       {
-        return just_error(static_cast<_Error&&>(__err_));
+        return just_error(static_cast<_Error &&>(__err_));
       }
 
       _Error __err_;
@@ -144,11 +144,11 @@ namespace STDEXEC
     //! @param __err    The error datum to deliver if @c __sndr is stopped.
     //!                 Decay-copied into the resulting sender.
     template <sender _Sender, __movable_value _Error>
-    constexpr auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr, _Error __err) const -> __well_formed_sender auto
     {
-      return __sexpr{stopped_as_error_t(),
-                     static_cast<_Error&&>(__err),
-                     static_cast<_Sender&&>(__sndr)};
+      return __facade::__sender{stopped_as_error_t(),
+                                static_cast<_Error &&>(__err),
+                                static_cast<_Sender &&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.
@@ -159,14 +159,14 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Error __err) const noexcept(__nothrow_move_constructible<_Error>)
     {
-      return __closure(*this, static_cast<_Error&&>(__err));
+      return __closure(*this, static_cast<_Error &&>(__err));
     }
 
     template <__decay_copyable _Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
+    static constexpr auto transform_sender(set_value_t, _Sender &&__sndr, __ignore)
     {
       static_assert(__sender_for<_Sender, stopped_as_error_t>);
-      auto& [__tag, __err, __child] = __sndr;
+      auto &[__tag, __err, __child] = __sndr;
       using __error_t               = __decay_t<decltype(__err)>;
       return let_stopped(STDEXEC::__forward_like<_Sender>(__child),
                          __sae::__just_error_fn<__error_t>{
@@ -174,7 +174,7 @@ namespace STDEXEC
     }
 
     template <class _Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore)
+    static constexpr auto transform_sender(set_value_t, _Sender &&, __ignore)
     {
       return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
                             _WHERE_(_IN_ALGORITHM_, stopped_as_error_t),
@@ -191,23 +191,48 @@ namespace STDEXEC
   //! @hideinitializer
   inline constexpr stopped_as_error_t stopped_as_error{};
 
-  template <>
-  struct __sexpr_impl<stopped_as_error_t> : __sexpr_defaults
+  namespace __sae
   {
-    static constexpr auto __get_attrs =
-      []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+    // What the sender that stopped_as_error(sndr, err) is lowered to,
+    // let_stopped(sndr, [err] { return just_error(err); }), does: the child's stopped
+    // completion becomes an error completion with err, which happens where the child stops.
+    // The facade derives the sender's attributes from this. Its completion signatures are
+    // those of the lowered sender.
+    struct __algo : __facade::__defaults
     {
-      return __sync_attrs{__child};
-    };
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State &__state,
+                                       _Tag    __tag,
+                                       _Args &&...__args) noexcept
+      {
+        if constexpr (__same_as<_Tag, set_stopped_t>)
+        {
+          using __error_t = decltype(__state.__data_);
+          return __facade::__send(__state.__rcvr_,
+                                  set_error_t(),
+                                  static_cast<__error_t &&>(__state.__data_));
+        }
+        else
+        {
+          return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args &&>(__args)...);
+        }
+      }
 
-    template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures()
-    {
-      using __sndr_t =
-        __detail::__transform_sender_result_t<stopped_as_error_t, set_value_t, _Sender, env<>>;
-      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    }
-  };
+      template <class _Sender, class... _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        using __sndr_t =
+          __detail::__transform_sender_result_t<stopped_as_error_t, set_value_t, _Sender, env<>>;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+      }
+    };
+  }  // namespace __sae
+
+  template <>
+  struct __facade::__algorithm<stopped_as_error_t> : __sae::__algo
+  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
