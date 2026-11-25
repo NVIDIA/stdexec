@@ -202,9 +202,11 @@ namespace
     template <exec::sender_for<ex::__transfer_just_t> Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, auto&&...)
     {
-      auto&& [tag, data]  = sndr;
-      auto [sched, value] = data;
-      return ex::continues_on(ex::just("Hello, " + value), sched);
+      // __transfer_just(sch, vals...) has the parts of continues_on(just(vals...), sch):
+      auto&& [tag, sched, child] = sndr;
+      return ex::continues_on(STDEXEC::__forward_like<Sender>(child)
+                                | ex::then([](std::string value) { return "Hello, " + value; }),
+                              sched);
     }
   };
 

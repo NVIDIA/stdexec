@@ -300,23 +300,6 @@ namespace STDEXEC
   //!
   //! @see stdexec::when_all      — without the scheduler transfer
   //! @see stdexec::continues_on  — the underlying transfer primitive
-  namespace __when_all
-  {
-    // The facade sender with the parts of __sndr, and the tag _Tag
-    template <class _Tag, class _Sender>
-    constexpr auto __retag(_Sender&& __sndr)
-    {
-      return STDEXEC::__apply(
-        []<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child)
-        {
-          return __facade::__sender{_Tag(),
-                                    static_cast<_Data&&>(__data),
-                                    static_cast<_Child&&>(__child)...};
-        },
-        static_cast<_Sender&&>(__sndr));
-    }
-  }  // namespace __when_all
-
   struct __transfer_when_all_t
   {
     //! @brief Compose @c __sndrs... and deliver the combined completion on
@@ -332,7 +315,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __when_all::__retag<__transfer_when_all_t>(
+      return __facade::__retagged<__transfer_when_all_t>(
         continues_on(when_all(static_cast<_Senders&&>(__sndrs)...),
                      static_cast<_Scheduler&&>(__sched)));
     }
@@ -342,7 +325,7 @@ namespace STDEXEC
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      return __when_all::__retag<continues_on_t>(static_cast<_Sender&&>(__sndr));
+      return __facade::__retagged<continues_on_t>(static_cast<_Sender&&>(__sndr));
     }
   };
 
@@ -374,7 +357,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __when_all::__retag<__transfer_when_all_with_variant_t>(
+      return __facade::__retagged<__transfer_when_all_with_variant_t>(
         continues_on(when_all(into_variant(static_cast<_Senders&&>(__sndrs))...),
                      static_cast<_Scheduler&&>(__sched)));
     }
@@ -384,7 +367,7 @@ namespace STDEXEC
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      return __when_all::__retag<__transfer_when_all_t>(static_cast<_Sender&&>(__sndr));
+      return __facade::__retagged<__transfer_when_all_t>(static_cast<_Sender&&>(__sndr));
     }
   };
 

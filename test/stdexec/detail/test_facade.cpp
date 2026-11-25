@@ -1075,6 +1075,30 @@ namespace
   static_assert(has_sigs_v<stopped_as_error_t, ex::set_error_t(int)>);
   static_assert(ex::__completes_inline<ex::set_error_t, ex::env_of_t<stopped_as_error_t>>);
 
+  // __transfer_just(sch, vals...) is continues_on(just(vals...), sch) with a tag of its own,
+  // so that a domain can customize it, and continues_on's algorithm. connect lowers it by
+  // re-tagging it, so that the customizations of continues_on apply.
+  using transfer_just_t = decltype(ex::__transfer_just(std::declval<run_loop_sch_t>(), 42));
+  static_assert(has_completion_scheduler<transfer_just_t, ex::set_value_t, ex::env<>>);
+  static_assert(
+    std::same_as<
+      ex::tag_of_t<decltype(ex::__transfer_just_t::transform_sender(ex::set_value,
+                                                                    std::declval<transfer_just_t>(),
+                                                                    ex::env<>()))>,
+      ex::continues_on_t>);
+
+  TEST_CASE("facade: __transfer_just has continues_on's algorithm", "[detail][facade]")
+  {
+    ex::run_loop                   loop;
+    std::optional<std::tuple<int>> result;
+    auto op = ex::__transfer_just(loop.get_scheduler(), 42).connect(values_receiver<int>{&result});
+    ex::start(op);
+    loop.finish();
+    loop.run();
+    REQUIRE(result.has_value());
+    CHECK(std::get<0>(*result) == 42);
+  }
+
   TEST_CASE("facade: stopped_as_error's algorithm does what the lowered sender does",
             "[detail][facade]")
   {
