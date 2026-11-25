@@ -28,12 +28,12 @@ import stdexec;
 
 #  include "../stop_token.hpp"  // IWYU pragma: keep for inplace_stop_source
 #  include "__atomic.hpp"
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"
 #  include "__receivers.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_concepts.hpp"
+#  include "__sender_facade.hpp"
 #  include "__stop_when.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -99,114 +99,150 @@ namespace STDEXEC
 
     ////////////////////////////////////////////////////////////////////////////
     // [exec.counting.scopes.general] paragraph 4
-    struct __scope_join_impl : __sexpr_defaults
-    {
-      template <class _Env>
-      using __scheduler_of_t = __call_result_t<get_start_scheduler_t, _Env const &>;
 
-      template <class _Env>
-      using __sched_sender_of_t = __call_result_t<schedule_t, __scheduler_of_t<_Env>>;
+    // The key of the scope's notification that a join operation can complete: that the
+    // scope's last association ended, after the operation was started
+    struct __joined
+    {};
+
+    // The key of the schedule operation on the start scheduler, which completes a join
+    // operation that the scope notifies
+    struct __sched_op
+    {};
+
+    // The scope's notification. The scope sends it from the thread that ends the last
+    // association, so nothing is known about where.
+    struct __joined_sender
+    {
+      using sender_concept        = sender_tag;
+      using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
+    };
+
+    struct __join_algo;
+
+    template <class _Env>
+    using __scheduler_of_t = __call_result_t<get_start_scheduler_t, _Env const &>;
+
+    template <class _Sender, class _Rcvr>
+    struct __join_state : __join_state_base
+    {
+      using __sched_sender_t = __call_result_t<schedule_t, __scheduler_of_t<env_of_t<_Rcvr>>>;
+      using __sched_rcvr_t =
+        __facade::__receiver_t<__join_algo, __sched_op, __join_state, _Sender, _Rcvr>;
+      using __op_t = connect_result_t<__sched_sender_t, __sched_rcvr_t>;
+
+      explicit __join_state(__base_scope* __scope, _Rcvr __rcvr)
+        noexcept(__nothrow_connectable<__sched_sender_t, __sched_rcvr_t>)
+        : __join_state_base(__scope, &__join_state::__notify)
+        , __rcvr_(std::move(__rcvr))
+        , __op_(STDEXEC::connect(schedule(get_start_scheduler(STDEXEC::get_env(__rcvr_))),
+                                 __sched_rcvr_t{this}))
+      {}
+
+      __join_state(__join_state&&) = delete;
+
+      _Rcvr  __rcvr_;
+      __op_t __op_;
+
+     private:
+      // The scope calls this, through the function pointer, when the operation can complete
+      // (if it did not complete from start).
+      static void __notify(__join_state_base* __base) noexcept;
+    };
+
+    // scope.join(): if the scope is joined when the operation starts, the operation
+    // completes with set_value_t() from start. Otherwise the scope notifies it (with the key
+    // __joined) when the scope's last association ends, and the operation then completes on
+    // its start scheduler, with a schedule operation.
+    struct __join_algo : __facade::__defaults
+    {
+      // (The start scheduler is in the receiver's environment.)
+      template <class _Sender>
+      static constexpr bool __depends_on_env = true;
+
+      using __facade::__defaults::__nested_sender;
+
+      template <class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_sender(__joined, _Sender const &, _Env const &...) noexcept
+        -> __mtype<__joined_sender>
+      {
+        return {};
+      }
 
       template <class _Sender, class _Env>
-      static consteval auto __get_completion_signatures()
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_sender(__sched_op, _Sender const &, _Env const & __env)
       {
-        if constexpr (__callable<get_start_scheduler_t, _Env const &>)
-        {
-          return STDEXEC::get_completion_signatures<__sched_sender_of_t<_Env>, _Env>();
-        }
+        return STDEXEC::schedule(get_start_scheduler(__env));
+      }
+
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_attrs(__sched_op, _Sender const &, _Env const & __env) noexcept
+      {
+        return __facade::__schedule_attrs<__scheduler_of_t<_Env>>{get_start_scheduler(__env)};
+      }
+
+      template <class _Sender, class _Receiver>
+      static consteval auto __nothrow_state() noexcept -> bool
+      {
+        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Receiver> const &>)
+          return __nothrow_constructible_from<__join_state<_Sender, _Receiver>,
+                                              __base_scope*,
+                                              _Receiver>;
         else
+          return true;
+      }
+
+      // Joining needs a start scheduler in the receiver's environment.
+      template <class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
+        noexcept(__join_algo::__nothrow_state<_Sender, _Receiver>())
+      {
+        if constexpr (!__callable<get_start_scheduler_t, env_of_t<_Receiver> const &>)
         {
-          return STDEXEC::__throw_compile_time_error<
+          return __mexception<
             _WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
             _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
             _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
-            _WITH_SENDER_<_Sender>,
-            _WITH_ENVIRONMENT_(_Env)>();
+            _WITH_SENDER_<__decay_t<_Sender>>,
+            _WITH_ENVIRONMENT_(env_of_t<_Receiver>)>();
+        }
+        else
+        {
+          __base_scope* __scope = __facade::__get_data(__sndr);
+          return __join_state<_Sender, _Receiver>(__scope, std::move(__rcvr));
         }
       }
 
-      template <class _Rcvr>
-      struct __join_state : __join_state_base
+      // (Once the operation is registered with the scope, the scope can complete it at any
+      // time, so the path that registers it does not touch the state again.)
+      template <class _State, class _Children>
+      static constexpr auto __start(_State& __state, _Children&) noexcept
       {
-        struct __rcvr_t
-        {
-          using receiver_concept = receiver_tag;
+        return __facade::__choose(
+          __state.__scope_->__start_join_sender(__state),
+          [&]() noexcept { return __facade::__send(__state.__rcvr_, set_value_t()); },
+          []() noexcept { return __facade::__effects<__facade::__starts<__joined>>(); });
+      }
 
-          _Rcvr& __rcvr_;
+      using __facade::__defaults::__complete;
 
-          void set_value() && noexcept
-          {
-            STDEXEC::set_value(std::move(__rcvr_));
-          }
-
-          template <class _Error>
-          void set_error(_Error&& __err) && noexcept
-          {
-            STDEXEC::set_error(std::move(__rcvr_), static_cast<_Error&&>(__err));
-          }
-
-          void set_stopped() && noexcept
-          {
-            STDEXEC::set_stopped(std::move(__rcvr_));
-          }
-
-          [[nodiscard]]
-          auto get_env() const noexcept -> env_of_t<_Rcvr>
-          {
-            return STDEXEC::get_env(__rcvr_);
-          }
-        };
-
-        using __sched_sender = __sched_sender_of_t<env_of_t<_Rcvr>>;
-
-        using __op_t = connect_result_t<__sched_sender, __rcvr_t>;
-
-        _Rcvr  __rcvr_;
-        __op_t __op_;
-
-        explicit __join_state(__base_scope* __scope, _Rcvr __rcvr)
-          noexcept(__nothrow_callable<connect_t, __sched_sender, __rcvr_t>)
-          : __join_state_base(__scope,
-                              [](__join_state_base* __base) noexcept
-                              {
-                                auto* __self = static_cast<__join_state*>(__base);
-                                // if the schedule-sender is no-throw
-                                // connectable with __rcvr_ then we could save
-                                // some storage by deferring connection to this
-                                // point
-                                STDEXEC::start(__self->__op_);
-                              })
-          , __rcvr_(std::move(__rcvr))
-          , __op_(STDEXEC::connect(schedule(get_start_scheduler(STDEXEC::get_env(__rcvr_))),
-                                   __rcvr_t(__rcvr_)))
-        {}
-
-        __join_state(__join_state&&) = delete;
-
-        ~__join_state() = default;
-
-        void __complete_inline() noexcept
-        {
-          set_value(std::move(__rcvr_));
-        }
-      };
-
-      static constexpr auto __get_state =
-        []<class _Sndr, class _Rcvr>(_Sndr&& __sender, _Rcvr __rcvr) noexcept(
-          __nothrow_constructible_from<__join_state<_Rcvr>, __base_scope*, _Rcvr>)
+      // The scope's last association ended: complete on the start scheduler.
+      template <class _State>
+      static constexpr auto __complete(__joined, _State& __state, set_value_t) noexcept
       {
-        auto [_, __scope] = __sender;
-        return __join_state<_Rcvr>(__scope, std::move(__rcvr));
-      };
-
-      static constexpr auto __start = [](auto& __state) noexcept
-      {
-        if (__state.__scope_->__start_join_sender(__state))
-        {
-          __state.__complete_inline();
-        }
-      };
+        return __facade::__start_nested<__sched_op>(__state.__op_);
+      }
     };
+
+    template <class _Sender, class _Rcvr>
+    void __join_state<_Sender, _Rcvr>::__notify(__join_state_base* __base) noexcept
+    {
+      auto& __self = *static_cast<__join_state*>(__base);
+      (void) __join_algo::__complete(__joined(), __self, set_value_t());
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // [exec.counting.scopes.general] paragraph 5
@@ -742,7 +778,7 @@ namespace STDEXEC
   }  // namespace __counting_scopes
 
   template <>
-  struct __sexpr_impl<__counting_scopes::__scope_join_t> : __counting_scopes::__scope_join_impl
+  struct __facade::__algorithm<__counting_scopes::__scope_join_t> : __counting_scopes::__join_algo
   {};
 
   //////////////////////////////////////////////////////////////////////////////
@@ -798,14 +834,14 @@ namespace STDEXEC
     sender auto join() noexcept
     {
       // [exec.simple.counting.mem] paragraph 4
-      return __sexpr{__counting_scopes::__scope_join_t(), this};
+      return __facade::__sender{__counting_scopes::__scope_join_t(), this};
     }
 
    private:
     // needs access to call __try_associate
     friend __assoc_t;
     // needs access to call the public members of __base_scope
-    friend __counting_scopes::__scope_join_impl;
+    friend __counting_scopes::__join_algo;
 
     __assoc_t __try_associate() noexcept
     {
@@ -871,7 +907,7 @@ namespace STDEXEC
     [[nodiscard]]
     sender auto join() noexcept
     {
-      return __sexpr{__counting_scopes::__scope_join_t(), this};
+      return __facade::__sender{__counting_scopes::__scope_join_t(), this};
     }
 
     void request_stop() noexcept
@@ -884,7 +920,7 @@ namespace STDEXEC
     // needs access to call __try_associate
     friend __assoc_t;
     // needs access to call the public members of __base_scope
-    friend __counting_scopes::__scope_join_impl;
+    friend __counting_scopes::__join_algo;
 
     inplace_stop_source __stop_source_;
 
