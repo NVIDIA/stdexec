@@ -360,7 +360,11 @@ knowing:
   they have one (when one domain derives from the others), and otherwise
   `indeterminate_domain<Domains...>`.
 * A completion *scheduler* is a runtime value. A channel reports one only if
-  all its completions get their scheduler from the same place.
+  all its completions get their scheduler from the same place. Completions of
+  different kinds of a nested facade sender get it from the same place if they
+  get it from the same place in that sender. (When `fn` may throw,
+  `then(schedule(sch), fn)` completes with a value or an error on `sch`, so
+  `upon_error` over it completes with a value on `sch`, however it completes.)
 * A completion that happens inside a nested operation completes where that
   operation was started, if the operation completes where it starts and where
   it was started is known. (So completions that start in the same place agree
@@ -600,7 +604,8 @@ kernel and sends its result.
 A completion scheduler is reported only if all of a channel's completions get
 it from the same place, so algorithms whose values come from two places (as
 `upon_stopped`'s come from its child's values and from its function, when the
-child is stopped) report none, and `when_all` reports none for its values. Where
+child is stopped, unless the child gets the schedulers of both from the same
+place) report none, and `when_all` reports none for its values. Where
 an nvexec algorithm needs a stream scheduler for its child (to know its stream),
 such a child must be piped through `write_attrs` to proclaim one, as after
 `let_value`. (`schedule_from` needs none, because such a sender, like `when_all`,

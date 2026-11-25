@@ -184,6 +184,54 @@ namespace
     auto operator==(start_sensitive_scheduler const &) const noexcept -> bool = default;
   };
 
+  // Value completions happen on one scheduler, and error completions on another. (The two
+  // are equal, but they are read separately, so nothing says that they are.)
+  struct sched_attrs
+  {
+    constexpr auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+    {
+      return start_sensitive_scheduler{};
+    }
+
+    constexpr auto query(ex::get_completion_scheduler_t<ex::set_error_t>) const noexcept
+    {
+      return start_sensitive_scheduler{};
+    }
+  };
+
+  using sched_probe = probe<sched_attrs>;
+
+  // A sender that completes with a value or stopped
+  struct stop_probe
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>();
+    }
+
+    template <class Rcvr>
+    struct opstate
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      void start() & noexcept
+      {
+        ex::set_stopped(static_cast<Rcvr &&>(rcvr));
+      }
+
+      Rcvr rcvr;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) const -> opstate<Rcvr>
+    {
+      return {static_cast<Rcvr &&>(rcvr)};
+    }
+  };
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // Helpers
   template <class Sigs, class... Others>
@@ -837,6 +885,51 @@ namespace
     ex::__sender_for<ex::transform_sender_result_t<transfer_t, start_env_t>, ex::continues_on_t>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // 10. Completions that a facade sender gets the scheduler of from the same place happen on
+  // the same scheduler, even if they are of different kinds, and its parent knows that.
+  // When fn may throw, then(t_schedule(sch), fn) completes with a value or an error, both on
+  // sch. So upon_error over it completes with a value on sch however it completes; and so
+  // does continues_on with a scheduler that completes where it starts, with a value or an
+  // error.
+  using sched_throw_t = decltype(ex::then(std::declval<t_schedule_t>(), may_throw));
+  using upon_sched_t  = decltype(ex::upon_error(std::declval<sched_throw_t>(), no_throw));
+  using cont_sched_t  = decltype(ex::continues_on(std::declval<sched_throw_t>(),
+                                                 ex::inline_scheduler{}));
+  static_assert(has_completion_scheduler<upon_sched_t, ex::set_value_t, start_env_t>);
+  static_assert(has_completion_scheduler<cont_sched_t, ex::set_value_t, start_env_t>);
+  static_assert(has_completion_scheduler<cont_sched_t, ex::set_error_t, start_env_t>);
+  static_assert(
+    has_completion_scheduler<decltype(ex::then(std::declval<cont_sched_t>(), may_throw)),
+                             ex::set_error_t,
+                             start_env_t>);
+
+  // The same goes for stopped completions. continues_on(stop_probe(), sch) replays both
+  // kinds of stop_probe's completions on sch, so upon_stopped over it completes with a value
+  // on sch.
+  using cont_stop_t = decltype(ex::continues_on(stop_probe{}, std::declval<run_loop_sch_t>()));
+  static_assert(
+    has_completion_scheduler<decltype(ex::upon_stopped(std::declval<cont_stop_t>(), no_throw)),
+                             ex::set_value_t,
+                             start_env_t>);
+
+  // But completions that it gets the schedulers of from different places may happen on
+  // different schedulers, even of the same type. A sched_probe is asked for the schedulers of
+  // its value and error completions separately, so then over it gets the schedulers of its
+  // value and error completions from different places, and upon_error and continues_on over
+  // that have no completion scheduler.
+  using then_probe_t = decltype(ex::then(sched_probe{}, no_throw));
+  static_assert(has_completion_scheduler<then_probe_t, ex::set_value_t, start_env_t>);
+  static_assert(has_completion_scheduler<then_probe_t, ex::set_error_t, start_env_t>);
+  static_assert(
+    !has_completion_scheduler<decltype(ex::upon_error(std::declval<then_probe_t>(), no_throw)),
+                              ex::set_value_t,
+                              start_env_t>);
+  static_assert(!has_completion_scheduler<decltype(ex::continues_on(std::declval<then_probe_t>(),
+                                                                    ex::inline_scheduler{})),
+                                          ex::set_value_t,
+                                          start_env_t>);
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // Run-time tests
 
   // Runs a run_loop on a thread of its own until destroyed
@@ -918,6 +1011,29 @@ namespace
     auto closure_sndr = ex::on(ex::just(1), loop1.get_scheduler(), ex::then(identity));
     CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(closure_sndr), env)
           == loop2.get_scheduler());
+  }
+
+  // 10, continued.
+  TEST_CASE("facade: completions of different kinds can happen on the same scheduler",
+            "[detail][facade]")
+  {
+    ex::run_loop loop1;
+    ex::run_loop loop2;
+    auto         env  = ex::prop{ex::get_start_scheduler, loop2.get_scheduler()};
+    auto         sndr = ex::then(t_schedule(loop1.get_scheduler()), may_throw);
+
+    // upon_error completes with a value where then completes, however it completes.
+    auto upon_sndr = ex::upon_error(sndr, no_throw);
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(upon_sndr), env)
+          == loop1.get_scheduler());
+
+    // continues_on's schedule operation starts where then completes, and inline_scheduler's
+    // completes there.
+    auto cont_sndr = ex::continues_on(sndr, ex::inline_scheduler{});
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(cont_sndr), env)
+          == loop1.get_scheduler());
+    CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(cont_sndr), env)
+          == loop1.get_scheduler());
   }
 
   // The derived information is enough to run real pipelines.

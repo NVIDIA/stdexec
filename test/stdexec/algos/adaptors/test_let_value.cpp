@@ -642,25 +642,91 @@ namespace
     static_assert(!has_completion_scheduler_for<decltype(snd), ex::set_value_t>);
   }
 
+  // A sender that completes with a value on one scheduler, or with an error on another
+  struct value_or_error_sender
+  {
+    using sender_concept = ex::sender_tag;
+    using completion_signatures =
+      ex::completion_signatures<ex::set_value_t(int), ex::set_error_t(std::exception_ptr)>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      auto
+      query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> runtime_id_scheduler
+      {
+        return {42};
+      }
+
+      [[nodiscard]]
+      auto
+      query(ex::get_completion_scheduler_t<ex::set_error_t>) const noexcept -> runtime_id_scheduler
+      {
+        return {43};
+      }
+    };
+
+    template <class Receiver>
+    struct opstate : immovable
+    {
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver&&>(rcvr_), 1);
+      }
+
+      Receiver rcvr_;
+    };
+
+    template <class Receiver>
+    [[nodiscard]]
+    auto connect(Receiver rcvr) const -> opstate<Receiver>
+    {
+      return {{}, static_cast<Receiver&&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
   TEST_CASE("let_value has no error completion scheduler when the predecessor's errors and the "
             "function's exceptions come from different places",
             "[adaptors][let_value]")
   {
-    runtime_id_scheduler sch{42};
-    // This predecessor can complete with a value or an error.
-    auto pred = ex::continues_on(ex::just(1) | ex::then([](int i) { return i; }), sch);
+    // This predecessor can complete with a value or an error, on different schedulers.
+    value_or_error_sender pred;
 
     // The function is nothrow and the secondary sender cannot fail, so errors can only come
     // from the predecessor.
     auto nothrow_snd = ex::let_value(pred, [](int) noexcept { return ex::just(2); });
     auto csch        = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(nothrow_snd),
                                                               ex::env<>{});
-    CHECK(csch.id_ == 42);
+    CHECK(csch.id_ == 43);
 
     // The function is potentially-throwing, so error completions can come from both the
     // predecessor and from the invocation of the function.
     auto throwing_snd = ex::let_value(pred, [](int) { return ex::just(2); });
     static_assert(!has_completion_scheduler_for<decltype(throwing_snd), ex::set_error_t>);
     static_assert(has_completion_scheduler_for<decltype(throwing_snd), ex::set_value_t>);
+  }
+
+  TEST_CASE("let_value has an error completion scheduler when the predecessor's errors and the "
+            "function's exceptions happen on the same scheduler",
+            "[adaptors][let_value]")
+  {
+    runtime_id_scheduler sch{42};
+    // This predecessor can complete with a value or an error, both on sch: continues_on
+    // replays all of its child's completions there.
+    auto pred = ex::continues_on(ex::just(1) | ex::then([](int i) { return i; }), sch);
+
+    // The function is potentially-throwing, so error completions can come from both the
+    // predecessor and from the invocation of the function, which happens where the
+    // predecessor completes with a value. Both happen on sch.
+    auto throwing_snd = ex::let_value(pred, [](int) { return ex::just(2); });
+    auto csch         = ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(throwing_snd),
+                                                              ex::env<>{});
+    CHECK(csch.id_ == 42);
   }
 }  // namespace

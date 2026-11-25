@@ -88,7 +88,9 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 //        - behavior:  join over the provenances; `__via` composes sequentially
 //        - domain:    the one domain, or indeterminate_domain<all of them>
 //        - scheduler: reported only if every event on the channel gets its
-//                     scheduler from the same place
+//                     scheduler from the same place (as events from a nested
+//                     facade sender's completions of different kinds do, if
+//                     it gets their schedulers from the same place)
 //
 //   4. Type errors. The walk *evaluates* each nested sender's
 //      get_completion_signatures, so an ill-typed child fails the walk the
@@ -1197,6 +1199,23 @@ namespace STDEXEC
       }
     };
 
+    // Where the _Tag completions of a sender with the attributes _Attrs get their completion
+    // scheduler from, in the environment _Env: the scheduler expression that its
+    // get_completion_scheduler<_Tag> query evaluates, if the sender is a facade sender (see
+    // __attrs::__sched_place_t); otherwise, or if the query has no answer, void. Completions
+    // that get their scheduler from the same place get the same scheduler.
+    template <class _Attrs, class _Tag, class... _Env>
+    struct __sched_place_of
+    {
+      using __t = void;
+    };
+
+    template <class _Algo, class _Sender, class _Tag, class... _Env>
+    struct __sched_place_of<__attrs<_Algo, _Sender>, _Tag, _Env...>
+    {
+      using __t = __attrs<_Algo, _Sender>::template __sched_place_t<_Tag, __decay_t<_Env>...>;
+    };
+
     template <class _Ctx, class _Src, class... _QEnv>
     struct __resolve;
 
@@ -1346,12 +1365,42 @@ namespace STDEXEC
           return __mtype<void>();
       }
 
+      // Where the nested operation's _Tag2 completions get their scheduler from (see
+      // __sched_place_of)
+      template <class _Tag2>
+      using __sched_place_t =
+        __sched_place_of<__attrs_t,
+                         _Tag2,
+                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>::__t;
+
+      // The first of the nested operation's kinds of completion whose completions get their
+      // scheduler from the same place as its _Tag completions do. Their scheduler names the
+      // scheduler of its _Tag completions, so that completions of different kinds that the
+      // nested operation completes on the same scheduler are seen to complete on the same
+      // scheduler. (The value and error completions of then(schedule(sch), fn) do, for
+      // example.)
+      static consteval auto __get_sched_tag() noexcept
+      {
+        if constexpr (__same_as<_Tag, set_value_t>)
+          return __mtype<_Tag>();
+        else if constexpr (__same_as<__sched_place_t<_Tag>, void>)
+          return __mtype<_Tag>();
+        else if constexpr (__same_as<__sched_place_t<_Tag>, __sched_place_t<set_value_t>>)
+          return __mtype<set_value_t>();
+        else if constexpr (__same_as<_Tag, set_stopped_t>
+                           && __same_as<__sched_place_t<_Tag>, __sched_place_t<set_error_t>>)
+          return __mtype<set_error_t>();
+        else
+          return __mtype<_Tag>();
+      }
+
       static consteval auto __get_sched() noexcept
       {
         if constexpr (__at_src)
           return __mtype<typename __up_t::__sched_t>();
         else if constexpr (__believe_own_sched)
-          return __mtype<__completion_scheduler_of<_Key, _Tag>>();
+          return __mtype<
+            __completion_scheduler_of<_Key, typename decltype(__get_sched_tag())::__t>>();
         else
           return __mtype<void>();
       }
@@ -1564,6 +1613,27 @@ namespace STDEXEC
         else
           return false;
       }
+
+      // Where the sender's _Tag completions get their completion scheduler from: the
+      // scheduler expression that the get_completion_scheduler<_Tag> query below evaluates,
+      // or void if the query has no answer. (See __sched_place_of.)
+      template <class _Tag, class... _QEnv>
+      static consteval auto __get_sched_place() noexcept
+      {
+        if constexpr (sizeof...(_QEnv) > 1)
+          return __mtype<void>();
+        else if constexpr (__customized_v<_QEnv...>)
+          return __mtype<typename __attrs<__customized_t<_QEnv...>,
+                                          _Sender>::template __sched_place_t<_Tag, _QEnv...>>();
+        else if constexpr (!__answers_without_env<_QEnv...>()
+                           || !__walk_ok<_Algo, _Sender, _QEnv...>)
+          return __mtype<void>();
+        else
+          return __mtype<typename __join_t<_Tag, _QEnv...>::__sched_t>();
+      }
+
+      template <class _Tag, class... _QEnv>
+      using __sched_place_t = decltype(__get_sched_place<_Tag, _QEnv...>())::__t;
 
       // Each completion query is available only if the sender type-checks in the query's
       // environment.
