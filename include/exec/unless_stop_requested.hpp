@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/execution.hpp"
 
 #include "completion_signatures.hpp"
@@ -35,76 +34,31 @@ namespace experimental::execution
     template <typename Env>
     concept _unstoppable_env = unstoppable_token<stop_token_of_t<Env>>;
 
-    template <typename Receiver>
-    concept _unstoppable_receiver = _unstoppable_env<env_of_t<Receiver>>;
-
-    template <class CvChild, class Receiver>
-    struct _opstate
+    // unless_stop_requested(sndr): if stop has been requested when the operation starts, it
+    // completes with set_stopped_t(), and otherwise it starts the child, whose completions are
+    // the operation's. (If the receiver's stop token cannot be stopped, it starts the child.)
+    struct _algo : __facade::__defaults
     {
-      using receiver_concept = receiver_tag;
-      using child_opstate_t  = connect_result_t<CvChild, __receiver_ref<Receiver>>;
+      // (Whether the operation can complete with set_stopped_t() depends on the receiver's
+      // stop token.)
+      template <class Sender>
+      static constexpr bool __depends_on_env = true;
 
-      constexpr explicit _opstate(CvChild&& child, Receiver rcvr)
-        noexcept(__nothrow_connectable<CvChild, __receiver_ref<Receiver>>)
-        : rcvr_(static_cast<Receiver&&>(rcvr))
-        , child_op_(STDEXEC::connect(static_cast<CvChild&&>(child), STDEXEC::__receiver_ref(rcvr_)))
-      {}
-
-      constexpr void start() noexcept
+      template <class State, class Children>
+      static constexpr auto __start(State& __state, Children& __children) noexcept
       {
-        if (STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)).stop_requested())
+        if constexpr (_unstoppable_env<env_of_t<decltype(__state.__rcvr_)>>)
         {
-          STDEXEC::set_stopped(static_cast<Receiver&&>(rcvr_));
+          return __children.__start_all();
         }
         else
         {
-          STDEXEC::start(child_op_);
+          return __facade::__choose(
+            STDEXEC::get_stop_token(STDEXEC::get_env(__state.__rcvr_)).stop_requested(),
+            [&]() noexcept { return __facade::__send(__state.__rcvr_, set_stopped_t()); },
+            [&]() noexcept { return __children.__start_all(); });
         }
       }
-
-      Receiver        rcvr_;
-      child_opstate_t child_op_;
-    };
-
-    struct _impls : __sexpr_defaults
-    {
-      template <class Self, class Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(sender_for<Self, unless_stop_requested_t>);
-        if constexpr (_unstoppable_env<Env>)
-        {
-          return STDEXEC::get_completion_signatures<__child_of<Self>, Env>();
-        }
-        else
-        {
-          return exec::concat_completion_signatures(
-            STDEXEC::get_completion_signatures<__child_of<Self>, Env>(),
-            completion_signatures<set_stopped_t()>());
-        }
-      }
-
-      template <class Receiver>
-      using _receiver_t =
-        __if_c<_unstoppable_receiver<Receiver>, Receiver, __receiver_ref<Receiver>>;
-
-      static constexpr auto __connect =  //
-        []<class Sender, class Receiver>(Sender&& sndr, Receiver rcvr) noexcept(
-          __nothrow_connectable<__child_of<Sender>, _receiver_t<Receiver>>)
-      {
-        auto& [tag, ign, child] = sndr;
-
-        if constexpr (_unstoppable_receiver<Receiver>)
-        {
-          return STDEXEC::connect(STDEXEC::__forward_like<Sender>(child),
-                                  static_cast<Receiver&&>(rcvr));
-        }
-        else
-        {
-          using opstate_t = _opstate<__child_of<Sender>, Receiver>;
-          return opstate_t(STDEXEC::__forward_like<Sender>(child), static_cast<Receiver&&>(rcvr));
-        }
-      };
     };
   }  // namespace _unless_stop_requested
 
@@ -120,7 +74,9 @@ namespace experimental::execution
     [[nodiscard]]
     constexpr auto operator()(Sender&& sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__sexpr{unless_stop_requested_t(), {}, static_cast<Sender&&>(sndr)};
+      return STDEXEC::__facade::__sender{unless_stop_requested_t(),
+                                         STDEXEC::__(),
+                                         static_cast<Sender&&>(sndr)};
     }
   };
 
@@ -133,6 +89,7 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<::exec::unless_stop_requested_t> : ::exec::_unless_stop_requested::_impls
+  struct __facade::__algorithm<::exec::unless_stop_requested_t>
+    : ::exec::_unless_stop_requested::_algo
   {};
 }  // namespace STDEXEC
