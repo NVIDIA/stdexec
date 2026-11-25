@@ -372,6 +372,24 @@ namespace STDEXEC
       return STDEXEC::__get<_Idx + 2>(static_cast<_Sender &&>(__sndr));
     }
 
+    // The facade sender with the parts of __sndr (a facade sender) and the tag _Tag. A sender
+    // that is lowered to another can be built as that sender with a tag of its own, which
+    // makes it a sender that a domain can customize, and lowered by re-tagging it. (See
+    // __transfer_when_all and __transfer_just.)
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Tag, class _Sender>
+    constexpr auto __retagged(_Sender &&__sndr)
+    {
+      return STDEXEC::__apply(
+        []<class _Data, class... _Child>(__ignore, _Data &&__data, _Child &&...__child)
+        {
+          return __sender{_Tag(),
+                          static_cast<_Data &&>(__data),
+                          static_cast<_Child &&>(__child)...};
+        },
+        static_cast<_Sender &&>(__sndr));
+    }
+
     // The I-th child of a sender, with the sender's value category
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender, std::size_t _Idx>
