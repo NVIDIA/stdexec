@@ -27,10 +27,10 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__atomic.hpp"
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"
 #  include "__sender_concepts.hpp"
+#  include "__sender_facade.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__stop_token.hpp"
 
@@ -72,9 +72,9 @@ namespace STDEXEC
       constexpr auto operator()(_Sender&& __sndr, _Token&& __token) const
         noexcept(__nothrow_decay_copyable<_Sender> && __nothrow_decay_copyable<_Token>)
       {
-        return __sexpr{__stop_when_t(),
-                       static_cast<_Token&&>(__token),
-                       static_cast<_Sender&&>(__sndr)};
+        return __facade::__sender{__stop_when_t(),
+                                  static_cast<_Token&&>(__token),
+                                  static_cast<_Sender&&>(__sndr)};
       }
     };
 
@@ -183,84 +183,34 @@ namespace STDEXEC
       }
     };
 
-    // The attributes of a __stop_when sender. Completion queries are answered by the child,
-    // in the environment the child sees, which has the fused stop token.
-    template <class _Token, class _Child>
-    struct __attrs
+    // __stop_when(sndr, token): the child sees the receiver's environment with a stop token
+    // that is stopped when token or the receiver's stop token is. The facade derives the
+    // completions and attributes, which are the child's in that environment.
+    struct __algo : __facade::__defaults
     {
-      template <class _Env>
-      using __env2_t =
-        __call_result_t<__mk_env2_fn,
-                        __call_result_t<__fuse_token_fn, _Token, stop_token_of_t<_Env>>,
-                        _Env const &>;
-
-      template <class _Env>
-      [[nodiscard]]
-      constexpr auto __mk_env2(_Env const & __env) const noexcept -> __env2_t<_Env>
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __env_for(__facade::__child<0>,
+                                      _Sender const & __sndr,
+                                      _Env&&          __env) noexcept
       {
-        return __mk_env2_fn()(__fuse_token_fn()(__token_, get_stop_token(__env)), __env);
+        auto __token = __fuse_token_fn()(__facade::__get_data(__sndr), get_stop_token(__env));
+        return __mk_env2_fn()(std::move(__token), static_cast<_Env&&>(__env));
       }
 
-      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Env>
-        requires __completion_query<_Query> && __queryable_with<_Attrs, _Query, __env2_t<_Env>...>
-      [[nodiscard]]
-      constexpr auto query(_Query, _Env const &... __env) const
-        noexcept(__nothrow_queryable_with<_Attrs, _Query, __env2_t<_Env>...>)
-          -> __query_result_t<_Attrs, _Query, __env2_t<_Env>...>
-      {
-        return STDEXEC::get_env(__child_).query(_Query(), __mk_env2(__env)...);
-      }
-
-      // (The result type is deduced. Compilers that substitute into the return type before
-      // checking the constraints, as Clang does through version 19, would otherwise ask the
-      // child a completion query in the receiver's environment.)
-      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Args>
-        requires(!__completion_query<_Query>) && __queryable_with<_Attrs, _Query, _Args...>
-      [[nodiscard]]
-      constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>) -> decltype(auto)
-      {
-        return STDEXEC::get_env(__child_).query(_Query(), static_cast<_Args&&>(__args)...);
-      }
-
-      _Token const & __token_;
-      _Child const & __child_;
-    };
-
-    struct __stop_when_impl : __sexpr_defaults
-    {
-      static constexpr auto __get_attrs =
-        []<class _Token, class _Child>(__ignore,
-                                       _Token const & __token,
-                                       _Child const & __child) noexcept
-      {
-        return __attrs<_Token, _Child>{__token, __child};
-      };
-
-      static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __get_env(__facade::__child<0>, _State const & __state) noexcept
       {
         return __mk_env2_fn()(__state.__token_, STDEXEC::get_env(__state.__rcvr_));
-      };
+      }
 
-      static constexpr auto __get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __self, _Receiver __rcvr) noexcept
+      template <class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr) noexcept
       {
-        auto& [__tag, __token, __child] = __self;
-        auto __new_token = __fuse_token_fn()(STDEXEC::__forward_like<_Sender>(__token),
-                                             get_stop_token(STDEXEC::get_env(__rcvr)));
-        return __state{std::move(__new_token), std::move(__rcvr)};
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, __stop_when_t>);
-        using __token_t = __decay_t<__data_of<_Sender>>;
-        return get_completion_signatures<
-          __child_of<_Sender>,
-          __call_result_t<__mk_env2_fn,
-                          __call_result_t<__fuse_token_fn, __token_t, stop_token_of_t<_Env>>,
-                          _Env>...>();
+        auto __token = __fuse_token_fn()(__facade::__get_data(static_cast<_Sender&&>(__sndr)),
+                                         get_stop_token(STDEXEC::get_env(__rcvr)));
+        return __state{std::move(__token), std::move(__rcvr)};
       }
     };
   }  // namespace __stop_when_
@@ -275,7 +225,7 @@ namespace STDEXEC
   inline constexpr __stop_when_t __stop_when{};
 
   template <>
-  struct __sexpr_impl<__stop_when_t> : __stop_when_::__stop_when_impl
+  struct __facade::__algorithm<__stop_when_t> : __stop_when_::__algo
   {};
 }  // namespace STDEXEC
 
