@@ -26,9 +26,10 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  template <bool MayThrow = false>
   auto then_store_thread_id(std::thread::id &id) noexcept
   {
-    return ex::then([&id]() noexcept { id = std::this_thread::get_id(); });
+    return ex::then([&id]() noexcept(!MayThrow) { id = std::this_thread::get_id(); });
   }
 
   //! @test Check that @c ex::get_start_scheduler is a forwarding query.
@@ -94,7 +95,7 @@ namespace
   //!
   //! Indeed, @c ex::continues_on starts an hop operation state from the completion of the
   //! predecessor.
-  TEST_CASE("get_start_scheduler with continues_on and inline_scheduler",
+  TEST_CASE("get_start_scheduler with continues_on and inline_scheduler and only set_value_t",
             "[sched_queries][get_start_scheduler]")
   {
     std::thread::id          pool_tid, tid;
@@ -105,10 +106,60 @@ namespace
               | ex::continues_on(ex::inline_scheduler{})  //
               | ::then_store_thread_id(tid);
 
-    STATIC_CHECK(std::same_as<ex::__completion_scheduler_of_t<
-                                ex::set_value_t,
-                                decltype(sndr),
-                                ex::prop<ex::get_start_scheduler_t, ex::run_loop::scheduler>>,
+    using sndr_t = decltype(sndr);
+    using env_t  = ex::prop<ex::get_start_scheduler_t, ex::run_loop::scheduler>;
+
+    static_assert(ex::get_completion_signatures<sndr_t, env_t>()
+                  == ex::completion_signatures<ex::set_value_t()>{});
+
+    STATIC_CHECK(
+      std::same_as<ex::__completion_scheduler_of_t<ex::set_value_t, decltype(sndr), env_t>,
+                   decltype(pool.get_scheduler())>);
+
+    ex::sync_wait(std::move(sndr));
+
+    CHECK(tid == pool_tid);
+    CHECK(tid != std::this_thread::get_id());
+  }
+
+  TEST_CASE("get_start_scheduler with continues_on and inline_scheduler and both set_value_t and "
+            "set_error_t",
+            "[sched_queries][get_start_scheduler]")
+  {
+    std::thread::id          pool_tid, tid;
+    exec::static_thread_pool pool{1};
+
+    using env_t = ex::prop<ex::get_start_scheduler_t, ex::run_loop::scheduler>;
+
+    auto sndr_pre = ex::schedule(pool.get_scheduler()) | ::then_store_thread_id<true>(pool_tid);
+
+    using sndr_pre_t = decltype(sndr_pre);
+
+    static_assert(
+      ex::get_completion_signatures<sndr_pre_t, env_t>()
+      == ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>{});
+
+    STATIC_CHECK(std::same_as<ex::__completion_scheduler_of_t<ex::set_value_t, sndr_pre_t, env_t>,
+                              decltype(pool.get_scheduler())>);
+
+    STATIC_CHECK(std::same_as<ex::__completion_scheduler_of_t<ex::set_error_t, sndr_pre_t, env_t>,
+                              decltype(pool.get_scheduler())>);
+
+    auto sndr = std::move(sndr_pre) | ex::continues_on(ex::inline_scheduler{})
+              | ::then_store_thread_id<true>(tid);
+
+    using sndr_t = decltype(sndr);
+
+    static_assert(
+      ex::get_completion_signatures<sndr_t, env_t>()
+      == ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>{});
+
+    // fails !
+    STATIC_CHECK(std::same_as<ex::__completion_scheduler_of_t<ex::set_value_t, sndr_t, env_t>,
+                              decltype(pool.get_scheduler())>);
+
+    // fails !
+    STATIC_CHECK(std::same_as<ex::__completion_scheduler_of_t<ex::set_error_t, sndr_t, env_t>,
                               decltype(pool.get_scheduler())>);
 
     ex::sync_wait(std::move(sndr));
