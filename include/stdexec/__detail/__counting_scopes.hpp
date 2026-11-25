@@ -28,6 +28,7 @@ import stdexec;
 
 #  include "../stop_token.hpp"  // IWYU pragma: keep for inplace_stop_source
 #  include "__atomic.hpp"
+#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"
 #  include "__receivers.hpp"
