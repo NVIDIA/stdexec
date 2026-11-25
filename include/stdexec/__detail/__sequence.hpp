@@ -730,12 +730,9 @@ namespace STDEXEC
       {
         if constexpr (__nbr != 0)
         {
-          __ops_.__emplace_from(
-            [&]
-            {
-              return STDEXEC::connect(__facade::__get_child<0>(static_cast<_Sender &&>(__sndr)),
-                                      __receiver_t<0>{this});
-            });
+          __ops_.__emplace_from(STDEXEC::connect,
+                                __facade::__get_child<0>(static_cast<_Sender &&>(__sndr)),
+                                __receiver_t<0>{this});
         }
       }
 
@@ -890,13 +887,10 @@ namespace STDEXEC
         // Connecting the next sender destroys the operation of the one that just completed.
         auto __start = [&]()
         {
-          auto &__op = __state.__ops_.__emplace_from(
-            [&]
-            {
-              return STDEXEC::connect(static_cast<__sender_t &&>(
-                                        STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
-                                      __receiver_t{&__state});
-            });
+          auto &__op = __state.__ops_.__emplace_from(STDEXEC::connect,
+                                                     static_cast<__sender_t &&>(
+                                                       STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
+                                                     __receiver_t{&__state});
           return __facade::__start_nested<__facade::__child<_Idx>>(__op);
         };
 
