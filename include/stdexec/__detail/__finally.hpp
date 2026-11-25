@@ -27,27 +27,28 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after execution_fwd.hpp
-#  include "__basic_sender.hpp"
+#  include "__continues_on.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
 #  include "__optional.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 #  include "__storage.hpp"
-#  include "__transform_completion_signatures.hpp"
 #  include "__tuple.hpp"
 #  include "__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <utility>
+#  endif
 
 #  include "__prologue.hpp"
 
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  namespace __final
-  {
-    template <class _Initial, class _Final>
-    struct __sender;
-  }  // namespace __final
-
   struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_;
   struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_;
 
@@ -58,10 +59,10 @@ namespace STDEXEC
     constexpr auto operator()(_Initial&& __initial, _Final&& __final) const  //
       -> __well_formed_sender auto
     {
-      return __sexpr{__finally_t(),
-                     __(),
-                     static_cast<_Initial&&>(__initial),
-                     static_cast<_Final&&>(__final)};
+      return __facade::__sender{__finally_t(),
+                                __(),
+                                static_cast<_Initial&&>(__initial),
+                                static_cast<_Final&&>(__final)};
     }
 
     template <sender _Final>
@@ -70,14 +71,6 @@ namespace STDEXEC
     {
       return __closure(*this, static_cast<_Final&&>(__final));
     }
-
-    template <class _Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
-    {
-      auto& [__tag, __ign, __initial, __final] = __sndr;
-      return __final::__sender{STDEXEC::__forward_like<_Sender>(__initial),  //
-                               STDEXEC::__forward_like<_Sender>(__final)};
-    }
   };
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -85,320 +78,222 @@ namespace STDEXEC
 
   namespace __final
   {
-    template <bool _FinalSenderHasValueCompletions>
-    struct __result_variant_fn
+    struct __algo;
+
+    // Does the initial sender complete where it starts, however it completes? Then the final
+    // sender starts where the operation started, which the receiver's environment says.
+    template <class _Initial, class _Env>
+    inline constexpr bool __initial_stays_put_v = __stays_put<__decay_t<_Initial>, _Env>;
+
+    // If the final sender never completes with a value, the results of the initial sender are
+    // never sent, so they are not saved.
+    template <bool _SavesResults>
+    struct __storage_fn
     {
-      template <class _InitialSender, class _Receiver>
-      using __f = __storage_for_t<_InitialSender, env_of_t<_Receiver>>;
+      template <class _Completions>
+      using __f = __mapply_q<__results_storage, _Completions>;
     };
 
     template <>
-    struct __result_variant_fn<false>
+    struct __storage_fn<false>
     {
-      template <class, class>
+      template <class _Completions>
       using __f = __results_storage<>;
     };
 
-    // If the final sender has no value completions, then we don't need to store
-    // the initial sender's values because they won't be propagated.
-    template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
-    using __result_variant_t = __mcall2<
-      __result_variant_fn<__sends<set_value_t, _CvFinalSender, __fwd_env_t<env_of_t<_Receiver>>>>,
-      _CvInitialSender,
-      _Receiver>;
-
-    template <class _Storage, class _Receiver, class _Env2>
-    struct __opstate_base
+    template <class _Sender, class _Receiver>
+    struct __state
     {
-      _Receiver __rcvr_{};
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      _Env2 const __env2_{};
-      _Storage    __result_{};  // __variant<__tuple<set_tag, args...>, ...>
+      using __env_t     = env_of_t<_Receiver>;
+      using __initial_t = __facade::__nth_child_of_t<_Sender, 0>;
+      using __final_t   = __facade::__nth_child_of_t<_Sender, 1>;
+      using __env2_t    = decltype(__trnsfr::__mk_env2(__declval<__decay_t<__initial_t> const &>(),
+                                                    __declval<__decay_t<__env_t> const &>()));
+      using __initial_rcvr_t =
+        __facade::__receiver_t<__algo, __facade::__child<0>, __state, _Sender, _Receiver>;
+      using __final_rcvr_t =
+        __facade::__receiver_t<__algo, __facade::__child<1>, __state, _Sender, _Receiver>;
+      using __initial_op_t = connect_result_t<__initial_t, __initial_rcvr_t>;
+      using __final_op_t   = connect_result_t<__final_t, __final_rcvr_t>;
+
+      static constexpr bool __saves_results =
+        __facade::__completions_of_t<__algo, __facade::__child<1>, _Sender, _Receiver>::__count(
+          set_value)
+        != 0;
+      using __storage_t = __storage_fn<__saves_results>::template __f<
+        __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>>;
+      static constexpr bool __initial_stays_put = __initial_stays_put_v<__initial_t, __env_t>;
+
+      // The final sender's operation is connected first. The initial sender's is destroyed
+      // before the final sender starts.
+      constexpr explicit __state(_Sender&& __sndr, _Receiver&& __rcvr)
+        noexcept(__nothrow_connectable<__final_t, __final_rcvr_t>
+                 && __nothrow_connectable<__initial_t, __initial_rcvr_t>)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __env2_(__trnsfr::__mk_env2(__facade::__get_child<0>(__sndr), STDEXEC::get_env(__rcvr_)))
+        , __final_op_(STDEXEC::connect(__facade::__get_child<1>(static_cast<_Sender&&>(__sndr)),
+                                       __final_rcvr_t{this}))
+      {
+        __initial_op_.__emplace_from(STDEXEC::connect,
+                                     __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                                     __initial_rcvr_t{this});
+      }
+
+      STDEXEC_IMMOVABLE(__state);
+
+      _Receiver                  __rcvr_;
+      __env2_t const             __env2_;
+      __storage_t                __storage_{};
+      __final_op_t               __final_op_;
+      __optional<__initial_op_t> __initial_op_{};
     };
 
-    using __mk_secondary_env_t =
-      STDEXEC::__mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
-
-    template <class _CvInitialSender, class _Env>
-    using __env2_t =
-      __secondary_env_t<_CvInitialSender, _Env, set_value_t, set_error_t, set_stopped_t>;
-
-    template <class _Env2, class _ReceiverEnv>
-    using __final_env_t = __join_env_t<_Env2 const &, __fwd_env_t<_ReceiverEnv>>;
-
-    template <class _Storage, class _Receiver, class _Env2>
-    struct __final_receiver
+    // __finally_(initial, final): when the initial sender completes, its results are saved,
+    // its operation is destroyed, and the final sender is started. When that completes with a
+    // value, the saved results are sent. Its errors and stopped completions are sent instead.
+    struct __algo : __facade::__defaults
     {
-      using receiver_concept = receiver_tag;
-      using __env_t          = __final_env_t<_Env2, env_of_t<_Receiver>>;
+      static constexpr bool __connects_children = false;
 
-      constexpr void set_value() noexcept
+      using __facade::__defaults::__env_for;
+      using __facade::__defaults::__get_env;
+
+      // The final sender sees where the initial sender completed (see __trnsfr::__mk_env2),
+      // joined with the receiver's environment. Unless the initial sender completes where it
+      // starts, that is not where the operation started, so the receiver's start scheduler and
+      // domain are hidden from it. (The initial sender sees the receiver's environment.)
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __env_for(__facade::__child<1>,
+                                      _Sender const & __sndr,
+                                      _Env&&          __env) noexcept
       {
-        std::move(__opstate_->__result_).__complete(__opstate_->__rcvr_);
+        auto __env2 = __trnsfr::__mk_env2(__facade::__get_child<0>(__sndr), __env);
+        if constexpr (__initial_stays_put_v<__facade::__nth_child_of_t<_Sender, 0>, _Env>)
+          return __env::__join(std::move(__env2), static_cast<_Env&&>(__env));
+        else
+          return __env::__join(std::move(__env2), __hide_scheduler{static_cast<_Env&&>(__env)});
       }
 
-      template <class _Error>
-      constexpr void set_error(_Error&& __error) noexcept
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(__facade::__child<1>, _State const & __state) noexcept
       {
-        STDEXEC::set_error(static_cast<_Receiver&&>(__opstate_->__rcvr_),
-                           static_cast<_Error&&>(__error));
+        using __env2_t = __decay_t<decltype(__state.__env2_)>;
+        if constexpr (_State::__initial_stays_put)
+          return __env::__join(__env2_t(__state.__env2_), STDEXEC::get_env(__state.__rcvr_));
+        else
+          return __env::__join(__env2_t(__state.__env2_),
+                               __hide_scheduler{STDEXEC::get_env(__state.__rcvr_)});
       }
 
-      constexpr void set_stopped() noexcept
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
+        noexcept(__nothrow_constructible_from<__state<_Sender, _Receiver>, _Sender, _Receiver>)
+          -> __state<_Sender, _Receiver>
       {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__opstate_->__rcvr_));
+        return __state<_Sender, _Receiver>(static_cast<_Sender&&>(__sndr),
+                                           static_cast<_Receiver&&>(__rcvr));
       }
 
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> __env_t
+      template <class _State, class _Children>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start(_State& __state, _Children&) noexcept
       {
-        return __env::__join(__opstate_->__env2_, __fwd_env(STDEXEC::get_env(__opstate_->__rcvr_)));
+        return __facade::__start_nested<__facade::__child<0>>(*__state.__initial_op_);
       }
 
-      __opstate_base<_Storage, _Receiver, _Env2>* __opstate_;
-    };
-
-    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
-    struct __final_opstate : __opstate_base<_Storage, _Receiver, _Env2>
-    {
-      using __results_t          = _Storage;
-      using __cleanup_callback_t = void(__final_opstate*) noexcept;
-      using __final_receiver_t   = __final_receiver<_Storage, _Receiver, _Env2>;
-      using __final_opstate_t    = connect_result_t<_CvFinalSender, __final_receiver_t>;
-
-      constexpr explicit __final_opstate(__cleanup_callback_t* __cleanup_callback,
-                                         _CvFinalSender&&      __final,
-                                         _Receiver&&           __rcvr,
-                                         _Env2                 __env2) noexcept
-        : __opstate_base<_Storage, _Receiver, _Env2>{static_cast<_Receiver&&>(__rcvr),
-                                                     static_cast<_Env2&&>(__env2)}
-        , __cleanup_callback_{__cleanup_callback}
-        , __final_opstate_(
-            STDEXEC::connect(static_cast<_CvFinalSender&&>(__final), __final_receiver_t{this}))
-      {}
-
-      template <class... _Args>
-      constexpr void __store_result_and_start_next_op([[maybe_unused]] _Args&&... __args) noexcept
+      // The initial sender completed: save its results (if they can be sent), and start the
+      // final sender. If decay-copying the results throws, the exception is saved as an error
+      // instead, and sent after the final sender completes, like any other result. If they
+      // cannot be decay-copied, that is a type error.
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State&               __state,
+                                       [[maybe_unused]] _Tag __tag,
+                                       [[maybe_unused]]
+                                       _Args&&... __args) noexcept
       {
-        if constexpr (!__sends<set_value_t, _CvFinalSender, __fwd_env_t<env_of_t<_Receiver>>>)
+        if constexpr (!_State::__saves_results)
         {
-          // If the final sender has no set_value completions, then we don't
-          // need to store the initial sender's values because they won't be
-          // propagated.
-          (*__cleanup_callback_)(this);
-          STDEXEC::start(this->__final_opstate_);
+          return __algo::__start_final(__state);
+        }
+        else if constexpr (!__decay_copyable<_Args...>)
+        {
+          return __facade::__decay_copy_error<__finally_t, _Args...>();
         }
         else
         {
-          STDEXEC_TRY
+          if constexpr (__nothrow_decay_copyable<_Args...>)
           {
-            using __tuple_t = __decayed_tuple<_Args...>;
-            this->__result_.template emplace<__tuple_t>(static_cast<_Args&&>(__args)...);
-            (*__cleanup_callback_)(this);
-            STDEXEC::start(this->__final_opstate_);
-          }
-          STDEXEC_CATCH_ALL
-          {
-            if constexpr (!__nothrow_decay_copyable<_Args...>)
-            {
-              (*__cleanup_callback_)(this);
-              STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::current_exception());
-            }
-          }
-        }
-      }
-
-      __cleanup_callback_t* __cleanup_callback_;
-      __final_opstate_t     __final_opstate_;
-    };
-
-    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
-    struct __initial_receiver;
-
-    template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
-    using __final_opstate_t =
-      __final_opstate<_CvFinalSender,
-                      __result_variant_t<_CvInitialSender, _CvFinalSender, _Receiver>,
-                      _Receiver,
-                      __env2_t<_CvInitialSender, env_of_t<_Receiver>>>;
-
-    template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
-    struct __opstate : __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver>
-    {
-      using __env2_t            = __final::__env2_t<_CvInitialSender, env_of_t<_Receiver>>;
-      using __base_t            = __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver>;
-      using __initial_results_t = __base_t::__results_t;
-
-      constexpr explicit __opstate(_CvInitialSender&& __initial,
-                                   _CvFinalSender&&   __final,
-                                   _Receiver          __rcvr)
-        : __base_t(&__cleanup_initial_opstate,
-                   static_cast<_CvFinalSender&&>(__final),
-                   static_cast<_Receiver&&>(__rcvr),
-                   __mk_secondary_env_t{}(__initial, STDEXEC::get_env(__rcvr)))
-      {
-        __initial_opstate_.__emplace_from(STDEXEC::connect,
-                                          static_cast<_CvInitialSender&&>(__initial),
-                                          __initial_receiver_t{this});
-      }
-
-      constexpr void start() & noexcept
-      {
-        STDEXEC::start(*__initial_opstate_);
-      }
-
-     private:
-      using __initial_receiver_t =
-        __initial_receiver<_CvFinalSender, __initial_results_t, _Receiver, __env2_t>;
-      using __initial_opstate_t = connect_result_t<_CvInitialSender, __initial_receiver_t>;
-
-      static constexpr void __cleanup_initial_opstate(__base_t* __base) noexcept
-      {
-        auto* __self = static_cast<__opstate*>(__base);
-        __self->__initial_opstate_.reset();
-      }
-
-      __optional<__initial_opstate_t> __initial_opstate_{};
-    };
-
-    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
-    struct __initial_receiver
-    {
-      using receiver_concept = receiver_tag;
-
-      template <class... _As>
-      constexpr void set_value(_As&&... __as) noexcept
-      {
-        __opstate_->__store_result_and_start_next_op(STDEXEC::set_value,
-                                                     static_cast<_As&&>(__as)...);
-      }
-
-      template <class _Error>
-      constexpr void set_error(_Error&& __error) noexcept
-      {
-        __opstate_->__store_result_and_start_next_op(STDEXEC::set_error,
-                                                     static_cast<_Error&&>(__error));
-      }
-
-      constexpr void set_stopped() noexcept
-      {
-        __opstate_->__store_result_and_start_next_op(STDEXEC::set_stopped);
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
-      {
-        return STDEXEC::get_env(__opstate_->__rcvr_);
-      }
-
-      __final_opstate<_CvFinalSender, _Storage, _Receiver, _Env2>* __opstate_;
-    };
-
-    template <class _CvInitialSender, class _Env>
-    using __mk_final_env_t = __final_env_t<__env2_t<_CvInitialSender, _Env>, _Env>;
-
-    template <class _CvInitialSender, class _CvFinalSender, class... _Env>
-    consteval auto __get_completion_signatures()
-    {
-      auto __initial_completions = get_completion_signatures<_CvInitialSender, _Env...>();
-      STDEXEC_IF_OK(__initial_completions)
-      {
-        auto __final_completions =
-          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>();
-        STDEXEC_IF_OK(__final_completions)
-        {
-          if constexpr (__never_sends<set_value_t,
-                                      _CvFinalSender,
-                                      __mk_final_env_t<_CvInitialSender, _Env>...>)
-          {
-            // If the finally sender doesn't have set_value completions, then we
-            // don't need to worry about the initial sender's value types not
-            // being nothrow decay-copyable, because they won't be propagated to
-            // the receiver.
-            return STDEXEC::__transform_completion_signatures(__initial_completions,
-                                                              __ignore_completion(),
-                                                              {},
-                                                              {},
-                                                              __final_completions);
-          }
-          else if constexpr (!sender_of<_CvFinalSender,
-                                        set_value_t(),
-                                        __mk_final_env_t<_CvInitialSender, _Env>...>)
-          {
-            // If the finally sender has value completions other than
-            // set_value_t(), then throw a compilation error.
-            return STDEXEC::__throw_compile_time_error<
-              _WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
-              _WHERE_(_IN_ALGORITHM_, __finally_t),
-              _WHY_(_THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_),
-              _WITH_SENDER_<_CvFinalSender>>();
+            __state.__storage_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
           }
           else
           {
-            // The finally sender's completion signatures are ...
-            return STDEXEC::__concat_completion_signatures(
-              // ... the initial sender's completions with value types decayed
-              // ...
-              STDEXEC::__transform_completion_signatures(
-                __initial_completions,
-                __decay_arguments<set_value_t, __finally_t>()),
-              // ... and the final sender's error and stopped completions ...
-              STDEXEC::__transform_completion_signatures(__final_completions,
-                                                         __ignore_completion()));
+            STDEXEC_TRY
+            {
+              __state.__storage_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
+            }
+            STDEXEC_CATCH_ALL
+            {
+              __state.__storage_.__emplace_from(__mktuple, set_error, std::current_exception());
+            }
           }
+          return __algo::__start_final(__state);
         }
       }
-    }
 
-    template <class _InitialSender, class _FinalSender>
-    struct __sender
-    {
-      using sender_concept = sender_tag;
-
-      template <class _Self, class _Receiver>
-      using __opstate_t = __opstate<__copy_cvref_t<_Self, _InitialSender>,
-                                    __copy_cvref_t<_Self, _FinalSender>,
-                                    _Receiver>;
-
-      template <__decays_to<__sender> _Self, class _Receiver>
-      auto
-      STDEXEC_EXPLICIT_THIS_BEGIN(connect)(this _Self&& __self, _Receiver&& __receiver) noexcept
-        -> __opstate_t<_Self, _Receiver>
+      // The final sender completed with a value: send the saved results.
+      template <class _State, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<1>,
+                                       _State& __state,
+                                       set_value_t,
+                                       _Args&&...) noexcept
       {
-        return __opstate_t<_Self, _Receiver>{static_cast<_Self&&>(__self).__initial_sndr_,
-                                             static_cast<_Self&&>(__self).__final_sndr_,
-                                             static_cast<_Receiver&&>(__receiver)};
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
-
-      template <__decays_to<__sender> _Self, class... _Env>
-      static consteval auto get_completion_signatures()
-      {
-        return __final::__get_completion_signatures<__copy_cvref_t<_Self, _InitialSender>,
-                                                    __copy_cvref_t<_Self, _FinalSender>,
-                                                    _Env...>();
+        if constexpr (sizeof...(_Args) != 0)
+        {
+          return __facade::__type_error(
+            __mexception<_WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
+                         _WHERE_(_IN_ALGORITHM_, __finally_t),
+                         _WHY_(_THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_),
+                         _WITH_SENDER_<__decay_t<typename _State::__final_t>>>());
+        }
+        else
+        {
+          return __trnsfr::__send_saved(__state.__storage_, __state.__rcvr_);
+        }
       }
 
-      _InitialSender __initial_sndr_;
-      _FinalSender   __final_sndr_;
+      // The final sender failed or was stopped.
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<1>,
+                                       _State& __state,
+                                       _Tag    __tag,
+                                       _Args&&... __args) noexcept
+      {
+        return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args&&>(__args)...);
+      }
+
+     private:
+      // Destroys the initial sender's operation (its results, if they are needed, are saved),
+      // and starts the final sender.
+      template <class _State>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start_final(_State& __state) noexcept
+      {
+        __state.__initial_op_.reset();
+        return __facade::__start_nested<__facade::__child<1>>(__state.__final_op_);
+      }
     };
-
-    template <class _InitialSender, class _FinalSender>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-      __sender(_InitialSender, _FinalSender) -> __sender<_InitialSender, _FinalSender>;
   }  // namespace __final
 
   template <>
-  struct __sexpr_impl<__finally_t> : __sexpr_defaults
-  {
-    template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures()
-    {
-      return __final::__get_completion_signatures<__nth_child_of_c<0, _Sender>,
-                                                  __nth_child_of_c<1, _Sender>,
-                                                  _Env...>();
-    }
-  };
+  struct __facade::__algorithm<__finally_t> : __final::__algo
+  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
