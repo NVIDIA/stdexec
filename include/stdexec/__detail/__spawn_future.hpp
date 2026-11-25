@@ -28,11 +28,11 @@ import stdexec;
 
 #  include "../stop_token.hpp"
 #  include "__atomic.hpp"
-#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
 #  include "__receivers.hpp"
 #  include "__scope.hpp"
 #  include "__scope_concepts.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 #  include "__spawn_common.hpp"
 #  include "__storage.hpp"
@@ -142,6 +142,11 @@ namespace STDEXEC
       using __variant_t = __results_storage<set_stopped_t(), _Sigs...>;
       template <class _Env>
       using __completions_t = __future_completions_t<_Env, _Sigs...>;
+
+      // The completions with which a future's operation receives the results (see
+      // __consume): an exception_ptr error is among them if storing the results can throw.
+      using __results_completions_t =
+        __future_completions<(__nothrow_storable_signature<_Sigs> && ...), _Sigs...>::type;
 
       __variant_t __result_;
 
@@ -652,6 +657,92 @@ namespace STDEXEC
       }
     };
 
+    // The key of the spawned operation's results, which the spawned state delivers when the
+    // operation completes, or when the future's operation starts if it has already completed
+    struct __spawned
+    {};
+
+    // The spawned operation's results, as the future's operation receives them. They are
+    // delivered on whatever thread completes the spawned operation, so nothing is known about
+    // where.
+    template <class _Completions>
+    struct __results_sender
+    {
+      using sender_concept        = sender_tag;
+      using completion_signatures = _Completions;
+    };
+
+    template <class _Sender, class _Receiver>
+    struct __future_operation;
+
+    // The future (the sender that spawn_future returns): when its operation starts, it
+    // registers a stop callback that tries to cancel the spawned operation, and then waits for
+    // the spawned operation's results (with the key __spawned), which it sends.
+    struct __future_algo : __facade::__defaults
+    {
+      // (The receiver's stop token decides whether starting can throw.)
+      template <class _Sender>
+      static constexpr bool __depends_on_env = true;
+
+      // __data_of<_Sender> is a unique_ptr specialization
+      template <class _Sender>
+      using __spawn_future_state_t = __decay_t<__facade::__data_of_t<_Sender>>::element_type;
+
+      using __facade::__defaults::__nested_sender;
+
+      template <class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_sender(__spawned, _Sender const &, _Env const &...) noexcept
+        -> __mtype<
+          __results_sender<typename __spawn_future_state_t<_Sender>::__results_completions_t>>
+      {
+        return {};
+      }
+
+      template <class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr) noexcept
+        -> __future_operation<__decay_t<_Sender>, _Receiver>
+      {
+        return {std::move(__facade::__get_data(__sndr)), std::move(__rcvr)};
+      }
+
+      // (Once the operation waits for the results, they can be sent at any time, so the
+      // path that waits does not touch the state again.)
+      template <class _State, class _Children>
+      static constexpr auto __start(_State& __state, _Children&) noexcept
+      {
+        using __waits_t = __facade::__effects<__facade::__starts<__spawned>>;
+        if constexpr (noexcept(__state.__run()))
+        {
+          __state.__run();
+          return __waits_t();
+        }
+        else
+        {
+          using __result_t =
+            __facade::__union_t<__waits_t, __facade::__effects<set_error_t(std::exception_ptr)>>;
+          STDEXEC_TRY
+          {
+            __state.__run();
+            return __result_t(__waits_t());
+          }
+          STDEXEC_CATCH_ALL
+          {
+            return __result_t(
+              __facade::__send(__state.__rcvr_, set_error_t(), std::current_exception()));
+          }
+        }
+      }
+
+      template <class _State, class _Tag, class... _Args>
+      static constexpr auto
+      __complete(__spawned, _State& __state, _Tag __tag, _Args&&... __args) noexcept
+      {
+        __state.__destroy_callback();
+        return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args&&>(__args)...);
+      }
+    };
+
     template <class _Sender>
     struct __future_operation_base
     {
@@ -689,6 +780,13 @@ namespace STDEXEC
         this->__future_.release()->__consume(__inner_rcvr_);
       }
 
+      // The receiver contract is completed in __future_algo::__complete, which destroys
+      // __callback_ first.
+      void __destroy_callback() noexcept
+      {
+        std::destroy_at(std::addressof(__callback_));
+      }
+
       _Receiver __rcvr_;
 
      private:
@@ -699,18 +797,24 @@ namespace STDEXEC
         template <class... _Ts>
         void set_value(_Ts&&... __ts) && noexcept
         {
-          __op_->__complete<STDEXEC::set_value_t>(static_cast<_Ts&&>(__ts)...);
+          (void) __future_algo::__complete(__spawned(),
+                                           *__op_,
+                                           STDEXEC::set_value,
+                                           static_cast<_Ts&&>(__ts)...);
         }
 
         template <class _E>
         void set_error(_E&& __e) && noexcept
         {
-          __op_->__complete<STDEXEC::set_error_t>(static_cast<_E&&>(__e));
+          (void) __future_algo::__complete(__spawned(),
+                                           *__op_,
+                                           STDEXEC::set_error,
+                                           static_cast<_E&&>(__e));
         }
 
         void set_stopped() && noexcept
         {
-          __op_->__complete<STDEXEC::set_stopped_t>();
+          (void) __future_algo::__complete(__spawned(), *__op_, STDEXEC::set_stopped);
         }
 
         __future_operation* __op_;
@@ -720,63 +824,11 @@ namespace STDEXEC
       // __callback_ is left unconstructed until __run() is called; if the
       // constructor invocation throws then __callback_ is never constructed or
       // destructed at all, otherwise, its destructor is invoked when the
-      // receiver contract is completed in __complete, below.
+      // receiver contract is completed (see __destroy_callback).
       union
       {
         stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __future_stop_callback>
           __callback_;
-      };
-
-      template <class _Tag, class... _Ts>
-      void __complete(_Ts&&... __ts) noexcept
-      {
-        std::destroy_at(std::addressof(__callback_));
-        _Tag{}(std::move(__rcvr_), static_cast<_Ts&&>(__ts)...);
-      }
-    };
-
-    struct __spawn_future_impl : __sexpr_defaults
-    {
-      // __data_of<_Sender> is a unique_ptr specialization
-      template <class _Sender>
-      using __unique_ptr_t = __data_of<std::remove_cvref_t<_Sender>>;
-
-      template <class _Sender>
-      using __spawn_future_state_t = __unique_ptr_t<_Sender>::element_type;
-
-      template <class _Sender, class _Env>
-      using __completions_t = __spawn_future_state_t<_Sender>::template __completions_t<_Env>;
-
-      template <class _Sender, class _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __completions_t<_Sender, _Env>
-      {
-        return {};
-      }
-
-      static constexpr auto __get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */
-        -> __future_operation<std::remove_cvref_t<_Sender>, _Receiver>
-      {
-        auto& [_, __future] = __sndr;
-        return {std::move(__future), std::move(__rcvr)};
-      };
-
-      static constexpr auto __start = [](auto& __state) noexcept
-      {
-        constexpr bool __non_throwing = noexcept(__state.__run());
-
-        STDEXEC_TRY
-        {
-          __state.__run();
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__non_throwing)
-          {
-            STDEXEC::set_error(std::move(__state.__rcvr_), std::current_exception());
-          }
-        }
       };
     };
   }  // namespace __spawn_future
@@ -931,7 +983,8 @@ namespace STDEXEC
         }
       };
 
-      return __sexpr{spawn_future_t(), std::unique_ptr<__spawn_future_state_t, __abandoner>(__op)};
+      return __facade::__sender{spawn_future_t(),
+                                std::unique_ptr<__spawn_future_state_t, __abandoner>(__op)};
     }
   };
 
@@ -947,7 +1000,7 @@ namespace STDEXEC
   inline constexpr spawn_future_t spawn_future{};
 
   template <>
-  struct __sexpr_impl<spawn_future_t> : __spawn_future::__spawn_future_impl
+  struct __facade::__algorithm<spawn_future_t> : __spawn_future::__future_algo
   {};
 }  // namespace STDEXEC
 
