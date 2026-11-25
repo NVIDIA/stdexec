@@ -26,13 +26,13 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__completion_signatures.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__diagnostics.hpp"
 #  include "__receivers.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
 
@@ -52,96 +52,70 @@ namespace STDEXEC
   {
     struct _SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_;
 
+    // The type of the child's value: the single value it sends, or a tuple of its values
+    template <class _Completions>
+    using __value_of_t = __value_types_t<_Completions, __as_single_value, __qq<__msingle>>;
+
     template <class _Receiver, class _Value>
     struct __state
     {
-      using __receiver_t = _Receiver;
-      using __value_t    = _Value;
+      using __value_t = _Value;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
     };
 
-    struct __stopped_as_optional_impl : __sexpr_defaults
+    // stopped_as_optional(sndr): the child's value becomes an engaged optional, and its
+    // stopped completion an empty one. Errors are forwarded.
+    struct __algo : __facade::__defaults
     {
-      static consteval auto __get_value_transform_fn() noexcept
+      // The child must complete with a value in exactly one way.
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender &&, _Receiver __rcvr) noexcept
       {
-        return []<class... _Ts>()
+        using __completions_t =
+          __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>;
+        if constexpr (requires { typename __value_of_t<__completions_t>; })
         {
-          using __value_t = __mcall<__as_single_value, _Ts...>;
-          return STDEXEC::__concat_completion_signatures(
-            completion_signatures<set_value_t(std::optional<__value_t>)>(),
-            __eptr_completion_unless_t<__nothrow_decay_copyable_t<_Ts...>>());
-        };
-      }
-
-      template <class _Self, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Self, stopped_as_optional_t>);
-        using __cv_sndr_t  = __child_of<_Self>;
-        auto __completions = STDEXEC::get_completion_signatures<__cv_sndr_t, _Env...>();
-        STDEXEC_IF_OK(__completions)
-        {
-          if constexpr (!__single_value_sender<__cv_sndr_t, _Env...>)
-          {
-            return STDEXEC::__throw_compile_time_error<
-              _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
-              _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-              _WITH_SENDER_<__cv_sndr_t>>();
-          }
-          else
-          {
-            return STDEXEC::__transform_completion_signatures(__completions,
-                                                              __get_value_transform_fn(),
-                                                              {},
-                                                              __ignore_completion());
-          }
-        }
-      }
-
-      static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
-        -> __state<_Receiver, __single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>
-      {
-        static_assert(__sender_for<_Self, stopped_as_optional_t>);
-        return {static_cast<_Receiver&&>(__rcvr)};
-      };
-
-      static constexpr auto __complete =
-        []<class _State, class _Tag, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        using __value_t = _State::__value_t;
-        if constexpr (__same_as<_Tag, set_value_t>)
-        {
-          STDEXEC_TRY
-          {
-            static_assert(__std::constructible_from<__value_t, _Args...>);
-            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               std::optional<__value_t>{std::in_place,
-                                                        static_cast<_Args&&>(__args)...});
-          }
-          STDEXEC_CATCH_ALL
-          {
-            if constexpr (!__nothrow_decay_copyable<_Args...>)
-            {
-              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-            }
-          }
-        }
-        else if constexpr (__same_as<_Tag, set_error_t>)
-        {
-          STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_,
-                             static_cast<_Args&&>(__args)...);
+          return __state<_Receiver, __value_of_t<__completions_t>>{
+            static_cast<_Receiver &&>(__rcvr)};
         }
         else
         {
-          STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                             std::optional<__value_t>{std::nullopt});
+          return __mexception<
+            _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
+            _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
+            _WITH_SENDER_<__facade::__nth_child_of_t<_Sender, 0>>>();
         }
-      };
+      }
+
+      template <class _State, class _Tag, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State &__state,
+                                       _Tag    __tag,
+                                       _Args &&...__args) noexcept
+      {
+        using __optional_t = std::optional<typename _State::__value_t>;
+        if constexpr (__same_as<_Tag, set_value_t>)
+        {
+          // (Only decay-copying the values can throw. The constructor of optional that
+          // constructs its value in place need not say that it is noexcept, and libc++'s
+          // does not.)
+          return __facade::__set_value_from<stopped_as_optional_t>(
+            __state.__rcvr_,
+            [&]() noexcept(__nothrow_decay_copyable<_Args...>)
+            { return __optional_t(std::in_place, static_cast<_Args &&>(__args)...); });
+        }
+        else if constexpr (__same_as<_Tag, set_stopped_t>)
+        {
+          return __facade::__send(__state.__rcvr_, set_value_t(), __optional_t(std::nullopt));
+        }
+        else
+        {
+          return __facade::__send(__state.__rcvr_, __tag, static_cast<_Args &&>(__args)...);
+        }
+      }
     };
   }  // namespace __sao
 
@@ -248,9 +222,9 @@ namespace STDEXEC
     //!
     //! @param __sndr   The predecessor sender. Forwarded into the result.
     template <sender _Sender>
-    constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __sexpr{stopped_as_optional_t(), __(), static_cast<_Sender&&>(__sndr)};
+      return __facade::__sender{stopped_as_optional_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
     //! @brief Returns @c *this, so that the older spelling
@@ -275,7 +249,7 @@ namespace STDEXEC
   inline constexpr stopped_as_optional_t stopped_as_optional{};
 
   template <>
-  struct __sexpr_impl<stopped_as_optional_t> : __sao::__stopped_as_optional_impl
+  struct __facade::__algorithm<stopped_as_optional_t> : __sao::__algo
   {};
 }  // namespace STDEXEC
 
