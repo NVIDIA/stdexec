@@ -18,6 +18,8 @@
 #include "exec/finally.hpp"
 #include "test_common/type_helpers.hpp"
 
+#include <functional>
+
 using namespace STDEXEC;
 
 namespace
@@ -77,7 +79,46 @@ namespace
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }
+
+  struct copy_throws
+  {
+    copy_throws() = default;
+
+    copy_throws(copy_throws const &)
+    {
+      throw 42;
+    }
+  };
+
+  TEST_CASE("finally executes the final action when saving the result throws",
+            "[adaptors][finally]")
+  {
+    bool        called = false;
+    copy_throws value;
+
+    // The initial sender sends an lvalue, which finally must copy to save it:
+    auto s = exec::finally(just(std::ref(value))
+                             | then(
+                               [](std::reference_wrapper<copy_throws> ref) noexcept -> copy_throws &
+                               { return ref.get(); }),
+                           just() | then([&called]() noexcept { called = true; }));
+    CHECK_THROWS_AS(sync_wait(std::move(s)), int);
+    CHECK(called);
+  }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  TEST_CASE("finally completes where the final action completes", "[adaptors][finally]")
+  {
+    // The results are sent when the final action completes with a value:
+    run_loop loop;
+    auto     s = exec::finally(just(42), schedule(loop.get_scheduler()));
+    CHECK(get_completion_scheduler<set_value_t>(get_env(s), ex::env<>{}) == loop.get_scheduler());
+
+    auto s2 = read_env(get_scheduler)
+            | let_value([](auto sch) { return exec::finally(just(42), schedule(sch)); });
+    auto [i] = *sync_wait(std::move(s2));
+    CHECK(i == 42);
+  }
 
   TEST_CASE("finally includes the error types of the final action", "[adaptors][finally]")
   {
