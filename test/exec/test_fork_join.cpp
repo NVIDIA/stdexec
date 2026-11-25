@@ -126,27 +126,47 @@ namespace
   struct identifiable_domain : public STDEXEC::default_domain
   {};
 
+  template <class Sndr, class Env>
+  concept has_value_completion_scheduler = requires(Sndr const &sndr, Env const &env) {
+    STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
+  };
+
   TEST_CASE("fork_join completion domain and scheduler", "[adaptors][fork_join]")
   {
     basic_inline_scheduler<identifiable_domain<'A'>> sched_A;
     basic_inline_scheduler<identifiable_domain<'B'>> sched_B;
     basic_inline_scheduler<identifiable_domain<'C'>> sched_C;
 
-    auto sndr = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
-              | exec::fork_join(STDEXEC::on(sched_B, STDEXEC::then(ForwardingThen{})),
-                                STDEXEC::on(sched_C, STDEXEC::then(ForwardingThen{})))
-              | STDEXEC::then(ForwardingThen{});
+    auto env = STDEXEC::__root_env{};
+
+    // The results are sent where the last closure's sender completes. These complete inline,
+    // where the sender of the cached results completes, which is where the child completed:
+    // on sched_A.
+    auto sndr1 = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
+               | exec::fork_join(STDEXEC::then(ForwardingThen{}), STDEXEC::then(ForwardingThen{}));
+
+    auto domain1 = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr1),
+                                                                        env);
+    static_assert(std::same_as<decltype(domain1), identifiable_domain<'A'>>);
+
+    auto sched1 = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr1),
+                                                                          env);
+    static_assert(std::same_as<decltype(sched1), decltype(sched_A)>);
+    CHECK(sched1 == sched_A);
 
     // The on() closures make the sender dependent: where on() returns depends on the
-    // environment. In the root environment (that of sync_wait), it returns to the inline
-    // scheduler, so the completion domain and scheduler are reported for that environment.
-    auto env    = STDEXEC::__root_env{};
-    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
-    static_assert(std::same_as<decltype(domain), identifiable_domain<'A'>>);
+    // environment. Each returns to where the sender of the cached results completes, so both
+    // complete in sched_A's domain. But when_all cannot know that they complete on the same
+    // scheduler, so there is no completion scheduler.
+    auto sndr2 = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
+               | exec::fork_join(STDEXEC::on(sched_B, STDEXEC::then(ForwardingThen{})),
+                                 STDEXEC::on(sched_C, STDEXEC::then(ForwardingThen{})))
+               | STDEXEC::then(ForwardingThen{});
 
-    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr),
-                                                                         env);
-    static_assert(std::same_as<decltype(sched), decltype(sched_A)>);
+    auto domain2 = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr2),
+                                                                        env);
+    static_assert(std::same_as<decltype(domain2), identifiable_domain<'A'>>);
+    static_assert(!has_value_completion_scheduler<decltype(sndr2), decltype(env)>);
   }
 
   TEST_CASE("fork_join broadcasts results to multiple continuations", "[adaptors][fork_join]")

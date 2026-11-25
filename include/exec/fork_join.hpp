@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 
@@ -58,9 +57,23 @@ namespace experimental::execution
     using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage,
                                            typename _cache_completions<Completions>::type>;
 
-    template <class Domain>
-    struct _env_t
+    // The attributes of the cache sender, which completes inline, in start, with the cached
+    // results
+    struct _inline_attrs
     {
+      template <class Tag>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto query(STDEXEC::__get_completion_behavior_t<Tag>) noexcept
+      {
+        return STDEXEC::__completion_behavior::__inline_completion;
+      }
+    };
+
+    template <class Domain>
+    struct _env_t : _inline_attrs
+    {
+      using _inline_attrs::query;
+
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr auto query(STDEXEC::get_domain_t) noexcept -> Domain
       {
@@ -69,7 +82,7 @@ namespace experimental::execution
     };
 
     template <>
-    struct _env_t<STDEXEC::indeterminate_domain<>>
+    struct _env_t<STDEXEC::indeterminate_domain<>> : _inline_attrs
     {};
 
     template <class Tag, class... Args>
@@ -130,170 +143,299 @@ namespace experimental::execution
                                 Closures,
                                 _cache_sndr_t<_variant_t<Completions>, Domain>>;
 
-    template <class Sndr, class Closures, class Rcvr>
-    struct _opstate_t
+    // The key of the operation of when_all(closures(cache)...)
+    struct _fork_op
+    {};
+
+    struct _algo;
+
+    template <class Sndr, class... Env>
+    using _child_domain_t =
+      STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
+                                        STDEXEC::__facade::__nth_child_of_t<Sndr, 0>,
+                                        STDEXEC::__fwd_env_t<Env>...>;
+
+    // The operation of a sender that cannot be connected to the receiver it is given (in the
+    // walk, where the receiver is an archetype, when the closures' senders depend on the
+    // environment). The walk asks the sender for its completions, and reports its error.
+    struct _no_op
+    {};
+
+    template <bool Connectable>
+    struct _op_of
     {
-      using operation_state_concept = STDEXEC::operation_state_tag;
-      using _env_t                  = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
-      using _child_completions_t    = STDEXEC::completion_signatures_of_t<Sndr, _env_t>;
-      using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
-      using _when_all_sndr_t =
-        _fork_join::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
-      using _child_opstate_t =
-        STDEXEC::connect_result_t<Sndr, STDEXEC::__receiver_ref<_opstate_t, _env_t>>;
-      using _fork_opstate_t =
-        STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__receiver_ref<Rcvr>>;
-      using _cache_sndr_t = _fork_join::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
-
-      STDEXEC_ATTRIBUTE(host, device)
-      constexpr explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
-        : _rcvr_(static_cast<Rcvr&&>(rcvr))
-        , _fork_opstate_(STDEXEC::connect(STDEXEC::__apply(_mk_when_all_fn{},
-                                                           static_cast<Closures&&>(closures),
-                                                           _cache_sndr_t{&_cache_}),
-                                          STDEXEC::__receiver_ref(_rcvr_)))
-      {
-        _child_opstate_.__construct_from(STDEXEC::connect,
-                                         static_cast<Sndr&&>(sndr),
-                                         STDEXEC::__receiver_ref(*this));
-      }
-
-      STDEXEC_IMMOVABLE(_opstate_t);
-
-      STDEXEC_ATTRIBUTE(host, device)
-      constexpr ~_opstate_t()
-      {
-        // If this opstate was never started, we must explicitly destroy the
-        // _child_opstate_.
-        if (_cache_.__is_valueless())
-        {
-          _child_opstate_.__destroy();
-        }
-      }
-
-      STDEXEC_ATTRIBUTE(host, device)
-      constexpr void start() noexcept
-      {
-        STDEXEC::start(_child_opstate_.__get());
-      }
-
-      template <class Tag, class... Args>
-      STDEXEC_ATTRIBUTE(host, device)
-      constexpr void _complete(Tag, Args&&... args) noexcept
-      {
-        STDEXEC_TRY
-        {
-          using _tuple_t = STDEXEC::__decayed_tuple<Tag, Args...>;
-          _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!STDEXEC::__nothrow_decay_copyable<Args...>)
-          {
-            using _tuple_t = STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>;
-            _cache_.template emplace<_tuple_t>(STDEXEC::set_error, ::std::current_exception());
-          }
-        }
-        _child_opstate_.__destroy();
-        STDEXEC::start(_fork_opstate_);
-      }
-
-      template <class... Values>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr void set_value(Values&&... values) noexcept
-      {
-        this->_complete(STDEXEC::set_value, static_cast<Values&&>(values)...);
-      }
-
-      template <class Error>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr void set_error(Error&& err) noexcept
-      {
-        this->_complete(STDEXEC::set_error, static_cast<Error&&>(err));
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr void set_stopped() noexcept
-      {
-        this->_complete(STDEXEC::set_stopped);
-      }
-
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      constexpr auto get_env() const noexcept -> _env_t
-      {
-        return STDEXEC::__fwd_env(STDEXEC::get_env(_rcvr_));
-      }
-
-      Rcvr                                         _rcvr_;
-      _variant_t<_child_completions_t>             _cache_;
-      STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
-      _fork_opstate_t                              _fork_opstate_;
+      template <class Sender, class Receiver>
+      using __f = STDEXEC::connect_result_t<Sender, Receiver>;
     };
 
-    template <class Sndr, class Closures, class Rcvr>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) -> _opstate_t<Sndr, Closures, Rcvr>;
-
-    struct __impls : STDEXEC::__sexpr_defaults
+    template <>
+    struct _op_of<false>
     {
-      template <class Self, class... Env>
+      template <class, class>
+      using __f = _no_op;
+    };
+
+    template <class Sndr, class Rcvr>
+    struct _state
+    {
+      using _child_t    = STDEXEC::__facade::__nth_child_of_t<Sndr, 0>;
+      using _closures_t = STDEXEC::__facade::__data_of_t<Sndr>;
+      using _child_completions_t =
+        STDEXEC::__facade::__completions_of_t<_algo, STDEXEC::__facade::__child<0>, Sndr, Rcvr>;
+      using _domain_t     = _child_domain_t<Sndr, STDEXEC::env_of_t<Rcvr>>;
+      using _cache_t      = _variant_t<_child_completions_t>;
+      using _cache_sndr_t = _fork_join::_cache_sndr_t<_cache_t, _domain_t>;
+      using _when_all_sndr_t =
+        STDEXEC::__apply_result_t<_mk_when_all_fn, _closures_t, _cache_sndr_t>;
+      using _child_rcvr_t =
+        STDEXEC::__facade::__receiver_t<_algo, STDEXEC::__facade::__child<0>, _state, Sndr, Rcvr>;
+      using _fork_rcvr_t = STDEXEC::__facade::__receiver_t<_algo, _fork_op, _state, Sndr, Rcvr>;
+      using _env2_t      = decltype(STDEXEC::__trnsfr::__mk_env2(
+        STDEXEC::__declval<STDEXEC::__decay_t<_child_t> const &>(),
+        STDEXEC::__declval<STDEXEC::__decay_t<STDEXEC::env_of_t<Rcvr>> const &>()));
+      static constexpr bool _child_stays_put =
+        STDEXEC::__trnsfr::__child_stays_put_v<_child_t, STDEXEC::env_of_t<Rcvr>>;
+
+      static constexpr bool _connectable = STDEXEC::sender_to<_child_t, _child_rcvr_t>
+                                        && STDEXEC::sender_to<_when_all_sndr_t, _fork_rcvr_t>;
+      using _child_op_t = _op_of<_connectable>::template __f<_child_t, _child_rcvr_t>;
+      using _fork_op_t  = _op_of<_connectable>::template __f<_when_all_sndr_t, _fork_rcvr_t>;
+
+      static constexpr bool _nothrow_v =
+        STDEXEC::__nothrow_applicable<_mk_when_all_fn, _closures_t, _cache_sndr_t>
+        && STDEXEC::__nothrow_connectable<_when_all_sndr_t, _fork_rcvr_t>
+        && STDEXEC::__nothrow_connectable<_child_t, _child_rcvr_t>;
+
+      // The forked operations are connected first, to the cache. The child's operation is
+      // destroyed when it completes.
       STDEXEC_ATTRIBUTE(host, device)
-      static consteval auto __get_completion_signatures()
+      constexpr explicit _state(Sndr&& sndr, Rcvr&& rcvr) noexcept(_nothrow_v)
+        : __rcvr_(static_cast<Rcvr&&>(rcvr))
+        , __env2_(STDEXEC::__trnsfr::__mk_env2(STDEXEC::__facade::__get_child<0>(sndr),
+                                               STDEXEC::get_env(__rcvr_)))
+        , _fork_op_(_state::_connect_fork(static_cast<Sndr&&>(sndr), this))
       {
-        using namespace STDEXEC;
-
-        using _closures_t   = __data_of<Self>;
-        using _child_sndr_t = __child_of<Self>;
-
-        if constexpr (__minvocable_q<__completion_domain_of_t, set_value_t, _child_sndr_t, Env...>)
+        if constexpr (_connectable)
         {
-          using _domain_t = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
-          using _child_t  = __copy_cvref_t<Self, _child_sndr_t>;
-          auto _child_completions =
-            STDEXEC::get_completion_signatures<_child_t, __fwd_env_t<Env>...>();
-
-          STDEXEC_IF_OK(_child_completions)
-          {
-            using _child_completions_t       = decltype(_child_completions);
-            using __decay_copyable_results_t = __decay_copyable_results_t<_child_completions_t>;
-
-            if constexpr (!__decay_copyable_results_t::value)
-            {
-              return STDEXEC::__throw_compile_time_error<  //
-                _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                _IN_ALGORITHM_(exec::fork_join_t)>();
-            }
-            else
-            {
-              using _sndr_t =
-                _fork_join::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-              return STDEXEC::get_completion_signatures<_sndr_t, __fwd_env_t<Env>...>();
-            }
-          }
+          _child_op_.__emplace_from(STDEXEC::connect,
+                                    STDEXEC::__facade::__get_child<0>(static_cast<Sndr&&>(sndr)),
+                                    _child_rcvr_t{this});
         }
-        else if constexpr (sizeof...(Env) == 0)
+      }
+
+      STDEXEC_IMMOVABLE(_state);
+
+      Rcvr                             __rcvr_;
+      _env2_t const                    __env2_;
+      _cache_t                         _cache_{};
+      STDEXEC::__optional<_child_op_t> _child_op_{};
+      _fork_op_t                       _fork_op_;
+
+     private:
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto
+      _connect_fork(Sndr&& sndr, _state* self) noexcept(_nothrow_v) -> _fork_op_t
+      {
+        if constexpr (_connectable)
         {
-          return STDEXEC::__throw_dependent_sender_error<Self>();
+          return STDEXEC::connect(STDEXEC::__apply(_mk_when_all_fn{},
+                                                   STDEXEC::__facade::__get_data(
+                                                     static_cast<Sndr&&>(sndr)),
+                                                   _cache_sndr_t{&self->_cache_}),
+                                  _fork_rcvr_t{self});
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<INVALID_ARGUMENTS_TO_FORK_JOIN,
-                                                     __children_of<Self, __qq<_WITH_SENDERS_>>,
-                                                     __fn_t<_WITH_ENVIRONMENT_, Env>...>();
+          return {};
+        }
+      }
+    };
+
+    // fork_join(sndr, closures...): when the child completes, its results are cached, its
+    // operation is destroyed, and when_all(closures(cache)...) is started, where cache is a
+    // sender of the cached results (by const reference). Its completions are the operation's.
+    struct _algo : STDEXEC::__facade::__defaults
+    {
+      static constexpr bool __connects_children = false;
+
+      // The domain of the child's value completions, in which the closures' senders look for
+      // customizations, cannot always be known without an environment.
+      template <class Sndr>
+      static constexpr bool __depends_on_env =
+        !STDEXEC::__minvocable_q<_child_domain_t, STDEXEC::__decay_t<Sndr>>;
+
+      using STDEXEC::__facade::__defaults::__env_for;
+      using STDEXEC::__facade::__defaults::__get_env;
+
+      // The child sees the forwarded environment of the receiver.
+      template <class Sndr, class Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __env_for(STDEXEC::__facade::__child<0>,
+                                      Sndr const &,
+                                      Env&& env) noexcept -> STDEXEC::__fwd_env_t<Env>
+      {
+        return STDEXEC::__fwd_env(static_cast<Env&&>(env));
+      }
+
+      template <class State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(STDEXEC::__facade::__child<0>, State const & state) noexcept
+        -> decltype(auto)
+      {
+        return STDEXEC::__fwd_env(STDEXEC::get_env(state.__rcvr_));
+      }
+
+      // The forked operations start where the child completed, which they see (see
+      // __trnsfr::__mk_env2). Unless the child completes where it starts, that is not where the
+      // operation started, so the receiver's start scheduler and domain are hidden from them.
+      // (The cache sender completes inline, where it starts.)
+      template <class Sndr, class Env>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __env_for(_fork_op, Sndr const & sndr, Env&& env) noexcept
+      {
+        auto env2 = STDEXEC::__trnsfr::__mk_env2(STDEXEC::__facade::__get_child<0>(sndr), env);
+        if constexpr (STDEXEC::__trnsfr::__child_stays_put_v<
+                        STDEXEC::__facade::__nth_child_of_t<Sndr, 0>,
+                        Env>)
+          return STDEXEC::__env::__join(std::move(env2), static_cast<Env&&>(env));
+        else
+          return STDEXEC::__env::__join(std::move(env2),
+                                        STDEXEC::__hide_scheduler{static_cast<Env&&>(env)});
+      }
+
+      template <class State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(_fork_op, State const & state) noexcept
+      {
+        using env2_t = STDEXEC::__decay_t<decltype(state.__env2_)>;
+        if constexpr (State::_child_stays_put)
+          return STDEXEC::__env::__join(env2_t(state.__env2_), STDEXEC::get_env(state.__rcvr_));
+        else
+          return STDEXEC::__env::__join(env2_t(state.__env2_),
+                                        STDEXEC::__hide_scheduler{STDEXEC::get_env(state.__rcvr_)});
+      }
+
+      // Customizations are found in the domain where the child completes with a value, in
+      // which the closures' senders look for theirs.
+      using __dispatch_source = STDEXEC::__facade::__via<STDEXEC::__facade::__child<0>,
+                                                         STDEXEC::set_value_t,
+                                                         STDEXEC::__facade::__from_start>;
+
+      using STDEXEC::__facade::__defaults::__nested_sender;
+
+      // when_all(closures(cache)...). The operation's cache sender points into its state. The
+      // one here has no cache: this sender is only asked for its attributes. (If the closures
+      // cannot be applied to the sender's data without throwing, or give another sender that
+      // way, only the type is known.)
+      template <class Sndr, class... Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __nested_sender(_fork_op, Sndr const & sndr, Env const &...) noexcept
+      {
+        using completions_t =
+          STDEXEC::__completion_signatures_of_t<STDEXEC::__facade::__nth_child_of_t<Sndr, 0>,
+                                                STDEXEC::__fwd_env_t<Env>...>;
+        using cache_sndr_t =
+          _fork_join::_cache_sndr_t<_variant_t<completions_t>, _child_domain_t<Sndr, Env...>>;
+        using when_all_t = _when_all_sndr_t<completions_t,
+                                            STDEXEC::__facade::__data_of_t<Sndr>,
+                                            _child_domain_t<Sndr, Env...>>;
+        using data_t     = decltype(STDEXEC::__facade::__get_data(sndr));
+        if constexpr (STDEXEC::__nothrow_applicable<_mk_when_all_fn, data_t, cache_sndr_t>)
+        {
+          if constexpr (STDEXEC::__same_as<
+                          STDEXEC::__apply_result_t<_mk_when_all_fn, data_t, cache_sndr_t>,
+                          when_all_t>)
+            return STDEXEC::__apply(_mk_when_all_fn{},
+                                    STDEXEC::__facade::__get_data(sndr),
+                                    cache_sndr_t{nullptr});
+          else
+            return STDEXEC::__mtype<when_all_t>();
+        }
+        else
+        {
+          return STDEXEC::__mtype<when_all_t>();
         }
       }
 
-      static constexpr auto __connect =
-        []<class _Receiver, class _Sender>(_Sender&& __sndr, _Receiver __rcvr) noexcept
-        -> _fork_join::_opstate_t<STDEXEC::__child_of<_Sender>,
-                                  STDEXEC::__data_of<_Sender>,
-                                  _Receiver>
+      template <class Sndr, class Rcvr>
+      static consteval auto _nothrow_state() noexcept -> bool
       {
-        auto& [tag, closures, child] = __sndr;
-        return _fork_join::_opstate_t{STDEXEC::__forward_like<_Sender>(child),
-                                      STDEXEC::__forward_like<_Sender>(closures),
-                                      static_cast<_Receiver&&>(__rcvr)};
-      };
+        if constexpr (STDEXEC::__minvocable_q<_child_domain_t, Sndr, STDEXEC::env_of_t<Rcvr>>)
+          return _state<Sndr, Rcvr>::_nothrow_v;
+        else
+          return true;
+      }
+
+      template <class Sndr, class Rcvr>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(Sndr&& sndr, Rcvr rcvr)
+        noexcept(_algo::_nothrow_state<Sndr, Rcvr>())
+      {
+        using namespace STDEXEC;
+        if constexpr (!__minvocable_q<_child_domain_t, Sndr, env_of_t<Rcvr>>)
+        {
+          return __mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                              _WITH_SENDERS_<__facade::__nth_child_of_t<Sndr, 0>>,
+                              _WITH_ENVIRONMENT_(env_of_t<Rcvr>)>();
+        }
+        else if constexpr (!__decay_copyable_results_t<
+                             typename _state<Sndr, Rcvr>::_child_completions_t>::value)
+        {
+          return __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                              _IN_ALGORITHM_(fork_join_t)>();
+        }
+        else
+        {
+          return _state<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+        }
+      }
+
+      template <class State, class Children>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __start(State& state, Children&) noexcept
+      {
+        if constexpr (State::_connectable)
+          return STDEXEC::__facade::__start_nested<STDEXEC::__facade::__child<0>>(
+            *state._child_op_);
+        else
+          return STDEXEC::__facade::__effects<
+            STDEXEC::__facade::__starts<STDEXEC::__facade::__child<0>>>();
+      }
+
+      using STDEXEC::__facade::__defaults::__complete;
+
+      // The child completed: cache its results (or, if decay-copying them throws, the
+      // exception, as an error), destroy its operation, and start the forked operations.
+      template <class State, class Tag, class... Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(STDEXEC::__facade::__child<0>,
+                                       State& state,
+                                       Tag    tag,
+                                       Args&&... args) noexcept
+      {
+        if constexpr (STDEXEC::__nothrow_decay_copyable<Args...>)
+        {
+          state._cache_.__emplace_from(STDEXEC::__mktuple, tag, static_cast<Args&&>(args)...);
+        }
+        else
+        {
+          STDEXEC_TRY
+          {
+            state._cache_.__emplace_from(STDEXEC::__mktuple, tag, static_cast<Args&&>(args)...);
+          }
+          STDEXEC_CATCH_ALL
+          {
+            state._cache_.__emplace_from(STDEXEC::__mktuple,
+                                         STDEXEC::set_error,
+                                         ::std::current_exception());
+          }
+        }
+        state._child_op_.reset();
+        if constexpr (State::_connectable)
+          return STDEXEC::__facade::__start_nested<_fork_op>(state._fork_op_);
+        else
+          return STDEXEC::__facade::__effects<STDEXEC::__facade::__starts<_fork_op>>();
+      }
     };
   }  // namespace _fork_join
 
@@ -325,9 +467,9 @@ namespace experimental::execution
       noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>)
         -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__sexpr{fork_join_t(),
-                              STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
-                              static_cast<Sndr&&>(sndr)};
+      return STDEXEC::__facade::__sender{fork_join_t(),
+                                         STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
+                                         static_cast<Sndr&&>(sndr)};
     }
 
     /// One or more closures.
@@ -350,6 +492,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::fork_join_t> : exec::_fork_join::__impls
+  struct __facade::__algorithm<exec::fork_join_t> : exec::_fork_join::_algo
   {};
 }  // namespace STDEXEC
