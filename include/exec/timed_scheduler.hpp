@@ -24,7 +24,6 @@ import stdexec;
 #else
 #  include "../stdexec/__detail/__execution_fwd.hpp"
 
-#  include "../stdexec/__detail/__basic_sender.hpp"
 #  include "../stdexec/__detail/__concepts.hpp"
 #  include "../stdexec/__detail/__env.hpp"
 #  include "../stdexec/__detail/__get_completion_signatures.hpp"
@@ -34,6 +33,7 @@ import stdexec;
 #  include "../stdexec/__detail/__queries.hpp"
 #  include "../stdexec/__detail/__schedulers.hpp"
 #  include "../stdexec/__detail/__sender_concepts.hpp"
+#  include "../stdexec/__detail/__sender_facade.hpp"
 #  include "../stdexec/__detail/__sender_introspection.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
 
@@ -83,37 +83,40 @@ namespace experimental::execution::__timed_scheduler_fallback
 
     _Scheduler __sched_;
   };
+
+  template <class _Scheduler, class _NativeSender, class _Child>
+  STDEXEC_ATTRIBUTE(always_inline)
+  constexpr auto __mk_attrs(__data<_Scheduler, _NativeSender> const &__data,
+                            _Child const                            &__child) noexcept
+  {
+    return __attrs<_Scheduler, _NativeSender, _Child>{__data.__sched_, __child};
+  }
+
+  // The fallback for schedule_after (or schedule_at) on a scheduler that has only
+  // schedule_at (or schedule_after): its child computes the deadline when it starts, and
+  // calls the native function. Its completions are the child's. Its attributes are given, not
+  // derived: they are the child's, and the scheduler is the value completion scheduler if the
+  // native sender completes on it, which the facade cannot know, because the native sender
+  // is made at run time.
+  struct __algo : __facade::__defaults
+  {
+    template <class _Sender>
+    STDEXEC_ATTRIBUTE(always_inline)
+    static constexpr auto __get_attrs(_Sender const &__sndr) noexcept
+    {
+      return __timed_scheduler_fallback::__mk_attrs(__facade::__get_data(__sndr),
+                                                    __facade::__get_child<0>(__sndr));
+    }
+  };
 }  // namespace experimental::execution::__timed_scheduler_fallback
 
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<::experimental::execution::__timed_scheduler_fallback::__tag>
-    : __sexpr_defaults
-  {
-    static constexpr auto __get_attrs =
-      []<class _Scheduler, class _NativeSender, class _Sender>(
-        __ignore,
-        ::experimental::execution::__timed_scheduler_fallback::__data<_Scheduler,
-                                                                      _NativeSender> const &__data,
-        _Sender const &__sndr) noexcept
-    {
-      return ::experimental::execution::__timed_scheduler_fallback::__attrs<_Scheduler,
-                                                                            _NativeSender,
-                                                                            _Sender>{
-        __data.__sched_,
-        __sndr};
-    };
-
-    template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures()
-    {
-      static_assert(
-        __sender_for<_Sender, ::experimental::execution::__timed_scheduler_fallback::__tag>);
-      return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
-    }
-  };
+  struct __facade::__algorithm<::experimental::execution::__timed_scheduler_fallback::__tag>
+    : ::experimental::execution::__timed_scheduler_fallback::__algo
+  {};
 }  // namespace STDEXEC
 
 namespace experimental::execution
@@ -243,7 +246,7 @@ namespace experimental::execution
         using __native_sender_t =
           __call_result_t<__schedule_at_base_t, __sched_t const &, time_point_of_t<_Scheduler>>;
 
-        return __sexpr{
+        return __facade::__sender{
           __timed_scheduler_fallback::__tag(),
           __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
           let_value(
@@ -312,12 +315,13 @@ namespace experimental::execution
         using __native_sender_t =
           __call_result_t<__schedule_after_base_t, __sched_t const &, duration_of_t<_Scheduler>>;
 
-        return __sexpr{__timed_scheduler_fallback::__tag(),
-                       __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
-                       let_value(just(),
-                                 [__sched, __time_point]() noexcept(
-                                   noexcept(schedule_after(__sched, __time_point - now(__sched))))
-                                 { return schedule_after(__sched, __time_point - now(__sched)); })};
+        return __facade::__sender{
+          __timed_scheduler_fallback::__tag(),
+          __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
+          let_value(just(),
+                    [__sched, __time_point]() noexcept(
+                      noexcept(schedule_after(__sched, __time_point - now(__sched))))
+                    { return schedule_after(__sched, __time_point - now(__sched)); })};
       }
     };
   }  // namespace __schedule_at
