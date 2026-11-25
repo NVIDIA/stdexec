@@ -112,21 +112,13 @@ namespace
   template <STDEXEC::sender Sndr>
   auto my_adapt(Sndr&& sndr)
   {
-    return STDEXEC::__sexpr{my_adapt_t(), STDEXEC::env<>{}, static_cast<Sndr&&>(sndr)};
+    return STDEXEC::__facade::__sender{my_adapt_t(), STDEXEC::env<>{}, static_cast<Sndr&&>(sndr)};
   }
-
-  struct my_adapt_impl : STDEXEC::__sexpr_defaults
-  {
-    template <class Sndr, class... Env>
-    static consteval auto __get_completion_signatures()
-    {
-      return STDEXEC::get_completion_signatures<STDEXEC::__child_of<Sndr>, Env...>();
-    }
-  };
 }  // namespace
 
+// The facade's defaults give the adaptor its child's completions.
 template <>
-struct STDEXEC::__sexpr_impl<my_adapt_t> : my_adapt_impl
+struct STDEXEC::__facade::__algorithm<my_adapt_t> : STDEXEC::__facade::__defaults
 {};
 
 template <>
