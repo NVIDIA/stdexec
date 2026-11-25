@@ -230,6 +230,9 @@ namespace experimental::execution
         }
       }
 
+      // The operation completes on the pool, however it completes.
+      static constexpr bool __one_completion_scheduler = true;
+
       template <class CPO>
       auto query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept  //
         -> Pool::scheduler

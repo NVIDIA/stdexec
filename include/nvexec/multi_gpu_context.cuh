@@ -114,6 +114,9 @@ namespace nv::execution
        private:
         struct attrs
         {
+          // The operation completes on the streams, however it completes.
+          static constexpr bool __one_completion_scheduler = true;
+
           template <STDEXEC::__one_of<set_value_t, set_error_t> CompletionSignal>
           [[nodiscard]]
           auto query(get_completion_scheduler_t<CompletionSignal>) const noexcept

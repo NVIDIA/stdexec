@@ -190,6 +190,9 @@ namespace experimental::execution
 
       struct attrs
       {
+        // The operation completes on the queue, however it completes.
+        static constexpr bool __one_completion_scheduler = true;
+
         template <typename CPO>
         libdispatch_scheduler query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept
         {

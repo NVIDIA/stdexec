@@ -226,6 +226,9 @@ namespace STDEXEC
 
       struct __attrs_t
       {
+        // The operation completes on the run_loop, however it completes.
+        static constexpr bool __one_completion_scheduler = true;
+
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
         constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept;
         STDEXEC_ATTRIBUTE(nodiscard, host, device)

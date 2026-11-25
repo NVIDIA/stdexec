@@ -237,6 +237,9 @@ namespace experimental::execution
         {
           struct attrs
           {
+            // The operation completes on the pool, however it completes.
+            static constexpr bool __one_completion_scheduler = true;
+
             template <class CPO>
             auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept -> scheduler
             {

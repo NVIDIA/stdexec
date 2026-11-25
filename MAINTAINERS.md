@@ -365,6 +365,11 @@ knowing:
   get it from the same place in that sender. (When `fn` may throw,
   `then(schedule(sch), fn)` completes with a value or an error on `sch`, so
   `upon_error` over it completes with a value on `sch`, however it completes.)
+  A sender that is not a facade sender can say that its attributes report the
+  same scheduler for every kind of completion, with
+  `static constexpr bool __one_completion_scheduler = true;` in the type of its
+  attributes. A schedule sender whose operation completes on its scheduler,
+  however it completes, can; `run_loop`'s and `exec::static_thread_pool`'s do.
 * A completion that happens inside a nested operation completes where that
   operation was started, if the operation completes where it starts and where
   it was started is known. (So completions that start in the same place agree

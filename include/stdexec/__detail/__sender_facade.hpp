@@ -1199,11 +1199,27 @@ namespace STDEXEC
       }
     };
 
+    // Attributes that report the same completion scheduler for every kind of completion that
+    // they report one for can say so, with a static data member:
+    //
+    //   static constexpr bool __one_completion_scheduler = true;
+    //
+    // (A schedule sender's attributes, which report the scheduler on which its operation
+    // completes, however it completes, can.) Only the type of the attributes says so, so that
+    // attributes that join them with others, which may report other schedulers for some
+    // kinds of completion, do not.
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Attrs>
+    concept __reports_one_completion_scheduler = requires {
+      requires bool(_Attrs::__one_completion_scheduler);
+    };
+
     // Where the _Tag completions of a sender with the attributes _Attrs get their completion
     // scheduler from, in the environment _Env: the scheduler expression that its
     // get_completion_scheduler<_Tag> query evaluates, if the sender is a facade sender (see
-    // __attrs::__sched_place_t); otherwise, or if the query has no answer, void. Completions
-    // that get their scheduler from the same place get the same scheduler.
+    // __attrs::__sched_place_t); the attributes, if they report one completion scheduler
+    // and report one for _Tag; and otherwise void. Completions that get their scheduler from
+    // the same place get the same scheduler.
     template <class _Attrs, class _Tag, class... _Env>
     struct __sched_place_of
     {
@@ -1214,6 +1230,16 @@ namespace STDEXEC
     struct __sched_place_of<__attrs<_Algo, _Sender>, _Tag, _Env...>
     {
       using __t = __attrs<_Algo, _Sender>::template __sched_place_t<_Tag, __decay_t<_Env>...>;
+    };
+
+    template <class _Attrs, class _Tag, class... _Env>
+      requires __reports_one_completion_scheduler<_Attrs>
+            && __callable<typename get_completion_scheduler_t<_Tag>::__read_query_t,
+                          _Attrs const &,
+                          _Env...>
+    struct __sched_place_of<_Attrs, _Tag, _Env...>
+    {
+      using __t = _Attrs;
     };
 
     template <class _Ctx, class _Src, class... _QEnv>
