@@ -27,75 +27,53 @@ namespace experimental::execution
     struct into_tuple_t;
     struct THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION;
 
-    struct _impl : __sexpr_defaults
+    template <class Receiver>
+    struct _state
     {
-      template <class Receiver>
-      struct __state
-      {
-        Receiver __rcvr_;
-      };
+      Receiver __rcvr_;
+    };
 
-      static constexpr auto _value_cmplsigs = []<class... Args>() noexcept
+    // into_tuple(sndr): the child's value completion, which must be its only one, becomes a
+    // value completion with a tuple of the decayed values. If decay-copying them can throw,
+    // the exception is sent as an error.
+    struct _algo : __facade::__defaults
+    {
+      template <class Sender, class Receiver>
+      static constexpr auto __get_state(Sender &&, Receiver __rcvr) noexcept
       {
-        constexpr bool __is_nothrow = __nothrow_decay_copyable<Args...>;
-        return exec::concat_completion_signatures(
-          STDEXEC::completion_signatures<set_value_t(__decayed_std_tuple<Args...>)>(),
-          __eptr_completion_unless_t<__mbool<__is_nothrow>>());
-      };
-
-      template <class Sender, class... Env>
-      static consteval auto __get_completion_signatures()
-      {
-        auto completions = STDEXEC::get_completion_signatures<__child_of<Sender>, Env...>();
-        STDEXEC_IF_OK(completions)
+        using completions_t =
+          __facade::__completions_of_t<_algo, __facade::__child<0>, Sender, Receiver>;
+        if constexpr (completions_t::__count(set_value) != 1)
         {
-          if constexpr (completions.__count(set_value) != 1)
-          {
-            return exec::throw_compile_time_error<
-              _WHAT_(_INVALID_ARGUMENT_),
-              _WHY_(THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION),
-              _WHERE_(_IN_ALGORITHM_, into_tuple_t),
-              _WITH_SENDER_<Sender>,
-              __fn_t<_WITH_ENVIRONMENT_, Env>...>();
-          }
-          else
-          {
-            return exec::transform_completion_signatures(completions, _value_cmplsigs);
-          }
-        }
-      }
-
-      static constexpr auto __get_state = []<class Receiver>(__ignore, Receiver &&__rcvr) noexcept
-      {
-        return __state<Receiver>{static_cast<Receiver &&>(__rcvr)};
-      };
-
-      static constexpr auto __complete =
-        []<class State, class Tag, class... Args>(__ignore,
-                                                  State &__state,
-                                                  Tag,
-                                                  Args &&...__args) noexcept -> void
-      {
-        if constexpr (Tag() == set_value)
-        {
-          STDEXEC_TRY
-          {
-            set_value(static_cast<State &&>(__state).__rcvr_,
-                      __decayed_std_tuple<Args...>{static_cast<Args &&>(__args)...});
-          }
-          STDEXEC_CATCH_ALL
-          {
-            if constexpr (__nothrow_decay_copyable<Args...>)
-              __std::unreachable();
-            else
-              set_error(static_cast<State &&>(__state).__rcvr_, std::current_exception());
-          }
+          return __mexception<
+            _WHAT_(_INVALID_ARGUMENT_),
+            _WHY_(THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION),
+            _WHERE_(_IN_ALGORITHM_, into_tuple_t),
+            _WITH_SENDER_<__decay_t<Sender>>,
+            _WITH_ENVIRONMENT_(env_of_t<Receiver>)>();
         }
         else
         {
-          Tag()(static_cast<State &&>(__state).__rcvr_, static_cast<Args &&>(__args)...);
+          return _state<Receiver>{static_cast<Receiver &&>(__rcvr)};
         }
-      };
+      }
+
+      template <class State, class Tag, class... Args>
+      static constexpr auto
+      __complete(__facade::__child<0>, State &__state, Tag __tag, Args &&...__args) noexcept
+      {
+        if constexpr (__same_as<Tag, set_value_t>)
+        {
+          return __facade::__set_value_from<into_tuple_t>(
+            __state.__rcvr_,
+            [&]() noexcept(__nothrow_decay_copyable<Args...>)
+            { return __decayed_std_tuple<Args...>{static_cast<Args &&>(__args)...}; });
+        }
+        else
+        {
+          return __facade::__send(__state.__rcvr_, __tag, static_cast<Args &&>(__args)...);
+        }
+      }
     };
   }  // namespace _into_tuple
 
@@ -106,7 +84,7 @@ namespace experimental::execution
       noexcept(STDEXEC::__nothrow_decay_copyable<Sender>)
     {
       using namespace STDEXEC;
-      return __sexpr{into_tuple_t(), __(), static_cast<Sender &&>(__sndr)};
+      return __facade::__sender{into_tuple_t(), __(), static_cast<Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -125,6 +103,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::into_tuple_t> : exec::_into_tuple::_impl
+  struct __facade::__algorithm<exec::into_tuple_t> : exec::_into_tuple::_algo
   {};
 }  // namespace STDEXEC
