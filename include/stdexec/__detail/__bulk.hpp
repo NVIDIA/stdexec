@@ -26,12 +26,12 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__basic_sender.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__diagnostics.hpp"
 #  include "__execution_legacy.hpp"  // IWYU pragma: export
 #  include "__meta.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_facade.hpp"
 #  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
 #  include "__transform_completion_signatures.hpp"
 
@@ -142,7 +142,7 @@ namespace STDEXEC
       constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto
       {
-        return __sexpr{
+        return __facade::__sender{
           _AlgoTag(),
           __data{__pol, __shape, static_cast<_Fun&&>(__fun)},
           static_cast<_Sender&&>(__sndr)
@@ -201,158 +201,105 @@ namespace STDEXEC
     template <class _Fun>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
 
-    template <class _Child>
-    struct __attrs : env<__fwd_env_t<env_of_t<_Child>>>
+    // Calls the function with the shape and the child's values: once with the whole range,
+    // for bulk_chunked, and once per index otherwise
+    template <class _AlgoTag, class _Data, class... _Args>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr void __run(_Data& __data, _Args&... __args)
     {
-      using __base_t = env<__fwd_env_t<env_of_t<_Child>>>;
-      using __base_t::query;
-
-      constexpr explicit __attrs(_Child const & __child) noexcept
-        : __base_t{__fwd_env(STDEXEC::get_env(__child))}
-      {}
-
-      template <class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(__get_completion_behavior_t<set_value_t>, _Env&&...) const noexcept
+      using __shape_t = decltype(__data.__shape_);
+      if constexpr (__same_as<_AlgoTag, bulk_chunked_t>)
       {
-        return STDEXEC::__get_completion_behavior<set_value_t, _Child, _Env...>();
+        if (__shape_t{} < __data.__shape_)
+        {
+          __data.__fun_(__shape_t(), __shape_t(__data.__shape_), __args...);
+        }
       }
-    };
+      else
+      {
+        auto const __shape = __data.__shape_;
+        for (__shape_t __i{}; __i != __shape; ++__i)
+        {
+          __data.__fun_(__shape_t(__i), __args...);
+        }
+      }
+    }
 
+    // bulk(sndr, pol, shape, fn), bulk_chunked(...) and bulk_unchunked(...): when the child
+    // completes with values, the function is called with the shape and the values, and then
+    // the values are sent. Other completions of the child are passed through. This calls the
+    // function sequentially. Schedulers customize the algorithms to parallelize it. (bulk is
+    // lowered to bulk_chunked by its tag's transform_sender, so that customizations of
+    // bulk_chunked apply to it. It calls the function once per index.)
     template <class _AlgoTag>
-    struct __impl_base : __sexpr_defaults
+    struct __algo : __facade::__defaults
     {
-      // Forward the child sender's environment (which contains completion
-      // scheduler)
-      static constexpr auto __get_attrs =  //
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+      // The child sees the forwarded environment of the receiver
+      template <class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __env_for(__facade::__child<0>, _Sender const &, _Env&& __env) noexcept
+        -> __fwd_env_t<_Env>
       {
-        return __attrs{__child};
-      };
-
-      template <class _CvSender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_CvSender, _AlgoTag>);
-        using __state_t = __decay_t<__data_of<_CvSender>>;
-        using __fun_t   = decltype(__state_t::__fun_);
-        using __shape_t = decltype(__state_t::__shape_);
-
-        return STDEXEC::__transform_completion_signatures(
-          STDEXEC::get_completion_signatures<__child_of<_CvSender>, __fwd_env_t<_Env>...>(),
-          []<class... _Args>()
-          {
-            using __value_sig_t = set_value_t(_Args...);
-            using __arg_pack_t  = __if_c<__same_as<_AlgoTag, bulk_chunked_t>,
-                                         __tuple<__shape_t, __shape_t, _Args&...>,
-                                         __tuple<__shape_t, _Args&...>>;
-
-            if constexpr (__nothrow_applicable<__fun_t&, __arg_pack_t>)
-            {
-              return completion_signatures<__value_sig_t>();
-            }
-            else if constexpr (__applicable<__fun_t&, __arg_pack_t>)
-            {
-              return completion_signatures<__value_sig_t, set_error_t(std::exception_ptr)>();
-            }
-            else
-            {
-              return STDEXEC::__throw_compile_time_error<
-                _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
-                _WHERE_(_IN_ALGORITHM_, _AlgoTag),
-                _WITH_FUNCTION_(__fun_t&),
-                __mapply<__qf<_WITH_ARGUMENTS_>, __arg_pack_t>>();
-            }
-          });
+        return __fwd_env(static_cast<_Env&&>(__env));
       }
-    };
 
-    struct __chunked_impl : __impl_base<bulk_chunked_t>
-    {
-      //! This implements the core default behavior for `bulk_chunked`: When setting
-      //! value, it calls the function with the entire range. Note: This is not done in
-      //! parallel. That is customized by the scheduler. See, e.g.,
-      //! `static_thread_pool::bulk_receiver`.
-      static constexpr auto __complete =
-        []<class _Tag, class _State, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
+      template <class _State>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_env(__facade::__child<0>, _State const & __state) noexcept
+        -> decltype(auto)
       {
-        if constexpr (__std::same_as<_Tag, set_value_t>)
-        {
-          // Intercept set_value and dispatch to the bulk operation.
-          using __shape_t = decltype(__state.__data_.__shape_);
-          using __fun_t   = decltype(__state.__data_.__fun_);
+        return __fwd_env(STDEXEC::get_env(__state.__rcvr_));
+      }
 
-          STDEXEC_TRY
-          {
-            if (__shape_t{} < __state.__data_.__shape_)
-            {
-              __state.__data_.__fun_(__shape_t(), __shape_t(__state.__data_.__shape_), __args...);
-            }
-            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               static_cast<_Args&&>(__args)...);
-          }
-          STDEXEC_CATCH_ALL
-          {
-            if constexpr (!__nothrow_callable<__fun_t&, __shape_t, __shape_t, _Args&...>)
-            {
-              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-            }
-          }
+      // The child completed with values: call the function, and then send them.
+      template <class _State, class... _Args>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __complete(__facade::__child<0>,
+                                       _State& __state,
+                                       set_value_t,
+                                       _Args&&... __args) noexcept
+      {
+        using __data_t     = decltype(__state.__data_);
+        using __shape_t    = decltype(__data_t::__shape_);
+        using __fun_t      = decltype(__data_t::__fun_);
+        using __arg_pack_t = __if_c<__same_as<_AlgoTag, bulk_chunked_t>,
+                                    __tuple<__shape_t, __shape_t, _Args&...>,
+                                    __tuple<__shape_t, _Args&...>>;
+
+        if constexpr (!__applicable<__fun_t&, __arg_pack_t>)
+        {
+          return __facade::__type_error(
+            __mexception<_WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+                         _WHERE_(_IN_ALGORITHM_, _AlgoTag),
+                         _WITH_FUNCTION_(__fun_t&),
+                         __mapply<__qf<_WITH_ARGUMENTS_>, __arg_pack_t>>());
+        }
+        else if constexpr (__nothrow_applicable<__fun_t&, __arg_pack_t>)
+        {
+          __bulk::__run<_AlgoTag>(__state.__data_, __args...);
+          return __facade::__send(__state.__rcvr_, set_value_t(), static_cast<_Args&&>(__args)...);
         }
         else
         {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-        }
-      };
-    };
-
-    struct __unchunked_impl : __impl_base<bulk_unchunked_t>
-    {
-      //! This implements the core default behavior for `bulk_unchunked`:
-      //! When setting value, it loops over the shape and invokes the function.
-      //! Note: This is not done in concurrently. That is customized by the scheduler.
-      static constexpr auto __complete =
-        []<class _Tag, class _State, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        if constexpr (__std::same_as<_Tag, set_value_t>)
-        {
-          using __shape_t    = decltype(__state.__data_.__shape_);
-          using __fun_t      = decltype(__state.__data_.__fun_);
-          auto const __shape = __state.__data_.__shape_;
-
+          using __result_t =
+            __facade::__union_t<__facade::__effects<set_value_t(_Args...)>,
+                                __facade::__effects<set_error_t(std::exception_ptr)>>;
           STDEXEC_TRY
           {
-            for (__shape_t __i{}; __i != __shape; ++__i)
-            {
-              __state.__data_.__fun_(__shape_t(__i), __args...);
-            }
-            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               static_cast<_Args&&>(__args)...);
+            __bulk::__run<_AlgoTag>(__state.__data_, __args...);
           }
           STDEXEC_CATCH_ALL
           {
-            if constexpr (!__nothrow_callable<__fun_t&, __shape_t, _Args&...>)
-            {
-              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-            }
+            return __result_t(
+              __facade::__send(__state.__rcvr_, set_error_t(), std::current_exception()));
           }
+          return __result_t(
+            __facade::__send(__state.__rcvr_, set_value_t(), static_cast<_Args&&>(__args)...));
         }
-        else
-        {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-        }
-      };
-    };
+      }
 
-    struct __impl : __impl_base<bulk_t>
-    {
-      // Implementation is handled by lowering to `bulk_chunked` in the tag's `transform_sender`.
+      // The child's other completions are passed through.
+      using __facade::__defaults::__complete;
     };
   }  // namespace __bulk
 
@@ -552,15 +499,15 @@ namespace STDEXEC
   inline constexpr bulk_unchunked_t bulk_unchunked{};
 
   template <>
-  struct __sexpr_impl<bulk_t> : __bulk::__impl
+  struct __facade::__algorithm<bulk_t> : __bulk::__algo<bulk_t>
   {};
 
   template <>
-  struct __sexpr_impl<bulk_chunked_t> : __bulk::__chunked_impl
+  struct __facade::__algorithm<bulk_chunked_t> : __bulk::__algo<bulk_chunked_t>
   {};
 
   template <>
-  struct __sexpr_impl<bulk_unchunked_t> : __bulk::__unchunked_impl
+  struct __facade::__algorithm<bulk_unchunked_t> : __bulk::__algo<bulk_unchunked_t>
   {};
 }  // namespace STDEXEC
 
