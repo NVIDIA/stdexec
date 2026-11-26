@@ -33,6 +33,8 @@
 import std;
 #  else
 #    include <atomic>
+#    include <optional>
+#    include <string>
 #    include <system_error>
 #    include <tuple>
 #    include <utility>
@@ -359,6 +361,41 @@ namespace
   {
     auto result = ex::sync_wait(test_task_returns_with_stopped_as_value());
     CHECK(result.has_value());
+  }
+
+  auto test_task_returns_lvalue_with_stopped() -> ex::task<int>
+  {
+    ex::with_stopped stopped;
+    co_return stopped;
+  }
+
+  TEST_CASE("non-void task can co_return an lvalue with_stopped", "[types][task]")
+  {
+    auto result = ex::sync_wait(test_task_returns_lvalue_with_stopped());
+    CHECK(!result.has_value());
+  }
+
+  // `{}` converts to with_stopped (an empty aggregate), but `co_return {};` must
+  // still value-initialize the task's result rather than stop the task.
+  auto test_task_returns_empty_braces_optional() -> ex::task<std::optional<int>>
+  {
+    co_return {};
+  }
+
+  auto test_task_returns_empty_braces_string() -> ex::task<std::string>
+  {
+    co_return {};
+  }
+
+  TEST_CASE("task can co_return {} to value-initialize its result", "[types][task]")
+  {
+    auto optional_result = ex::sync_wait(test_task_returns_empty_braces_optional());
+    REQUIRE(optional_result.has_value());
+    CHECK(!std::get<0>(*optional_result).has_value());
+
+    auto string_result = ex::sync_wait(test_task_returns_empty_braces_string());
+    REQUIRE(string_result.has_value());
+    CHECK(std::get<0>(*string_result).empty());
   }
 
 #  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
