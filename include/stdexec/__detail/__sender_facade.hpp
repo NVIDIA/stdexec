@@ -626,27 +626,34 @@ namespace STDEXEC
       {}
     };
 
-    template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
+    // (A class keyed only by whether the state's receiver is an archetype, so that the debug
+    // information, which names the class when it names the receiver's type by this alias, does
+    // not repeat the types of the state, the sender and the receiver. The alias cannot name
+    // the receiver's type directly: GCC would then look into _Algo where the alias is used,
+    // and the algorithm can be incomplete there.)
+    template <bool _IsArchetype>
     struct __receiver_of
     {
-      using __t = __nested_receiver<_Algo,
+      template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
+      using __f = __nested_receiver<_Algo,
                                     _Key,
                                     _State,
                                     __facade::__env_t<_Algo, _Key, _Sender, env_of_t<_Receiver>>>;
     };
 
-    template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
-      requires __std::derived_from<_Receiver, __receiver_archetype_base>
-    struct __receiver_of<_Algo, _Key, _State, _Sender, _Receiver>
+    template <>
+    struct __receiver_of<true>
     {
-      using __t =
+      template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
+      using __f =
         __nested_receiver_archetype<__facade::__env_t<_Algo, _Key, _Sender, env_of_t<_Receiver>>>;
     };
 
     // The receiver to which an algorithm connects an operation it stores in its state
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Algo, class _Key, class _State, class _Sender, class _Receiver>
-    using __receiver_t = __receiver_of<_Algo, _Key, _State, _Sender, _Receiver>::__t;
+    using __receiver_t = __receiver_of<__std::derived_from<_Receiver, __receiver_archetype_base>>::
+      template __f<_Algo, _Key, _State, _Sender, _Receiver>;
 
     template <std::size_t... _Is>
     auto __starts_all_impl(__indices<_Is...>) -> __effects<__starts<__child<_Is>>...>;
