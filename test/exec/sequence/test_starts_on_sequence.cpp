@@ -16,6 +16,7 @@
 
 #include "exec/sequence/transform_each.hpp"
 
+#include "exec/sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
 #include "exec/sequence/iterate.hpp"
 #include "exec/sequence_senders.hpp"
@@ -97,5 +98,154 @@ namespace
       STDEXEC::starts_on(pool.get_scheduler(), exec::iterate(std::views::all(values)))
       | exec::transform_each(STDEXEC::then([&](int v) { sum += v; })) | exec::ignore_all_values());
     CHECK(sum == 10);
+  }
+
+  // A sender that says nothing about where it completes
+  struct opaque_sender
+  {
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+
+    template <class Rcvr>
+    struct op
+    {
+      using operation_state_concept = STDEXEC::operation_state_t;
+      Rcvr rcvr_;
+
+      void start() noexcept
+      {
+        STDEXEC::set_value(std::move(rcvr_));
+      }
+    };
+
+    template <STDEXEC::receiver Rcvr>
+    auto connect(Rcvr rcvr) const -> op<Rcvr>
+    {
+      return op<Rcvr>{static_cast<Rcvr&&>(rcvr)};
+    }
+  };
+
+  // Attributes that say that a sender completes where it starts
+  struct inline_attrs
+  {
+    template <class Tag>
+    static constexpr auto query(STDEXEC::__get_completion_behavior_t<Tag>) noexcept
+    {
+      return STDEXEC::__completion_behavior::__inline_completion;
+    }
+  };
+
+  // A sequence sender without items that completes where it starts, and records whether its
+  // receiver's environment says where that is
+  struct start_scheduler_probe_sequence
+  {
+    using sender_concept        = exec::sequence_sender_tag;
+    using item_types            = exec::item_types<>;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+
+    template <class Rcvr>
+    struct op
+    {
+      using operation_state_concept = STDEXEC::operation_state_t;
+      Rcvr  rcvr_;
+      bool* sees_start_scheduler_;
+
+      void start() noexcept
+      {
+        *sees_start_scheduler_ = requires(STDEXEC::env_of_t<Rcvr> const & env) {
+          STDEXEC::get_start_scheduler(env);
+        };
+        STDEXEC::set_value(std::move(rcvr_));
+      }
+    };
+
+    template <STDEXEC::receiver Rcvr>
+    auto subscribe(Rcvr rcvr) const -> op<Rcvr>
+    {
+      return op<Rcvr>{static_cast<Rcvr&&>(rcvr), sees_start_scheduler_};
+    }
+
+    static constexpr auto get_env() noexcept -> inline_attrs
+    {
+      return {};
+    }
+
+    bool* sees_start_scheduler_;
+  };
+
+  template <class Sch>
+  struct start_scheduler_rcvr
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    template <class Item>
+    auto set_next(Item&& item) noexcept
+    {
+      return static_cast<Item&&>(item);
+    }
+
+    void set_value() noexcept {}
+
+    void set_stopped() noexcept {}
+
+    template <class Error>
+    void set_error(Error&&) noexcept
+    {}
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop{STDEXEC::get_start_scheduler, sch_};
+    }
+
+    Sch sch_;
+  };
+
+  template <class Sndr, class Env>
+  concept has_value_completion_scheduler = requires(Sndr const & sndr, Env const & env) {
+    STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
+  };
+
+  // A sequence that ends in a sequence sender is lowered to __seq::__sndr, as starts_on over a
+  // sequence sender is. It too must hide the receiver's start scheduler from the sequence
+  // sender, unless the sender before it completes where it starts.
+  TEST_CASE("a sequence hides the receiver's start scheduler from a sequence sender that may "
+            "not start there",
+            "[sequence]")
+  {
+    STDEXEC::run_loop loop;
+    using sch_t = decltype(loop.get_scheduler());
+    using env_t = STDEXEC::prop<STDEXEC::get_start_scheduler_t, sch_t>;
+
+    STATIC_REQUIRE(!has_value_completion_scheduler<
+                   decltype(exec::sequence(opaque_sender{}, start_scheduler_probe_sequence{})),
+                   env_t>);
+
+    bool sees_start_scheduler = true;
+    auto sndr                 = exec::sequence(opaque_sender{},
+                               start_scheduler_probe_sequence{&sees_start_scheduler});
+    auto op = exec::subscribe(std::move(sndr), start_scheduler_rcvr<sch_t>{loop.get_scheduler()});
+    STDEXEC::start(op);
+    CHECK_FALSE(sees_start_scheduler);
+  }
+
+  TEST_CASE("a sequence shows the receiver's start scheduler to a sequence sender that starts "
+            "there",
+            "[sequence]")
+  {
+    STDEXEC::run_loop loop;
+    using sch_t = decltype(loop.get_scheduler());
+
+    bool sees_start_scheduler = false;
+    auto sndr                 = exec::sequence(STDEXEC::just(),
+                               start_scheduler_probe_sequence{&sees_start_scheduler});
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
+            STDEXEC::get_env(sndr),
+            STDEXEC::prop{STDEXEC::get_start_scheduler, loop.get_scheduler()})
+          == loop.get_scheduler());
+
+    auto op = exec::subscribe(std::move(sndr), start_scheduler_rcvr<sch_t>{loop.get_scheduler()});
+    STDEXEC::start(op);
+    CHECK(sees_start_scheduler);
   }
 }  // namespace

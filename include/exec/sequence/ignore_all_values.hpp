@@ -19,6 +19,8 @@
 #include "../../stdexec/execution.hpp"
 
 // include these after execution.hpp
+#include "../../stdexec/__detail/__continues_on.hpp"
+#include "../../stdexec/__detail/__sender_facade.hpp"
 #include "../../stdexec/__detail/__senders.hpp"
 #include "../../stdexec/__detail/__tuple.hpp"
 #include "../sender_for.hpp"
@@ -42,22 +44,6 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    constexpr auto __complete_fn =
-      []<class _Receiver, class _Tag, class... _Args>(_Receiver&& __rcvr,
-                                                      _Tag,
-                                                      _Args&&... __args) noexcept
-    {
-      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-    };
-
-    constexpr auto __visit_fn =
-      []<class _Receiver, class _Tuple>(_Receiver&& __rcvr, _Tuple&& __tupl) noexcept
-    {
-      STDEXEC::__apply(__complete_fn,
-                       static_cast<_Tuple&&>(__tupl),
-                       static_cast<_Receiver&&>(__rcvr));
-    };
-
     template <class _ResultsStorage>
     struct __result_type
     {
@@ -69,23 +55,6 @@ namespace experimental::execution
         {
           __result_.template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
           __emplaced_.store(2, __std::memory_order_release);
-        }
-      }
-
-      template <class _Receiver>
-#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION <= 2509
-      // Avoid a codegen issue in NVHPC 25.9 and earlier
-      [[gnu::noinline]]
-#endif
-      void __visit_result(_Receiver __rcvr) noexcept
-      {
-        if (__emplaced_.load(__std::memory_order_acquire) == 0)
-        {
-          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr));
-        }
-        else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultsStorage>::value != 0)
-        {
-          static_cast<_ResultsStorage&&>(__result_).__complete(__rcvr);
         }
       }
 
@@ -195,58 +164,6 @@ namespace experimental::execution
       __result_type<_ResultsStorage>* __parent_;
     };
 
-    template <class _Receiver, class _ResultsStorage>
-    struct __operation_base : __result_type<_ResultsStorage>
-    {
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Receiver __rcvr_;
-    };
-
-    template <class _Receiver, class _ResultsStorage>
-    struct __receiver
-    {
-      using receiver_concept = STDEXEC::receiver_tag;
-
-      constexpr explicit __receiver(__operation_base<_Receiver, _ResultsStorage>* __op) noexcept
-        : __op_{__op}
-      {}
-
-      // nvc++ needs this destructor to be defined to avoid a codegen issue
-      STDEXEC_PP_WHEN(STDEXEC_NVHPC(), ~__receiver(){})
-
-      template <sender _Item>
-      [[nodiscard]]
-      auto set_next(_Item&& __item) & noexcept(__nothrow_decay_copyable<_Item>)
-        -> __item_sender<__decay_t<_Item>, _ResultsStorage>
-      {
-        return {static_cast<_Item&&>(__item), __op_};
-      }
-
-      void set_value() noexcept
-      {
-        __op_->__visit_result(static_cast<_Receiver&&>(__op_->__rcvr_));
-      }
-
-      template <class _Error>
-      void set_error(_Error&& error) noexcept
-      {
-        STDEXEC::set_error(static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Error&&>(error));
-      }
-
-      void set_stopped() noexcept
-      {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
-      }
-
-      auto get_env() const noexcept -> env_of_t<_Receiver>
-      {
-        return STDEXEC::get_env(__op_->__rcvr_);
-      }
-
-     private:
-      __operation_base<_Receiver, _ResultsStorage>* __op_;
-    };
-
     template <class _Signature>
     using __is_set_value_signature_t =
       __mbool<__same_as<set_value_t, __signature_tag_t<_Signature>>>;
@@ -258,42 +175,165 @@ namespace experimental::execution
                __sequence_completion_signatures_of_t<_Sender, _Env>>;
 
     template <class _Sender, class _Receiver>
-    struct __operation
-      : __operation_base<_Receiver, __result_variant_t<_Sender, env_of_t<_Receiver>>>
+    struct __state;
+
+    template <class _State>
+    struct __receiver;
+
+    // The key of the subscription to the sequence. (It is not the child's key, __child<0>,
+    // because the facade would take the child itself to be the operation's sender. The
+    // operation subscribes to it.)
+    struct __subscription
+    {};
+
+    // The sequence, as the operation that subscribes to it sees it: it completes with
+    // set_value_t() when it ends, or with its errors or set_stopped_t(). (Its items' results are
+    // saved, see __item_receiver.) It is known only by its type.
+    template <class _Completions>
+    struct __sequence_sender
     {
-      using __variant_t  = __result_variant_t<_Sender, env_of_t<_Receiver>>;
-      using __base_t     = __operation_base<_Receiver, __variant_t>;
-      using __receiver_t = __receiver<_Receiver, __variant_t>;
-
-      explicit __operation(_Sender&& __sndr, _Receiver __rcvr)
-        noexcept(__nothrow_subscribable<_Sender, __receiver_t>)
-        : __base_t{{}, static_cast<_Receiver&&>(__rcvr)}
-        , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})}
-      {}
-
-      STDEXEC_IMMOVABLE(__operation);
-
-      void start() & noexcept
-      {
-        STDEXEC::start(__op_);
-      }
-
-      subscribe_result_t<_Sender, __receiver_t> __op_;
+      using sender_concept        = sender_tag;
+      using completion_signatures = _Completions;
     };
 
-    struct __connect_fn
-    {
-      template <class _Receiver, class _Child>
-      using __opstate_t = __operation<_Child, _Receiver>;
+    template <class _Sequence, class... _Env>
+    using __sequence_sender_t =
+      __sequence_sender<decltype(exec::__sequence_completion_signatures<_Sequence, _Env...>())>;
 
-      template <class _Receiver, class _Child>
-      auto operator()(_Receiver& __rcvr, __ignore, __ignore, _Child&& __child)
-        noexcept(__nothrow_constructible_from<__opstate_t<_Receiver, _Child>, _Child, _Receiver>)
-          -> __opstate_t<_Receiver, _Child>
+    // ignore_all_values(seq): the operation subscribes to the sequence, and ignores the values
+    // of its items. The first item that fails or stops saves its result, and stops the
+    // sequence. When the sequence completes with a value, the operation sends the saved result,
+    // if there is one, and otherwise completes with set_value_t(). The sequence's other
+    // completions are the operation's.
+    struct __algo : __facade::__defaults
+    {
+      // (The operation subscribes to the sequence, which the facade cannot connect.)
+      static constexpr bool __connects_children = false;
+
+      using __facade::__defaults::__nested_sender;
+
+      template <class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __nested_sender(__subscription,
+                                            _Sender const &,
+                                            _Env const &...) noexcept
+        -> __mtype<__sequence_sender_t<__facade::__nth_child_of_t<_Sender, 0>, _Env...>>
       {
-        return __opstate_t<_Receiver, _Child>{static_cast<_Child&&>(__child),
-                                              static_cast<_Receiver&&>(__rcvr)};
+        return {};
       }
+
+      template <class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
+        noexcept(__nothrow_constructible_from<__state<_Sender, _Receiver>, _Sender, _Receiver>)
+          -> __state<_Sender, _Receiver>
+      {
+        return __state<_Sender, _Receiver>(static_cast<_Sender&&>(__sndr),
+                                           static_cast<_Receiver&&>(__rcvr));
+      }
+
+      template <class _State, class _Children>
+      static constexpr auto __start(_State& __state, _Children&) noexcept
+      {
+        return __facade::__start_nested<__subscription>(__state.__op_);
+      }
+
+      using __facade::__defaults::__complete;
+
+      // The sequence completed with a value: send the saved result, if there is one.
+      template <class _State>
+      static constexpr auto __complete(__subscription, _State& __state, set_value_t) noexcept
+      {
+        return __facade::__choose(
+          __state.__emplaced_.load(__std::memory_order_acquire) == 0,
+          [&]() noexcept { return __facade::__send(__state.__rcvr_, set_value_t()); },
+          [&]() noexcept { return __trnsfr::__send_saved(__state.__result_, __state.__rcvr_); });
+      }
+    };
+
+    // The receiver of the sequence. Its items' operations save their results (see
+    // __item_receiver), and its completions go to the algorithm.
+    template <class _State>
+    struct __receiver
+    {
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      constexpr explicit __receiver(_State* __state) noexcept
+        : __state_{__state}
+      {}
+
+      // nvc++ needs this destructor to be defined to avoid a codegen issue
+      STDEXEC_PP_WHEN(STDEXEC_NVHPC(), ~__receiver(){})
+
+      template <sender _Item>
+      [[nodiscard]]
+      auto set_next(_Item&& __item) & noexcept(__nothrow_decay_copyable<_Item>)
+        -> __item_sender<__decay_t<_Item>, typename _State::__variant_t>
+      {
+        return {static_cast<_Item&&>(__item), __state_};
+      }
+
+      void set_value() noexcept
+      {
+        (void) __algo::__complete(__subscription(), *__state_, set_value_t());
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept
+      {
+        (void) __algo::__complete(__subscription(),
+                                  *__state_,
+                                  set_error_t(),
+                                  static_cast<_Error&&>(__error));
+      }
+
+      void set_stopped() noexcept
+      {
+        (void) __algo::__complete(__subscription(), *__state_, set_stopped_t());
+      }
+
+      auto get_env() const noexcept -> env_of_t<typename _State::__receiver_t>
+      {
+        return STDEXEC::get_env(__state_->__rcvr_);
+      }
+
+     private:
+      _State* __state_;
+    };
+
+    // The part of the state that the sequence's receiver points to: the receiver and the
+    // saved result. (The receiver's type does not name the operation's sender, as the state's
+    // does: the types of the items' operations name it, and they would grow with the size of
+    // the sender, as would the debug info that names them.)
+    template <class _Receiver, class _Variant>
+    struct __state_base : __result_type<_Variant>
+    {
+      using __variant_t  = _Variant;
+      using __receiver_t = _Receiver;
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+    };
+
+    template <class _Sender, class _Receiver>
+    struct __state
+      : __state_base<
+          _Receiver,
+          __result_variant_t<__facade::__nth_child_of_t<_Sender, 0>, env_of_t<_Receiver>>>
+    {
+      using __child_t = __facade::__nth_child_of_t<_Sender, 0>;
+      using __base_t  = __state_base<_Receiver, __result_variant_t<__child_t, env_of_t<_Receiver>>>;
+      using __seq_rcvr_t = __ignore_all_values::__receiver<__base_t>;
+
+      explicit __state(_Sender&& __sndr, _Receiver&& __rcvr)
+        noexcept(__nothrow_subscribable<__child_t, __seq_rcvr_t>)
+        : __base_t{{}, static_cast<_Receiver&&>(__rcvr)}
+        , __op_{exec::subscribe(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                                __seq_rcvr_t{this})}
+      {}
+
+      STDEXEC_IMMOVABLE(__state);
+
+      subscribe_result_t<__child_t, __seq_rcvr_t> __op_;
     };
 
     struct ignore_all_values_t
@@ -301,7 +341,7 @@ namespace experimental::execution
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const
       {
-        return __sexpr{ignore_all_values_t(), __(), static_cast<_Sender&&>(__sndr)};
+        return __facade::__sender{ignore_all_values_t(), __(), static_cast<_Sender&&>(__sndr)};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -309,25 +349,6 @@ namespace experimental::execution
       {
         return __closure(*this);
       }
-    };
-
-    struct __ignore_all_values_impl : __sexpr_defaults
-    {
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(sender_for<_Sender, ignore_all_values_t>);
-        return __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
-      }
-
-      static constexpr auto __connect =
-        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_applicable<__connect_fn, _Sender, _Receiver&>)
-        -> __apply_result_t<__connect_fn, _Sender, _Receiver&>
-      {
-        static_assert(sender_for<_Sender, ignore_all_values_t>);
-        return __apply(__connect_fn(), static_cast<_Sender&&>(__sndr), __rcvr);
-      };
     };
   }  // namespace __ignore_all_values
 
@@ -341,7 +362,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<exec::ignore_all_values_t>
-    : exec::__ignore_all_values::__ignore_all_values_impl
+  struct __facade::__algorithm<exec::ignore_all_values_t> : exec::__ignore_all_values::__algo
   {};
 }  // namespace STDEXEC

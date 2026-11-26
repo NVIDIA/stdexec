@@ -240,13 +240,10 @@ namespace nv::execution::_strm
           auto connect_and_start = [&]()
           {
             using child_t = State::child_t;
-            auto& op      = state.body_op_.__emplace_from(
-              [&]
-              {
-                return _strm::connect_stream_child(state,
-                                                   child_t(state.child_),
-                                                   body_rcvr_t{&state});
-              });
+            auto& op      = state.body_op_.__emplace_from(_strm::connect_stream_child,
+                                                     state,
+                                                     child_t(state.child_),
+                                                     body_rcvr_t{&state});
             return __facade::__start_nested<body>(op);
           };
 

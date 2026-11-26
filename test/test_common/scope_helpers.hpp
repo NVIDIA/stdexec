@@ -18,6 +18,8 @@
 
 #include "test_common/scope_tokens.hpp"
 
+#include <exec/env.hpp>
+
 #if STDEXEC_USE_MODULES()
 import std;
 import stdexec;
@@ -35,37 +37,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-  // a sender adaptor that prepends the provided environment onto the provided
-  // sender's environment
-  struct with_attrs_t
-  {
-    template <ex::sender Sender, class Env>
-    auto operator()(Sender&& sender, Env&& env) const
-      noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>
-               && std::is_nothrow_constructible_v<std::remove_cvref_t<Env>, Env>)
-    {
-      return ex::__sexpr{with_attrs_t(), std::forward<Env>(env), std::forward<Sender>(sender)};
-    }
-  };
-
-  inline constexpr with_attrs_t with_attrs{};
-
-  struct with_attrs_impl : ex::__sexpr_defaults
-  {
-    static constexpr auto __get_attrs =
-      []<class Env>(auto, Env const & env, ex::sender auto const & child) noexcept
-    {
-      return ex::__env::__join(env, ex::get_env(child));
-    };
-
-    template <class Sender, class... Env>
-    static consteval auto __get_completion_signatures()  //
-      -> ex::completion_signatures_of_t<ex::__child_of<std::remove_cvref_t<Sender>>, Env...>
-    {
-      return {};
-    }
-  };
-
   struct counting_resource : std::pmr::memory_resource
   {
     counting_resource() noexcept
@@ -123,7 +94,8 @@ namespace
       auto wrap(Sender&& sender) const
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>)
       {
-        return with_attrs(std::forward<Sender>(sender), ex::prop(ex::get_allocator, scope_->alloc));
+        return exec::write_attrs(std::forward<Sender>(sender),
+                                 ex::prop(ex::get_allocator, scope_->alloc));
       }
     };
 
@@ -134,7 +106,3 @@ namespace
     }
   };
 }  // namespace
-
-template <>
-struct ex::__sexpr_impl<with_attrs_t> : with_attrs_impl
-{};

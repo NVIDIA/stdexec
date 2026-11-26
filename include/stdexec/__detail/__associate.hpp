@@ -26,9 +26,7 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
-#  include "__operation_states.hpp"
 #  include "__optional.hpp"
 #  include "__receivers.hpp"
 #  include "__scope_concepts.hpp"

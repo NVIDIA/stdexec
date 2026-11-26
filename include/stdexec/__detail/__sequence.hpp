@@ -57,6 +57,31 @@ namespace STDEXEC
     template <class _CvSender1, class _Env>
     using __env2_t = __secondary_env_t<_CvSender1, _Env, set_value_t>;
 
+    // Does _CvSender1, which sees the receiver's environment _Env forwarded, complete with a
+    // value where it starts? Then the sender after it starts where the sequence started, which
+    // the receiver's environment says. If not, the receiver's start scheduler and domain are
+    // hidden from the sender after it, which sees only where _CvSender1 completed (if that is
+    // known). (Otherwise, after a sender that does not say where it completes, a sender that
+    // completes where it starts would claim to complete where the sequence started.)
+    template <class _CvSender1, class _Env>
+    inline constexpr bool __stays_put_v =
+      __stays_put_for<set_value_t, _CvSender1, __fwd_env_t<_Env>>;
+
+    // The receiver's environment, forwarded, as the sender after one that does (not) stay
+    // put sees it.
+    template <bool _StaysPut, class _Env>
+    using __outer_env_t = __if_c<_StaysPut, __fwd_env_t<_Env>, __hide_scheduler<__fwd_env_t<_Env>>>;
+
+    template <bool _StaysPut, class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto __outer_env(_Env &&__env) noexcept -> __outer_env_t<_StaysPut, _Env>
+    {
+      if constexpr (_StaysPut)
+        return __fwd_env(static_cast<_Env &&>(__env));
+      else
+        return __hide_scheduler{__fwd_env(static_cast<_Env &&>(__env))};
+    }
+
     template <class... _Senders>
     struct __sndr;
 
@@ -97,16 +122,17 @@ namespace STDEXEC
       using __joined_t = env<env_of_t<_Sender2>, env_of_t<_Sender1>>;
 
       // The env to use when querying _CvSender2: where the first sender completed, joined
-      // with the outer environment, as __rcvr2 provides it.
+      // with the outer environment, as __rcvr2 provides it (see __stays_put_v).
       template <class _Env>
-      using __env2_t = decltype(__env::__join(__mk_env2_t()(__declval<_Sender1 const &>(),
-                                                            __declval<_Env &>()),
-                                              __declval<_Env &>()));
+      using __env2_t = decltype(__env::__join(
+        __mk_env2_t()(__declval<_Sender1 const &>(), __declval<_Env &>()),
+        __seq::__outer_env<__stays_put_v<_Sender1, _Env>>(__declval<_Env &>())));
 
       template <class _Env>
       constexpr auto __mk_env2(_Env &__env) const noexcept -> __env2_t<_Env>
       {
-        return __env::__join(__mk_env2_t()(__sndr1_, __env), __env);
+        return __env::__join(__mk_env2_t()(__sndr1_, __env),
+                             __seq::__outer_env<__stays_put_v<_Sender1, _Env>>(__env));
       }
 
       // Whether the first (second) sender can complete with _Tag. A sender that cannot has
@@ -227,12 +253,14 @@ namespace STDEXEC
     };
 
     ////////////////////////////////////////////////////////////////////////////
-    // __rcvr2: the receiver that is connected to the successor sender.
-    template <class _Receiver, class _Env2>
+    // __rcvr2: the receiver that is connected to the successor sender. _StaysPut says
+    // whether the sender before it completes with a value where it starts (see
+    // __stays_put_v).
+    template <class _Receiver, class _Env2, bool _StaysPut>
     struct __rcvr2
     {
       using receiver_concept = receiver_tag;
-      using __env_t          = __join_env_t<_Env2 const &, __fwd_env_t<env_of_t<_Receiver>>>;
+      using __env_t = __join_env_t<_Env2 const &, __outer_env_t<_StaysPut, env_of_t<_Receiver>>>;
 
       template <class... _As>
       constexpr explicit __rcvr2(__state<_Receiver, _Env2> *__self) noexcept
@@ -270,7 +298,8 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> __env_t
       {
-        return __env::__join(__self_->__env_, __fwd_env(STDEXEC::get_env(__self_->__rcvr_)));
+        return __env::__join(__self_->__env_,
+                             __seq::__outer_env<_StaysPut>(STDEXEC::get_env(__self_->__rcvr_)));
       }
 
       __state<_Receiver, _Env2> *__self_;
@@ -355,9 +384,10 @@ namespace STDEXEC
         }
       }
 
-      using __env2_t     = __seq::__env2_t<_CvSender1, env_of_t<_Receiver>>;
-      using __rcvr1_t    = __rcvr1<_Receiver, __env2_t>;
-      using __rcvr2_t    = __rcvr2<_Receiver, __env2_t>;
+      using __env2_t  = __seq::__env2_t<_CvSender1, env_of_t<_Receiver>>;
+      using __rcvr1_t = __rcvr1<_Receiver, __env2_t>;
+      using __rcvr2_t =
+        __rcvr2<_Receiver, __env2_t, __stays_put_v<_CvSender1, env_of_t<_Receiver>>>;
       using __opstate1_t = connect_result_t<_CvSender1, __rcvr1_t>;
       using __opstate2_t = __call_result_t<_Connect2, _Sender2, __rcvr2_t>;
 
@@ -420,11 +450,14 @@ namespace STDEXEC
 
       template <class _Self, class _Receiver>
       using __rcvr2_t =
-        __rcvr2<_Receiver, __seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, env_of_t<_Receiver>>>;
+        __rcvr2<_Receiver,
+                __seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, env_of_t<_Receiver>>,
+                __stays_put_v<__copy_cvref_t<_Self, _Sender1>, env_of_t<_Receiver>>>;
 
       template <class _Self, class _Env>
-      using __env2_t = __join_env_t<__seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, _Env> const &,
-                                    __fwd_env_t<_Env>>;
+      using __env2_t =
+        __join_env_t<__seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, _Env> const &,
+                     __outer_env_t<__stays_put_v<__copy_cvref_t<_Self, _Sender1>, _Env>, _Env>>;
 
       using __attrs_t = __attrs<_Sender1, _Sender2>;
 
@@ -518,9 +551,6 @@ namespace STDEXEC
       : __sndr<__sndr<_Sender1, _Sender2>, _Senders...>
     {};
 
-    // The secondary environment of the _Idx-th sender (_Idx >= 1): where the sender before it
-    // completed, in that sender's environment. The receiver's environment is passed by
-    // reference, so that this has the same type at run time as in the walk.
     // The first sender is connected from the sequence, with the sequence's value category.
     // The later ones are stored decayed, and connected as rvalues.
     template <std::size_t _Idx, class _Sender>
@@ -550,18 +580,66 @@ namespace STDEXEC
       && !(__has_eptr_completion<__facade::__nth_child_of_t<_Sexpr, _Is>> || ...);
 
     template <std::size_t _Idx, class _Sender, class _Env>
+    consteval auto __starts_at_start() noexcept -> bool;
+
+    // The secondary environment of the _Idx-th sender (_Idx >= 1): where the sender before it
+    // completed, in that sender's environment. The receiver's environment is passed by
+    // reference, so that this has the same type at run time as in the walk.
+    template <std::size_t _Idx, class _Sender, class _Env>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __env2_for(_Sender const &__sndr, _Env const &__env) noexcept;
+
+    // The environment of the _Idx-th sender. The first sees the receiver's, forwarded. Each
+    // one after it sees where the one before it completed, and the receiver's environment,
+    // whose start scheduler and domain are hidden unless the sender starts where the sequence
+    // started (see __starts_at_start). (Otherwise, after a sender that does not say where it
+    // completes, a sender that completes where it starts would claim to complete where the
+    // sequence started.)
+    template <std::size_t _Idx, class _Sender, class _Env>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __env_of(_Sender const &__sndr, _Env &&__env) noexcept
+    {
+      if constexpr (_Idx == 0)
+        return __fwd_env(static_cast<_Env &&>(__env));
+      else if constexpr (__seq::__starts_at_start<_Idx, _Sender, __decay_t<_Env>>())
+        return __env::__join(__seq::__env2_for<_Idx>(__sndr, __env), static_cast<_Env &&>(__env));
+      else
+        return __env::__join(__seq::__env2_for<_Idx>(__sndr, __env),
+                             __hide_scheduler{static_cast<_Env &&>(__env)});
+    }
+
+    template <std::size_t _Idx, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto __env2_for(_Sender const &__sndr, _Env const &__env) noexcept
     {
       static_assert(_Idx != 0);
-      if constexpr (_Idx == 1)
+      // A sender that does not type-check in its environment cannot be connected, but the
+      // facade still computes its attributes.
+      using __env_t = decltype(__seq::__env_of<_Idx - 1>(__sndr, __env));
+      if constexpr (__callable<__mk_env2_t,
+                               __facade::__nth_child_of_t<_Sender, _Idx - 1> const &,
+                               __env_t const &>)
+        return __mk_env2_t()(__facade::__get_child<_Idx - 1>(__sndr),
+                             __seq::__env_of<_Idx - 1>(__sndr, __env));
+      else
+        return env{};
+    }
+
+    // Does the _Idx-th sender start where the sequence started? It does if the senders
+    // before it all complete with a value where they start.
+    template <std::size_t _Idx, class _Sender, class _Env>
+    consteval auto __starts_at_start() noexcept -> bool
+    {
+      if constexpr (_Idx == 0)
       {
-        return __mk_env2_t()(__facade::__get_child<0>(__sndr), __fwd_env(__env));
+        return true;
       }
       else
       {
-        return __mk_env2_t()(__facade::__get_child<_Idx - 1>(__sndr),
-                             __env::__join(__seq::__env2_for<_Idx - 1>(__sndr, __env), __env));
+        using __env_t = decltype(__seq::__env_of<_Idx - 1>(__declval<_Sender const &>(),
+                                                           __declval<_Env const &>()));
+        return __seq::__starts_at_start<_Idx - 1, _Sender, _Env>()
+            && __stays_put_for<set_value_t, __facade::__nth_child_of_t<_Sender, _Idx - 1>, __env_t>;
       }
     }
 
@@ -602,6 +680,11 @@ namespace STDEXEC
       template <std::size_t _Idx>
       using __env2_t = decltype(__seq::__env2_for<_Idx>(__declval<__decay_t<_Sender> const &>(),
                                                         __declval<__env_t const &>()));
+
+      // Does the _Idx-th sender start where the sequence started? (See __env_of.)
+      template <std::size_t _Idx>
+      static constexpr bool __at_start_v =
+        __seq::__starts_at_start<_Idx, __decay_t<_Sender>, __decay_t<__env_t>>();
 
       template <class _Indices>
       struct __later;
@@ -647,12 +730,9 @@ namespace STDEXEC
       {
         if constexpr (__nbr != 0)
         {
-          __ops_.__emplace_from(
-            [&]
-            {
-              return STDEXEC::connect(__facade::__get_child<0>(static_cast<_Sender &&>(__sndr)),
-                                      __receiver_t<0>{this});
-            });
+          __ops_.__emplace_from(STDEXEC::connect,
+                                __facade::__get_child<0>(static_cast<_Sender &&>(__sndr)),
+                                __receiver_t<0>{this});
         }
       }
 
@@ -697,23 +777,14 @@ namespace STDEXEC
       static constexpr bool __depends_on_env =
         __may_throw_unknown<_Sender, __make_indices<__nbr_children_of<_Sender>>>;
 
-      // Each sender after the first sees where the one before it completed.
+      // Each sender after the first sees where the one before it completed (see __env_of).
       template <std::size_t _Idx, class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __env_for(__facade::__child<_Idx>,
                                       _Sender const &__sndr,
                                       _Env         &&__env) noexcept
       {
-        if constexpr (_Idx == 0)
-        {
-          return __fwd_env(static_cast<_Env &&>(__env));
-        }
-        else
-        {
-          auto __env2 = __seq::__env2_for<_Idx>(__sndr, __env);
-          return __env::__join(static_cast<decltype(__env2) &&>(__env2),
-                               static_cast<_Env &&>(__env));
-        }
+        return __seq::__env_of<_Idx>(__sndr, static_cast<_Env &&>(__env));
       }
 
       template <std::size_t _Idx, class _State>
@@ -727,8 +798,12 @@ namespace STDEXEC
         else
         {
           using __env2_t = __decay_t<decltype(STDEXEC::__get<_Idx - 1>(__state.__env2s_))>;
-          return __env::__join(__env2_t(STDEXEC::__get<_Idx - 1>(__state.__env2s_)),
-                               STDEXEC::get_env(__state.__rcvr_));
+          if constexpr (_State::template __at_start_v<_Idx>)
+            return __env::__join(__env2_t(STDEXEC::__get<_Idx - 1>(__state.__env2s_)),
+                                 STDEXEC::get_env(__state.__rcvr_));
+          else
+            return __env::__join(__env2_t(STDEXEC::__get<_Idx - 1>(__state.__env2s_)),
+                                 __hide_scheduler{STDEXEC::get_env(__state.__rcvr_)});
         }
       }
 
@@ -812,13 +887,10 @@ namespace STDEXEC
         // Connecting the next sender destroys the operation of the one that just completed.
         auto __start = [&]()
         {
-          auto &__op = __state.__ops_.__emplace_from(
-            [&]
-            {
-              return STDEXEC::connect(static_cast<__sender_t &&>(
-                                        STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
-                                      __receiver_t{&__state});
-            });
+          auto &__op = __state.__ops_.__emplace_from(STDEXEC::connect,
+                                                     static_cast<__sender_t &&>(
+                                                       STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
+                                                     __receiver_t{&__state});
           return __facade::__start_nested<__facade::__child<_Idx>>(__op);
         };
 

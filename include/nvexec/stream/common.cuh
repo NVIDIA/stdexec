@@ -961,22 +961,27 @@ namespace nv::execution
                                      connect_result_t<Sender, Receiver>>;
 
     // Connects a child or nested operation of a stream algorithm whose state is an
-    // opstate_base
-    template <class State, class Sender, class Receiver>
-    auto connect_stream_child(State& state, Sender&& sndr, Receiver rcvr)
-      -> stream_child_op_t<Sender, Receiver>
+    // opstate_base. (A function object, so that it can be passed to __emplace_from.)
+    struct connect_stream_child_t
     {
-      if constexpr (_needs_enqueue<Sender, Receiver>)
+      template <class State, class Sender, class Receiver>
+      auto operator()(State& state, Sender&& sndr, Receiver rcvr) const
+        -> stream_child_op_t<Sender, Receiver>
       {
-        return enqueue_opstate<Sender, Receiver>(static_cast<Sender&&>(sndr),
-                                                 static_cast<Receiver&&>(rcvr),
-                                                 state);
+        if constexpr (_needs_enqueue<Sender, Receiver>)
+        {
+          return enqueue_opstate<Sender, Receiver>(static_cast<Sender&&>(sndr),
+                                                   static_cast<Receiver&&>(rcvr),
+                                                   state);
+        }
+        else
+        {
+          return STDEXEC::connect(static_cast<Sender&&>(sndr), static_cast<Receiver&&>(rcvr));
+        }
       }
-      else
-      {
-        return STDEXEC::connect(static_cast<Sender&&>(sndr), static_cast<Receiver&&>(rcvr));
-      }
-    }
+    };
+
+    inline constexpr connect_stream_child_t connect_stream_child{};
 
     // The key of the operation through which a stream algorithm reports a CUDA error. It is
     // only known by its type: it sends set_error_t(cudaError_t), on the stream. (Reporting

@@ -200,12 +200,9 @@ namespace STDEXEC
         , __env2_(__mk_secondary_env_t<__set_tag_t>()(__facade::__get_child<0>(__sndr),
                                                       STDEXEC::get_env(__rcvr_)))
       {
-        __ops_.__emplace_from(
-          [&]
-          {
-            return STDEXEC::connect(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
-                                    __child_rcvr_t{this});
-          });
+        __ops_.__emplace_from(STDEXEC::connect,
+                              __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                              __child_rcvr_t{this});
       }
 
       STDEXEC_IMMOVABLE(__state);
@@ -357,12 +354,9 @@ namespace STDEXEC
             auto&          __tupl  = __state.__args_.__emplace_from(__mktuple,
                                                           static_cast<_Args&&>(__args)...);
             decltype(auto) __sndr2 = STDEXEC::__apply(static_cast<__fn_t&&>(__state.__fn_), __tupl);
-            auto&          __op    = __state.__ops_.__emplace_from(
-              [&]()
-              {
-                return STDEXEC::connect(static_cast<__sender2_t&&>(__sndr2),
-                                        __receiver2_t{&__state});
-              });
+            auto&          __op    = __state.__ops_.__emplace_from(STDEXEC::connect,
+                                                       static_cast<__sender2_t&&>(__sndr2),
+                                                       __receiver2_t{&__state});
             return __facade::__start_nested<__key_t>(__op);
           };
 

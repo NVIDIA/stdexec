@@ -259,3 +259,103 @@ TEST_CASE("completion domain of a sequence of two senders", "[sequence]")
   CHECK(value_A == 42);
   CHECK(value_B == 42);
 }
+
+namespace
+{
+  // A sender that says nothing about where it completes
+  struct opaque_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Rcvr>
+    struct op
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Rcvr &&>(rcvr_));
+      }
+
+      Rcvr rcvr_;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) const -> op<Rcvr>
+    {
+      return op<Rcvr>{static_cast<Rcvr &&>(rcvr)};
+    }
+  };
+
+  // A sender that completes with whether its receiver's environment says where it starts
+  struct start_scheduler_probe
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(bool)>;
+
+    template <class Rcvr>
+    struct op
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      void start() & noexcept
+      {
+        constexpr bool sees_start_scheduler = requires(ex::env_of_t<Rcvr> const &env) {
+          ex::get_start_scheduler(env);
+        };
+        ex::set_value(static_cast<Rcvr &&>(rcvr_), bool{sees_start_scheduler});
+      }
+
+      Rcvr rcvr_;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) const -> op<Rcvr>
+    {
+      return op<Rcvr>{static_cast<Rcvr &&>(rcvr)};
+    }
+  };
+
+  template <class Sndr, class Env>
+  concept has_value_completion_scheduler = requires(Sndr const &sndr, Env const &env) {
+    ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), env);
+  };
+}  // namespace
+
+// A sender in a sequence starts where the sender before it completed, which is where the
+// sequence started only if the senders before it all complete where they start.
+TEST_CASE("a sequence hides the receiver's start scheduler from a sender that may not start there",
+          "[sequence]")
+{
+  ex::run_loop loop;
+  auto         env = ex::prop{ex::get_start_scheduler, loop.get_scheduler()};
+  using env_t      = decltype(env);
+
+  // just() completes where it starts, which is not known after opaque_sender{}.
+  static_assert(
+    !has_value_completion_scheduler<decltype(exec::sequence(opaque_sender{}, ex::just())), env_t>);
+  static_assert(!has_value_completion_scheduler<
+                decltype(exec::sequence(opaque_sender{}, ex::just(), ex::just())),
+                env_t>);
+  static_assert(!has_value_completion_scheduler<
+                decltype(exec::sequence(ex::just(), opaque_sender{}, ex::just())),
+                env_t>);
+
+  // After senders that complete where they start, it is where the sequence started.
+  auto sndr = exec::sequence(ex::just(), ex::just(), ex::just());
+  CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), env)
+        == loop.get_scheduler());
+
+  // At run time, the receiver's start scheduler is hidden from such a sender.
+  auto [after_opaque] =
+    ex::sync_wait(exec::sequence(opaque_sender{}, start_scheduler_probe{})).value();
+  CHECK_FALSE(after_opaque);
+
+  auto [after_opaque_and_just] =
+    ex::sync_wait(exec::sequence(opaque_sender{}, ex::just(), start_scheduler_probe{})).value();
+  CHECK_FALSE(after_opaque_and_just);
+
+  auto [after_just] = ex::sync_wait(exec::sequence(ex::just(), start_scheduler_probe{})).value();
+  CHECK(after_just);
+}
