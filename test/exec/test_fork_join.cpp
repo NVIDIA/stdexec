@@ -16,6 +16,7 @@
 
 #include "exec/fork_join.hpp"
 #include "exec/just_from.hpp"
+#include "exec/single_thread_context.hpp"
 #include "exec/static_thread_pool.hpp"
 #include "test_common/schedulers.hpp"
 #include "test_common/type_helpers.hpp"
@@ -23,6 +24,7 @@
 #include <test_common/catch2.hpp>
 
 #include <atomic>
+#include <thread>
 
 using namespace STDEXEC;
 
@@ -167,6 +169,61 @@ namespace
                                                                         env);
     static_assert(std::same_as<decltype(domain2), identifiable_domain<'A'>>);
     static_assert(!has_value_completion_scheduler<decltype(sndr2), decltype(env)>);
+  }
+
+  TEST_CASE("fork_join completion domain and scheduler when the closures continue on other "
+            "schedulers",
+            "[adaptors][fork_join]")
+  {
+    basic_inline_scheduler<identifiable_domain<'A'>> sched_A;
+    basic_inline_scheduler<identifiable_domain<'B'>> sched_B;
+    basic_inline_scheduler<identifiable_domain<'C'>> sched_C;
+
+    auto env = STDEXEC::__root_env{};
+
+    // The results are sent where the last closure's sender completes: on sched_B, or on
+    // sched_C. So there is no completion scheduler, and the completion domain is one of
+    // theirs.
+    auto sndr = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
+              | exec::fork_join(STDEXEC::continues_on(sched_B) | STDEXEC::then(ForwardingThen{}),
+                                STDEXEC::continues_on(sched_C) | STDEXEC::then(ForwardingThen{}))
+              | STDEXEC::then(ForwardingThen{});
+
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
+    static_assert(
+      std::same_as<
+        decltype(domain),
+        STDEXEC::indeterminate_domain<identifiable_domain<'B'>, identifiable_domain<'C'>>>);
+    static_assert(!has_value_completion_scheduler<decltype(sndr), decltype(env)>);
+  }
+
+  TEST_CASE("fork_join completes where the last of its closures' senders completes",
+            "[adaptors][fork_join]")
+  {
+    exec::single_thread_context stc_a{}, stc_b{}, stc_c{};
+
+    std::thread::id who;
+
+    auto sndr = STDEXEC::schedule(stc_a.get_scheduler()) | STDEXEC::then(ForwardingThen{})
+              | exec::fork_join(STDEXEC::continues_on(stc_b.get_scheduler())
+                                  | STDEXEC::then(ForwardingThen{}),
+                                STDEXEC::continues_on(stc_c.get_scheduler())
+                                  | STDEXEC::then(ForwardingThen{}))
+              | STDEXEC::then([&who]() { who = std::this_thread::get_id(); });
+
+    // It completes on stc_b or on stc_c, whichever closure's sender completes last, so there
+    // is no completion scheduler.
+    auto env    = STDEXEC::__root_env{};
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
+    static_assert(std::same_as<decltype(domain), STDEXEC::default_domain>);
+    static_assert(!has_value_completion_scheduler<decltype(sndr), decltype(env)>);
+
+    CHECK(stc_a.get_thread_id() != stc_b.get_thread_id());
+    CHECK(stc_a.get_thread_id() != stc_c.get_thread_id());
+
+    STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK((who == stc_b.get_thread_id() || who == stc_c.get_thread_id()));
   }
 
   TEST_CASE("fork_join broadcasts results to multiple continuations", "[adaptors][fork_join]")
