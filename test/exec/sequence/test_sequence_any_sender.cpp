@@ -16,12 +16,12 @@
 
 // Regression test for issue #2101:
 //
-// exec::any_sender fails get_completion_signatures inside a sequence of 3+
-// senders. The root cause is that the recursive completion-signature
-// computation in __seq::__sndr passes the first sender type through
+// exec::any_sender failed get_completion_signatures inside a sequence of 3+
+// senders. The root cause was that the recursive completion-signature
+// computation of the sequence passed the first sender type through
 // __copy_cvref_t, which can produce a reference type. any_sender's
 // get_completion_signatures constraint (derived_from<Self, interface>) then
-// fails for reference types.
+// failed for reference types.
 
 #include <exec/any_sender_of.hpp>
 #include <exec/sequence.hpp>
