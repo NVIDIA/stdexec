@@ -24,8 +24,8 @@ namespace regression_spawn_future_reentrant_cancel
   };
   struct source
   {
-    using sender_concept        = stdexec::sender_tag;
-    using completion_signatures = stdexec::completion_signatures<stdexec::set_stopped_t()>;
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>;
     control* state;
     template <class R>
     struct operation
@@ -43,8 +43,8 @@ namespace regression_spawn_future_reentrant_cancel
             saved->finish();
         }
       };
-      using token = stdexec::stop_token_of_t<stdexec::env_of_t<R>>;
-      using cb    = stdexec::stop_callback_for_t<token, callback>;
+      using token = STDEXEC::stop_token_of_t<STDEXEC::env_of_t<R>>;
+      using cb    = STDEXEC::stop_callback_for_t<token, callback>;
       std::optional<cb> registration;
       operation(R r, control* c)
         : receiver(std::move(r))
@@ -53,7 +53,7 @@ namespace regression_spawn_future_reentrant_cancel
       void finish() noexcept
       {
         registration.reset();
-        stdexec::set_stopped(std::move(receiver));
+        STDEXEC::set_stopped(std::move(receiver));
       }
       void start() & noexcept
       {
@@ -62,7 +62,7 @@ namespace regression_spawn_future_reentrant_cancel
         {
           static_cast<operation*>(p)->finish();
         };
-        registration.emplace(stdexec::get_stop_token(stdexec::get_env(receiver)), callback{this});
+        registration.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(receiver)), callback{this});
       }
     };
     template <class R>
@@ -73,12 +73,12 @@ namespace regression_spawn_future_reentrant_cancel
   };
   struct receiver
   {
-    using receiver_concept = stdexec::receiver_tag;
-    stdexec::inplace_stop_token token;
+    using receiver_concept = STDEXEC::receiver_tag;
+    STDEXEC::inplace_stop_token token;
     int*                        completed;
     auto                        get_env() const noexcept
     {
-      return stdexec::prop{stdexec::get_stop_token, token};
+      return STDEXEC::prop{STDEXEC::get_stop_token, token};
     }
     void set_stopped() noexcept
     {
@@ -93,21 +93,21 @@ namespace regression_spawn_future_reentrant_cancel
   int run_case(int argc, char** argv)
   {
     auto mode = argc > 1 ? std::string_view(argv[1]) : std::string_view("inline");
-    stdexec::simple_counting_scope scope;
-    stdexec::inplace_stop_source   stop;
+    STDEXEC::simple_counting_scope scope;
+    STDEXEC::inplace_stop_source   stop;
     control                        state;
     state.complete_inline = mode != "deferred";
     int  completed        = 0;
-    auto future           = stdexec::spawn_future(source{&state}, scope.get_token());
+    auto future           = STDEXEC::spawn_future(source{&state}, scope.get_token());
     if (mode == "pre-stopped")
       stop.request_stop();
-    auto op = stdexec::connect(std::move(future), receiver{stop.get_token(), &completed});
-    stdexec::start(op);
+    auto op = STDEXEC::connect(std::move(future), receiver{stop.get_token(), &completed});
+    STDEXEC::start(op);
     std::fputs("requesting consumer stop\n", stderr);
     stop.request_stop();
     if (mode == "deferred")
       state.complete(state.operation);
-    stdexec::sync_wait(scope.join());
+    STDEXEC::sync_wait(scope.join());
     std::printf("PASS mode=%.*s completions=%d source_stopped=%d\n",
                 int(mode.size()),
                 mode.data(),
