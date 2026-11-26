@@ -140,7 +140,7 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT
   template <class _EnvProvider>
-  using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
+  using env_of_t = decltype(STDEXEC::get_env(__declval<_EnvProvider>()));
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
@@ -325,7 +325,7 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Receiver>
-  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
+  using connect_result_t = decltype(STDEXEC::connect(__declval<_Sender>(), __declval<_Receiver>()));
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
@@ -357,7 +357,8 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class... _Env>
-  using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
+  using transform_sender_result_t = decltype(STDEXEC::transform_sender(__declval<_Sender>(),
+                                                                       __declval<_Env>()...));
 
   //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT
