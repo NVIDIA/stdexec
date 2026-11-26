@@ -101,11 +101,10 @@ namespace
     CHECK(value == 42);
   }
 
-  // A user-defined adaptor, to demonstrate that the transparent-adaptor
-  // customization point is open: any single-child adaptor can declare itself
-  // transparent to sequence sender semantics by specializing
-  // `__sequence_adaptor_traits` for its tag, without any changes to the
-  // sequence machinery. See issue #2053.
+  // A user-defined adaptor, to demonstrate that any adaptor written with the
+  // sender facade can be transparent to sequence sender semantics: it names
+  // the child whose items are its own (its __item_source), without any changes
+  // to the sequence machinery. See issue #2053.
   struct my_adapt_t
   {};
 
@@ -116,15 +115,13 @@ namespace
   }
 }  // namespace
 
-// The facade's defaults give the adaptor its child's completions.
+// The facade's defaults give the adaptor its child's completions, and, since
+// the child is its item source, its child's items.
 template <>
 struct STDEXEC::__facade::__algorithm<my_adapt_t> : STDEXEC::__facade::__defaults
-{};
-
-template <>
-struct experimental::execution::__sequence_adaptor_traits<my_adapt_t>
 {
-  static constexpr bool __transparent = true;
+  template <class>
+  using __item_source = STDEXEC::__facade::__child<0>;
 };
 
 namespace
@@ -295,8 +292,10 @@ namespace
     using op_t   = exec::subscribe_result_t<sndr_t&, test_sequence_rcvr>;
     std::optional<sndr_t> sndr;
     sndr.emplace(STDEXEC::write_env(env_reading_sequence{&observed}, injected_env_data{42}));
+    // (Operation states need not be movable, so the operation is made in place.)
     std::optional<op_t> op;
-    op.emplace(exec::subscribe(*sndr, test_sequence_rcvr{}));
+    op.emplace(
+      STDEXEC::__emplace_from{[&] { return exec::subscribe(*sndr, test_sequence_rcvr{}); }});
     sndr.reset();
     STDEXEC::start(*op);
     CHECK(observed == 42);

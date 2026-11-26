@@ -42,6 +42,7 @@ import stdexec;
 #  include "__schedulers.hpp"
 #  include "__sender_concepts.hpp"
 #  include "__senders.hpp"
+#  include "__subscribe.hpp"
 #  include "__tuple.hpp"
 #  include "__type_traits.hpp"
 #  include "__utility.hpp"
@@ -420,6 +421,70 @@ namespace STDEXEC
                                               __declval<_Env>()));
 
     ////////////////////////////////////////////////////////////////////////////////////////
+    // Sequence senders. An algorithm can name one of its children as the source of its
+    // items (see __defaults::__item_source). When that child is a sequence sender, so is the
+    // algorithm's sender: subscribing it subscribes the child, whose receiver forwards the
+    // child's items to the algorithm's receiver. Connecting it connects the child, as any
+    // other.
+
+    // The key of the child whose items are the sender's, or void (see __defaults::__item_source)
+    template <class _Algo, class _Sender>
+    using __item_source_t = typename _Algo::template __item_source<__decay_t<_Sender>>;
+
+    // Is the sender with these children, whose algorithm names the item source pointed to, a
+    // sequence sender? (A function, not a variable template, whose specializations would be
+    // symbols with the children in their names.)
+    template <class... _Child>
+    consteval auto __is_sequence_sender(void const *) noexcept -> bool
+    {
+      return false;
+    }
+
+    template <class... _Child, std::size_t _Idx>
+    consteval auto __is_sequence_sender(__child<_Idx> const *) noexcept -> bool
+    {
+      return __sequence_sender_tagged<__m_at_c<_Idx, _Child...>>;
+    }
+
+    // The items of a sequence sender are the items of its item source, in the environment
+    // that the item source sees: __mlist<_ItemSender, _ItemEnv...>, as exec::get_item_types
+    // expects. (Without an environment, the item source sees the one the algorithm gives it
+    // in an empty environment.)
+    template <class _Algo, class _Sender, class _ItemSource, class... _Env>
+    struct __item_types_from
+    {};
+
+    template <class _Algo, class _Sender, std::size_t _Idx, class... _Env>
+    struct __item_types_from<_Algo, _Sender, __child<_Idx>, _Env...>
+    {
+      using __t =
+        __mlist<__nth_child_of_t<_Sender, _Idx>, __env_t<_Algo, __child<_Idx>, _Sender, _Env>...>;
+    };
+
+    template <class _Algo, class _Sender, std::size_t _Idx>
+    struct __item_types_from<_Algo, _Sender, __child<_Idx>>
+    {
+      using __t =
+        __mlist<__nth_child_of_t<_Sender, _Idx>, __env_t<_Algo, __child<_Idx>, _Sender, env<>>>;
+    };
+
+    // The type of a state's receiver, computed only when _Item is known. (A receiver's state
+    // can be incomplete when its type is: the state can hold an operation connected to it.)
+    template <class _State, class _Item>
+    struct __state_receiver
+    {
+      using __t = decltype(_State::__rcvr_);
+    };
+
+    // Does a receiver of the facade forward _Item to _Receiver, the receiver of the algorithm's
+    // operation? It does if _Receiver accepts it, which it does when the algorithm's sender is
+    // subscribed. (Only the item source is subscribed then, so only it sends items.)
+    template <class _Receiver, class _Item>
+    concept __forwards_items = requires(_Receiver &__rcvr, _Item &&__item) {
+      __rcvr.set_next(static_cast<_Item &&>(__item));
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////
     // The facade's runtime machinery: receivers and operation state. The tokens
     // that the handlers return are for the walk; at run time, the receivers and
     // the operation state discard them.
@@ -461,6 +526,17 @@ namespace STDEXEC
       constexpr void set_stopped() noexcept
       {
         (void) _Algo::__complete(_Key(), *__state_, set_stopped_t());
+      }
+
+      // Forwards the items of the item source of a subscribed sender (see __forwards_items)
+      template <class _Item, class _Rcvr = __state_receiver<_State, _Item>::__t>
+        requires __forwards_items<_Rcvr, _Item>
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto set_next(_Item &&__item) & noexcept(
+        noexcept(__declval<_Rcvr &>().set_next(__declval<_Item>())))
+        -> decltype(__declval<_Rcvr &>().set_next(__declval<_Item>()))
+      {
+        return __state_->__rcvr_.set_next(static_cast<_Item &&>(__item));
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -509,6 +585,17 @@ namespace STDEXEC
       void set_stopped() noexcept
       {
         (void) _Algo::__complete(_Key(), *__state_, set_stopped_t());
+      }
+
+      // Forwards the items of the item source of a subscribed sender (see __forwards_items)
+      template <class _Item, class _Rcvr = __state_receiver<_State, _Item>::__t>
+        requires __forwards_items<_Rcvr, _Item>
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto set_next(_Item &&__item) & noexcept(
+        noexcept(__declval<_Rcvr &>().set_next(__declval<_Item>())))
+        -> decltype(__declval<_Rcvr &>().set_next(__declval<_Item>()))
+      {
+        return __state_->__rcvr_.set_next(static_cast<_Item &&>(__item));
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -585,17 +672,86 @@ namespace STDEXEC
       _Ops *__ops_;
     };
 
-    template <class _Algo, class _Sender, class _Receiver>
-    using __state_type_t = decltype(_Algo::__get_state(__declval<_Sender>(),
-                                                       __declval<_Receiver>()));
+    // When an algorithm's sender is subscribed, the facade passes __subscribing_t to the
+    // algorithm's __get_state, after the receiver. (The default __get_state ignores it.) An
+    // algorithm that attaches its item source itself (see __connects_children) takes it, and
+    // subscribes the item source.
+    //
+    // An operation takes the subscription as a pack, _Subscribing..., which is empty unless
+    // the sender is subscribed, so that a connected operation's types are the same as if
+    // there were no subscribing. (Flags with the operation's types as arguments would be
+    // variables, with symbols whose names repeat those types.)
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    struct __subscribing_t
+    {};
 
-    template <class _Algo, class _Sender, class _Receiver, class _Indices>
+    template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
+    using __state_type_t =
+      decltype(_Algo::__get_state(__declval<_Sender>(), __declval<_Receiver>(), _Subscribing()...));
+
+    // Is the child keyed by __child<_Idx> subscribed? It is if it is the item source of the
+    // sender, of type _Sender, and the sender is subscribed.
+    template <class _Algo, class _Sender, std::size_t _Idx, class... _Subscribing>
+    concept __subscribes_child = (sizeof...(_Subscribing) != 0)
+                              && __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>;
+
+    // Connects the child keyed by __child<_Idx>, or, if _Subscribes, subscribes it. (A
+    // specialization chooses, not constrained overloads: Clang 16 substitutes into a function
+    // template's return type before it checks the constraints (see CWG 2369), so it would
+    // compute the connecting overload's for an item source that can only be subscribed.)
+    template <class _Algo, std::size_t _Idx, bool _Subscribes>
+    struct __attach_child_fn
+    {
+      template <class _State, class _Child, class _Rcvr>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto operator()(_State &__state, _Child &&__child_sndr, _Rcvr &&__rcvr) const
+        noexcept(noexcept(_Algo::__connect(__child<_Idx>(),
+                                           __state,
+                                           static_cast<_Child &&>(__child_sndr),
+                                           static_cast<_Rcvr &&>(__rcvr))))
+          -> decltype(_Algo::__connect(__child<_Idx>(),
+                                       __state,
+                                       static_cast<_Child &&>(__child_sndr),
+                                       static_cast<_Rcvr &&>(__rcvr)))
+      {
+        return _Algo::__connect(__child<_Idx>(),
+                                __state,
+                                static_cast<_Child &&>(__child_sndr),
+                                static_cast<_Rcvr &&>(__rcvr));
+      }
+    };
+
+    template <class _Algo, std::size_t _Idx>
+    struct __attach_child_fn<_Algo, _Idx, true>
+    {
+      template <class _State, class _Child, class _Rcvr>
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto operator()(_State &__state, _Child &&__child_sndr, _Rcvr &&__rcvr) const
+        noexcept(noexcept(_Algo::__subscribe(__child<_Idx>(),
+                                             __state,
+                                             static_cast<_Child &&>(__child_sndr),
+                                             static_cast<_Rcvr &&>(__rcvr))))
+          -> decltype(_Algo::__subscribe(__child<_Idx>(),
+                                         __state,
+                                         static_cast<_Child &&>(__child_sndr),
+                                         static_cast<_Rcvr &&>(__rcvr)))
+      {
+        return _Algo::__subscribe(__child<_Idx>(),
+                                  __state,
+                                  static_cast<_Child &&>(__child_sndr),
+                                  static_cast<_Rcvr &&>(__rcvr));
+      }
+    };
+
+    template <class _Algo, class _Sender, class _Receiver, class _Indices, class... _Subscribing>
     struct __children_ops;
 
-    template <class _Algo, class _Sender, class _Receiver, std::size_t... _Is>
-    struct __children_ops<_Algo, _Sender, _Receiver, __indices<_Is...>>
+    // The children's operations. When the algorithm's sender is subscribed, its item source
+    // is subscribed, and the other children are connected.
+    template <class _Algo, class _Sender, class _Receiver, std::size_t... _Is, class... _Subscribing>
+    struct __children_ops<_Algo, _Sender, _Receiver, __indices<_Is...>, _Subscribing...>
     {
-      using __state_t = __state_type_t<_Algo, _Sender, _Receiver>;
+      using __state_t = __state_type_t<_Algo, _Sender, _Receiver, _Subscribing...>;
 
       template <std::size_t _Idx>
       using __receiver_t =
@@ -605,29 +761,43 @@ namespace STDEXEC
                              __facade::__env_t<_Algo, __child<_Idx>, _Sender, env_of_t<_Receiver>>>;
 
       template <std::size_t _Idx>
-      using __op_t = decltype(_Algo::__connect(__child<_Idx>(),
-                                               __declval<__state_t &>(),
-                                               __declval<__nth_child_of_t<_Sender, _Idx>>(),
-                                               __declval<__receiver_t<_Idx>>()));
+      using __attach_t =
+        __attach_child_fn<_Algo, _Idx, __subscribes_child<_Algo, _Sender, _Idx, _Subscribing...>>;
+
+      template <std::size_t _Idx>
+      using __op_t = decltype(__attach_t<_Idx>()(__declval<__state_t &>(),
+                                                 __declval<__nth_child_of_t<_Sender, _Idx>>(),
+                                                 __declval<__receiver_t<_Idx>>()));
 
       using __t = __tuple<__op_t<_Is>...>;
 
       // (Not __nothrow, which the Windows SDK defines as a macro.)
       static constexpr bool __nothrow_v =
-        (noexcept(_Algo::__connect(__child<_Is>(),
-                                   __declval<__state_t &>(),
-                                   __declval<__nth_child_of_t<_Sender, _Is>>(),
-                                   __declval<__receiver_t<_Is>>()))
+        (noexcept(__attach_t<_Is>()(__declval<__state_t &>(),
+                                    __declval<__nth_child_of_t<_Sender, _Is>>(),
+                                    __declval<__receiver_t<_Is>>()))
          && ...);
 
+      // (Unless the sender is subscribed, the children are connected with __connect directly:
+      // a function object's call operator would repeat the types of the state and the
+      // receiver in the debug information.)
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto
       __connect(_Sender &&__sndr, __state_t &__state) noexcept(__nothrow_v) -> __t
       {
-        return __t{_Algo::__connect(__child<_Is>(),
-                                    __state,
-                                    __facade::__get_child<_Is>(static_cast<_Sender &&>(__sndr)),
-                                    __receiver_t<_Is>{&__state})...};
+        if constexpr (sizeof...(_Subscribing) != 0)
+        {
+          return __t{__attach_t<_Is>()(__state,
+                                       __facade::__get_child<_Is>(static_cast<_Sender &&>(__sndr)),
+                                       __receiver_t<_Is>{&__state})...};
+        }
+        else
+        {
+          return __t{_Algo::__connect(__child<_Is>(),
+                                      __state,
+                                      __facade::__get_child<_Is>(static_cast<_Sender &&>(__sndr)),
+                                      __receiver_t<_Is>{&__state})...};
+        }
       }
     };
 
@@ -636,29 +806,34 @@ namespace STDEXEC
                                                           ? __nbr_children_v<_Sender>
                                                           : 0;
 
-    template <class _Algo, class _Sender, class _Receiver>
+    template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
     using __children_ops_t = __children_ops<_Algo,
                                             _Sender,
                                             _Receiver,
-                                            __make_indices<__connected_children_v<_Algo, _Sender>>>;
+                                            __make_indices<__connected_children_v<_Algo, _Sender>>,
+                                            _Subscribing...>;
 
+    // The operation state of a facade sender, which is connected or, if it is a sequence
+    // sender, subscribed (see __subscribing_t)
     STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Algo, class _Sender, class _Receiver>
+    template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
     struct __opstate
     {
       using operation_state_concept = operation_state_tag;
-      using __state_t               = __state_type_t<_Algo, _Sender, _Receiver>;
-      using __children_t            = __children_ops_t<_Algo, _Sender, _Receiver>;
+      using __state_t               = __state_type_t<_Algo, _Sender, _Receiver, _Subscribing...>;
+      using __children_t            = __children_ops_t<_Algo, _Sender, _Receiver, _Subscribing...>;
       using __ops_t                 = __children_t::__t;
 
       static constexpr bool __nothrow_v = noexcept(_Algo::__get_state(__declval<_Sender>(),
-                                                                      __declval<_Receiver>()))
+                                                                      __declval<_Receiver>(),
+                                                                      _Subscribing()...))
                                        && __children_t::__nothrow_v;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit __opstate(_Sender &&__sndr, _Receiver __rcvr) noexcept(__nothrow_v)
-        : __state_(
-            _Algo::__get_state(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr)))
+        : __state_(_Algo::__get_state(static_cast<_Sender &&>(__sndr),
+                                      static_cast<_Receiver &&>(__rcvr),
+                                      _Subscribing()...))
         , __ops_(__children_t::__connect(static_cast<_Sender &&>(__sndr), __state_))
       {}
 
@@ -1853,6 +2028,32 @@ namespace STDEXEC
         return STDEXEC::connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
       }
 
+      // The child whose items are the algorithm's, if it has items: __child<_Idx>, or void.
+      // _Sender is the __sender type. If that child is a sequence sender, so is the
+      // algorithm's sender. Subscribing it subscribes the child (with __subscribe), whose
+      // receiver forwards the child's items to the algorithm's receiver. (Connecting it
+      // connects the child, as any other.)
+      template <class _Sender>
+      using __item_source = void;
+
+      // Subscribes the item source, keyed by _Key, when the algorithm's sender is subscribed.
+      // Like exec::subscribe, it transforms the sender first.
+      template <class _Key, class _State, class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __subscribe(_Key, _State &, _Sender &&__sndr, _Receiver __rcvr)
+        noexcept(__nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver> const &>
+                 && __nothrow_callable<__subscribe_::__subscribe_t,
+                                       transform_sender_result_t<_Sender, env_of_t<_Receiver>>,
+                                       _Receiver>)
+          -> __subscribe_result_t<transform_sender_result_t<_Sender, env_of_t<_Receiver>>,
+                                  _Receiver>
+      {
+        auto &&__env      = STDEXEC::get_env(__rcvr);
+        auto &&__tfx_sndr = STDEXEC::transform_sender(static_cast<_Sender &&>(__sndr), __env);
+        return STDEXEC::__subscribe(static_cast<decltype(__tfx_sndr) &&>(__tfx_sndr),
+                                    static_cast<_Receiver &&>(__rcvr));
+      }
+
       // The environment of the child or nested operation keyed by _Key, given the sender
       // and the environment of the receiver connected to it. The environment is forwarded,
       // so that the result's type is the one __get_env returns at run time (where the
@@ -1905,6 +2106,17 @@ namespace STDEXEC
         return __basic_state<_Receiver, __decay_t<__data_of_t<_Sender>>>{
           static_cast<_Receiver &&>(__rcvr),
           __facade::__get_data(static_cast<_Sender &&>(__sndr))};
+      }
+
+      // The state when the sender is subscribed (see __subscribing_t): the same
+      template <class _Sender, class _Receiver>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __get_state(_Sender &&__sndr, _Receiver __rcvr, __subscribing_t)
+        noexcept(__nothrow_decay_copyable<__data_of_t<_Sender>>)
+          -> __basic_state<_Receiver, __decay_t<__data_of_t<_Sender>>>
+      {
+        return __defaults::__get_state(static_cast<_Sender &&>(__sndr),
+                                       static_cast<_Receiver &&>(__rcvr));
       }
 
       template <class _State, class _Children>
@@ -1970,13 +2182,30 @@ namespace STDEXEC
     template <class _Tag, class _Data, class... _Child>
     struct __sender : __tuple<_Tag, _Data, _Child...>
     {
-      using sender_concept = sender_tag;
-      using __tag_t        = _Tag;
-      using __data_t       = _Data;
-      using __children_t   = __mlist<_Child...>;
+      // It is a sequence sender if its item source is (see __defaults::__item_source).
+      using sender_concept =
+        __if_c<__facade::__is_sequence_sender<_Child...>(
+                 static_cast<__item_source_t<__algorithm<_Tag>, __sender> const *>(nullptr)),
+               __sequence_sender_tag,
+               sender_tag>;
+      using __tag_t      = _Tag;
+      using __data_t     = _Data;
+      using __children_t = __mlist<_Child...>;
 
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<__algorithm<_Tag>, __copy_cvref_t<_Self, __sender>, _Receiver>;
+
+      template <class _Self, class _Receiver>
+      using __subscribe_opstate_t =
+        __opstate<__algorithm<_Tag>, __copy_cvref_t<_Self, __sender>, _Receiver, __subscribing_t>;
+
+      // The items of a sequence sender, for exec::get_item_types
+      template <class _Self, class... _Env>
+      using __item_types_from_t =
+        __facade::__item_types_from<__algorithm<_Tag>,
+                                    __copy_cvref_t<_Self, __sender>,
+                                    __item_source_t<__algorithm<_Tag>, __sender>,
+                                    _Env...>::__t;
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto get_env() const noexcept
@@ -2004,6 +2233,20 @@ namespace STDEXEC
                                              static_cast<_Receiver &&>(__rcvr));
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
+
+      // A sequence sender is subscribed like this, by exec::subscribe (via STDEXEC::__subscribe)
+      template <class _Self, receiver _Receiver>
+        requires __sequence_sender_tagged<_Self>
+              && sender_in<__copy_cvref_t<_Self, __sender>, env_of_t<_Receiver>>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      static constexpr auto __static_subscribe(_Self &&__self, _Receiver __rcvr)
+        noexcept(__subscribe_opstate_t<_Self, _Receiver>::__nothrow_v)
+          -> __subscribe_opstate_t<_Self, _Receiver>
+      {
+        return __subscribe_opstate_t<_Self, _Receiver>(STDEXEC::__c_upcast<__sender>(
+                                                         static_cast<_Self &&>(__self)),
+                                                       static_cast<_Receiver &&>(__rcvr));
+      }
     };
 
     template <class _Tag, class _Data = __, class... _Child>

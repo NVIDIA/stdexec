@@ -40,9 +40,13 @@ namespace STDEXEC
   namespace __write
   {
     // write_env(sndr, env): the child sees env joined with the receiver's environment.
-    // Everything else is the facade's default: the child's completions are the operation's.
+    // Everything else is the facade's default: the child's completions are the operation's,
+    // and, if it is a sequence sender, so are its items.
     struct __algo : __facade::__defaults
     {
+      template <class>
+      using __item_source = __facade::__child<0>;
+
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr auto __env_for(__facade::__child<0>,
