@@ -25,6 +25,7 @@ import stdexec;
 
 #  include "__meta.hpp"
 #  include "__scope.hpp"
+#  include "__tuple.hpp"
 #  include "__type_traits.hpp"
 #  include "__utility.hpp"
 
@@ -317,8 +318,8 @@ namespace STDEXEC
       template <class _Fn, class... _As>
       struct __emplace_from_fn
       {
-        _Fn                 &__fn_;
-        std::tuple<_As &...> __as_;
+        _Fn              &__fn_;
+        __tuple<_As &...> __as_;
 
         static constexpr bool __is_nothrow = __nothrow_callable<_Fn, _As...>;
 
@@ -326,7 +327,7 @@ namespace STDEXEC
         constexpr auto
         __call(std::index_sequence<_Size...>) const noexcept(__is_nothrow) -> decltype(auto)
         {
-          return static_cast<_Fn &&>(__fn_)(static_cast<_As &&>(std::get<_Size>(__as_))...);
+          return static_cast<_Fn &&>(__fn_)(static_cast<_As &&>(STDEXEC::__get<_Size>(__as_))...);
         }
 
         constexpr auto operator()() const noexcept(__is_nothrow) -> decltype(auto)
