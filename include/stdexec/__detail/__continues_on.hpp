@@ -404,12 +404,12 @@ namespace STDEXEC
     //!          decay-copy failures during the hop). The completions are
     //!          delivered on @c __sched's execution resource.
     template <scheduler _Scheduler, sender _Sender>
-    constexpr auto
-    operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender&& __sndr, _Scheduler __sched) const -> auto
     {
-      return __facade::__sender{continues_on_t(),
-                                static_cast<_Scheduler&&>(__sched),
-                                schedule_from(static_cast<_Sender&&>(__sndr))};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{continues_on_t(),
+                           static_cast<_Scheduler&&>(__sched),
+                           schedule_from(static_cast<_Sender&&>(__sndr))});
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a

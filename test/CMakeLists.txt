@@ -290,6 +290,14 @@ if(NOT STDEXEC_BUILD_MODULES)
     LIBRARIES stdexec)
 
   stdexec_add_build_failure_test(
+    NAME test_upon_error_fail1 SOURCE stdexec/algos/adaptors/test_upon_error_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_bulk_fail1 SOURCE stdexec/algos/adaptors/test_bulk_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
     NAME test_read_env_fail1 SOURCE stdexec/algos/factories/test_read_env_fail1.cpp
     LIBRARIES stdexec)
 

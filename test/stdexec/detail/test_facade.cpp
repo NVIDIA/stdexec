@@ -39,6 +39,10 @@ import std;
 
 namespace ex = STDEXEC;
 
+// a sender that type-checks on its own, or whose completions depend on its environment
+template <class Sndr>
+inline constexpr bool is_well_formed_v = ex::sender_in<Sndr> || ex::dependent_sender<Sndr>;
+
 namespace
 {
   // The tag of a facade algorithm that is written for the tests
@@ -451,8 +455,7 @@ namespace
 
   // A handler that finds its inputs ill-typed reports a type error, and the sender is not
   // well-formed.
-  static_assert(
-    !ex::__well_formed_sender<decltype(t_then(t_just(1), [](std::string) { return 0; }))>);
+  static_assert(!is_well_formed_v<decltype(t_then(t_just(1), [](std::string) { return 0; }))>);
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // 1. Completion signatures fall out of the code.
@@ -597,9 +600,9 @@ namespace
   using when_all_sender_t = ex::__facade::__sender<ex::when_all_t, ex::__, Sndrs...>;
   using just_sender_t     = decltype(ex::just(1));
 
-  static_assert(!ex::__well_formed_sender<then_sender_t<just_sender_t, bad_fn_t>>);
-  static_assert(!ex::__well_formed_sender<
-                when_all_sender_t<just_sender_t, then_sender_t<just_sender_t, bad_fn_t>>>);
+  static_assert(!is_well_formed_v<then_sender_t<just_sender_t, bad_fn_t>>);
+  static_assert(
+    !is_well_formed_v<when_all_sender_t<just_sender_t, then_sender_t<just_sender_t, bad_fn_t>>>);
 
   // 6b. Otherwise the sender can be constructed. These are all dependent senders.
   // An ill-typed child, directly and two levels down:
@@ -778,7 +781,7 @@ namespace
   static_assert(
     same_sigs_v<ex::completion_signatures_of_t<read_env_without_opt_in_t<ex::get_stop_token_t>>,
                 ex::completion_signatures<ex::set_value_t(ex::never_stop_token)>>);
-  static_assert(!ex::__well_formed_sender<read_env_without_opt_in_t<ex::get_scheduler_t>>);
+  static_assert(!is_well_formed_v<read_env_without_opt_in_t<ex::get_scheduler_t>>);
 
   // An algorithm with children can opt in, too. The children are checked first, so a
   // child's type error is still reported without an environment, and the sender is still
@@ -795,7 +798,7 @@ namespace
   using bad_child_t = then_sender_t<just_sender_t, bad_fn_t>;
 
   static_assert(ex::dependent_sender<then_depending_on_env_t<just_sender_t>>);
-  static_assert(!ex::__well_formed_sender<then_depending_on_env_t<bad_child_t>>);
+  static_assert(!is_well_formed_v<then_depending_on_env_t<bad_child_t>>);
   static_assert(reports_without_env<then_depending_on_env_t<bad_child_t>, then_error_t>());
 
   //////////////////////////////////////////////////////////////////////////////////////////

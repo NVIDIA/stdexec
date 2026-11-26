@@ -162,11 +162,12 @@ namespace STDEXEC
       template <sender _Sender, scope_token _Token>
       auto operator()(_Sender&& __sndr, _Token __token) const
         noexcept(__nothrow_constructible_from<__associate_data<_Token, _Sender>, _Token, _Sender>)
-          -> __well_formed_sender auto
+          -> auto
       {
-        return __facade::__sender{associate_t(),
-                                  __associate_data(static_cast<_Token&&>(__token),
-                                                   static_cast<_Sender&&>(__sndr))};
+        return STDEXEC::__check_well_formed(
+          __facade::__sender{associate_t(),
+                             __associate_data(static_cast<_Token&&>(__token),
+                                              static_cast<_Sender&&>(__sndr))});
       }
 
       template <scope_token _Token>

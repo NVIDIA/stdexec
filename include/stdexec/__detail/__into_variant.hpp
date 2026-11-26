@@ -214,9 +214,10 @@ namespace STDEXEC
     //!          argument is a @c std::variant of `std::tuple<Vs...>`
     //!          alternatives.
     template <sender _Sender>
-    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> auto
     {
-      return __facade::__sender{into_variant_t(), __(), static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{into_variant_t(), __(), static_cast<_Sender &&>(__sndr)});
     }
 
     //! @brief Returns @c *this, so that the older spelling

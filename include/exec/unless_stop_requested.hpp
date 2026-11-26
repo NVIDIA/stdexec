@@ -72,11 +72,11 @@ namespace experimental::execution
 
     template <STDEXEC::sender Sender>
     [[nodiscard]]
-    constexpr auto operator()(Sender&& sndr) const -> STDEXEC::__well_formed_sender auto
+    constexpr auto operator()(Sender&& sndr) const -> auto
     {
-      return STDEXEC::__facade::__sender{unless_stop_requested_t(),
-                                         STDEXEC::__(),
-                                         static_cast<Sender&&>(sndr)};
+      return STDEXEC::__check_well_formed(STDEXEC::__facade::__sender{unless_stop_requested_t(),
+                                                                      STDEXEC::__(),
+                                                                      static_cast<Sender&&>(sndr)});
     }
   };
 

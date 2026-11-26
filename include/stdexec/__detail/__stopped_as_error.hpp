@@ -144,11 +144,11 @@ namespace STDEXEC
     //! @param __err    The error datum to deliver if @c __sndr is stopped.
     //!                 Decay-copied into the resulting sender.
     template <sender _Sender, __movable_value _Error>
-    constexpr auto operator()(_Sender &&__sndr, _Error __err) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr, _Error __err) const -> auto
     {
-      return __facade::__sender{stopped_as_error_t(),
-                                static_cast<_Error &&>(__err),
-                                static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(__facade::__sender{stopped_as_error_t(),
+                                                             static_cast<_Error &&>(__err),
+                                                             static_cast<_Sender &&>(__sndr)});
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.

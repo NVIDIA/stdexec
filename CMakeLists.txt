@@ -343,11 +343,6 @@ endif()
 target_compile_options(stdexec ${stdexec_scope}
                        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>)
 
-# Increase the concepts diagnostics depth for GCC
-target_compile_options(
-  stdexec ${stdexec_scope}
-  $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>)
-
 # Do you want a preprocessor that works? Picky, picky.
 target_compile_options(
   stdexec ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus

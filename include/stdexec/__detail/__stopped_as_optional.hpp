@@ -222,9 +222,10 @@ namespace STDEXEC
     //!
     //! @param __sndr   The predecessor sender. Forwarded into the result.
     template <sender _Sender>
-    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> auto
     {
-      return __facade::__sender{stopped_as_optional_t(), __(), static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{stopped_as_optional_t(), __(), static_cast<_Sender &&>(__sndr)});
     }
 
     //! @brief Returns @c *this, so that the older spelling

@@ -479,9 +479,10 @@ namespace STDEXEC
     template <class... _Senders>
     [[nodiscard]]
     constexpr auto operator()(_Senders &&...__sndrs) const  //
-      noexcept(__nothrow_decay_copyable<_Senders...>) -> __well_formed_sender auto
+      noexcept(__nothrow_decay_copyable<_Senders...>) -> auto
     {
-      return __facade::__sender{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...});
     }
   };
 

@@ -30,6 +30,10 @@
 
 namespace ex = STDEXEC;
 
+// a sender that type-checks on its own, or whose completions depend on its environment
+template <class Sndr>
+inline constexpr bool is_well_formed_v = ex::sender_in<Sndr> || ex::dependent_sender<Sndr>;
+
 using namespace std::chrono_literals;
 
 namespace
@@ -764,8 +768,8 @@ namespace
   {
     auto snd1 = my_sender();
     auto snd2 = exec::split(std::move(snd1));
-    static_assert(ex::__well_formed_sender<decltype(snd1)>);
-    static_assert(ex::__well_formed_sender<decltype(snd2)>);
+    static_assert(is_well_formed_v<decltype(snd1)>);
+    static_assert(is_well_formed_v<decltype(snd2)>);
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);

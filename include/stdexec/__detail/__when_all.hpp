@@ -199,14 +199,13 @@ namespace STDEXEC
 
     template <sender _Sender0, sender _Sender1, sender... _Senders>
     constexpr auto operator()(_Sender0&& __sndr0, _Sender1&& __sndr1, _Senders&&... __sndrs) const
-      noexcept(__nothrow_decay_copyable<_Sender0, _Sender1, _Senders...>) -> __well_formed_sender
-      auto
+      noexcept(__nothrow_decay_copyable<_Sender0, _Sender1, _Senders...>) -> auto
     {
-      return __facade::__sender{when_all_t(),
-                                __(),
-                                static_cast<_Sender0&&>(__sndr0),
-                                static_cast<_Sender1&&>(__sndr1),
-                                static_cast<_Senders&&>(__sndrs)...};
+      return STDEXEC::__check_well_formed(__facade::__sender{when_all_t(),
+                                                             __(),
+                                                             static_cast<_Sender0&&>(__sndr0),
+                                                             static_cast<_Sender1&&>(__sndr1),
+                                                             static_cast<_Senders&&>(__sndrs)...});
     }
   };
 
@@ -267,11 +266,10 @@ namespace STDEXEC
     //! @returns A sender equivalent to
     //!          `when_all(into_variant(__sndrs)...)`.
     template <sender... _Senders>
-    constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
+    constexpr auto operator()(_Senders&&... __sndrs) const -> auto
     {
-      return __facade::__sender{when_all_with_variant_t(),
-                                __(),
-                                static_cast<_Senders&&>(__sndrs)...};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{when_all_with_variant_t(), __(), static_cast<_Senders&&>(__sndrs)...});
     }
 
     template <class _Sender>
@@ -312,12 +310,11 @@ namespace STDEXEC
     // can customize it: it has the parts of that sender (the scheduler, and when_all's
     // sender as continues_on keeps it), and continues_on's algorithm.
     template <scheduler _Scheduler, sender... _Senders>
-    constexpr auto
-    operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
+    constexpr auto operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> auto
     {
-      return __facade::__retagged<__transfer_when_all_t>(
+      return STDEXEC::__check_well_formed(__facade::__retagged<__transfer_when_all_t>(
         continues_on(when_all(static_cast<_Senders&&>(__sndrs)...),
-                     static_cast<_Scheduler&&>(__sched)));
+                     static_cast<_Scheduler&&>(__sched))));
     }
 
     // transform __transfer_when_all(sch, sndrs...) into continues_on(when_all(sndrs...), sch):
@@ -354,12 +351,11 @@ namespace STDEXEC
     // The sender is __transfer_when_all(sch, into_variant(sndrs)...) with this tag: it has
     // the parts of that sender, and continues_on's algorithm.
     template <scheduler _Scheduler, sender... _Senders>
-    constexpr auto
-    operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
+    constexpr auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> auto
     {
-      return __facade::__retagged<__transfer_when_all_with_variant_t>(
+      return STDEXEC::__check_well_formed(__facade::__retagged<__transfer_when_all_with_variant_t>(
         continues_on(when_all(into_variant(static_cast<_Senders&&>(__sndrs))...),
-                     static_cast<_Scheduler&&>(__sched)));
+                     static_cast<_Scheduler&&>(__sched))));
     }
 
     // transform __transfer_when_all_with_variant(sch, sndrs...) into

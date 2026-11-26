@@ -34,14 +34,13 @@ namespace experimental::execution
     // __shared::__describe_algo).
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
     [[nodiscard]]
-    auto
-    operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender auto
+    auto operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> auto
     {
-      return STDEXEC::transform_sender(
+      return STDEXEC::__check_well_formed(STDEXEC::transform_sender(
         STDEXEC::__facade::__sender{split_t(),
                                     __shared::__env_copy(static_cast<_Env&&>(__env)),
                                     static_cast<_CvSender&&>(__sndr)},
-        __env);
+        __env));
     }
 
     [[nodiscard]]

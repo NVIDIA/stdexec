@@ -32,7 +32,7 @@ import stdexec;
 #  include "__meta.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__sender_facade.hpp"
-#  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
+#  include "__senders.hpp"  // IWYU pragma: keep for __check_well_formed
 #  include "__transform_completion_signatures.hpp"
 
 #  include "__prologue.hpp"
@@ -139,14 +139,14 @@ namespace STDEXEC
                 __std::copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
-        -> __well_formed_sender auto
+      constexpr auto
+      operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const -> auto
       {
-        return __facade::__sender{
+        return STDEXEC::__check_well_formed(__facade::__sender{
           _AlgoTag(),
           __data{__pol, __shape, static_cast<_Fun&&>(__fun)},
           static_cast<_Sender&&>(__sndr)
-        };
+        });
       }
 
       template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>

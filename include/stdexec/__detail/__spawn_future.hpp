@@ -921,7 +921,7 @@ namespace STDEXEC
     //!          or stopped), or with @c set_stopped if association with
     //!          the scope failed.
     template <sender _Sender, scope_token _Token>
-    auto operator()(_Sender&& __sndr, _Token __tkn) const -> __well_formed_sender auto
+    auto operator()(_Sender&& __sndr, _Token __tkn) const -> auto
     {
       return (*this)(static_cast<_Sender&&>(__sndr), static_cast<_Token&&>(__tkn), env<>{});
     }
@@ -942,11 +942,11 @@ namespace STDEXEC
     //! @returns A sender observing the spawned operation's completion
     //!          (or @c set_stopped if scope-association failed).
     template <sender _Sender, scope_token _Token, class _Env>
-    auto operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const -> __well_formed_sender auto
+    auto operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const -> auto
     {
-      return __impl(__tkn.wrap(static_cast<_Sender&&>(__sndr)),
-                    static_cast<_Token&&>(__tkn),
-                    static_cast<_Env&&>(__env));
+      return STDEXEC::__check_well_formed(__impl(__tkn.wrap(static_cast<_Sender&&>(__sndr)),
+                                                 static_cast<_Token&&>(__tkn),
+                                                 static_cast<_Env&&>(__env)));
     }
 
    private:

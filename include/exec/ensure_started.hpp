@@ -60,20 +60,19 @@ namespace experimental::execution
     // (see __shared::__describe_algo).
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
     [[nodiscard]]
-    auto
-    operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender auto
+    auto operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> auto
     {
       if constexpr (__ensure_started::__is_ensure_started_sender<_CvSender>)
       {
-        return static_cast<_CvSender&&>(__sndr);
+        return STDEXEC::__check_well_formed(static_cast<_CvSender&&>(__sndr));
       }
       else
       {
-        return STDEXEC::transform_sender(
+        return STDEXEC::__check_well_formed(STDEXEC::transform_sender(
           STDEXEC::__facade::__sender{ensure_started_t(),
                                       __shared::__env_copy(static_cast<_Env&&>(__env)),
                                       static_cast<_CvSender&&>(__sndr)},
-          __env);
+          __env));
       }
     }
 
