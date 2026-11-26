@@ -20,8 +20,8 @@ namespace regression_spawn_future_move_assignment
   {
     auto              mode = argc > 1 ? std::string_view(argv[1]) : std::string_view("assign");
     exec::async_scope scope;
-    stdexec::run_loop loop;
-    auto              task = stdexec::schedule(loop.get_scheduler());
+    STDEXEC::run_loop loop;
+    auto              task = STDEXEC::schedule(loop.get_scheduler());
     using future           = decltype(scope.spawn_future(task));
     std::optional<future> first{scope.spawn_future(task)};
     auto                  second = scope.spawn_future(task);
@@ -40,7 +40,7 @@ namespace regression_spawn_future_move_assignment
       loop.finish();
       loop.run();
     }
-    stdexec::sync_wait(scope.on_empty());
+    STDEXEC::sync_wait(scope.on_empty());
     std::printf("PASS mode=%.*s scope drained\n", int(mode.size()), mode.data());
     return 0;
   }
