@@ -325,10 +325,6 @@ namespace experimental::execution
   // `write_env`) would hide the sequence semantics from downstream
   // sequence-aware algorithms. See issue #2053.
   template <class _Tag, class _Data, class... _Child>
-    requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_Tag, _Data, _Child...>>
-  inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_Tag, _Data, _Child...>> = true;
-
-  template <class _Tag, class _Data, class... _Child>
     requires __transparent_sequence_adaptor<STDEXEC::__facade::__sender<_Tag, _Data, _Child...>>
   inline constexpr bool
     enable_sequence_sender<STDEXEC::__facade::__sender<_Tag, _Data, _Child...>> = true;

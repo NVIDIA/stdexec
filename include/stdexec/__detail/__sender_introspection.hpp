@@ -30,7 +30,7 @@ import stdexec;
 #  include "__sender_concepts.hpp"
 #  include "__structured_apply.hpp"
 #  include "__structured_binding_size.hpp"
-#  include "__tuple.hpp"  // IWYU pragma: keep for __is_tuple and __tuple_size_v
+#  include "__tuple.hpp"
 #  include "__type_traits.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -43,10 +43,6 @@ import stdexec;
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Tag, class _Data, class... _Child>
-  struct __sexpr;
-
   namespace __detail
   {
     template <class _Tag, class _Data, class... _Child>
