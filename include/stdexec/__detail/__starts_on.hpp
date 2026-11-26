@@ -26,18 +26,12 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
-#  include "__continues_on.hpp"
-#  include "__diagnostics.hpp"
-#  include "__domain.hpp"
 #  include "__env.hpp"
-#  include "__just.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_facade.hpp"
+#  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
-#  include "__sequence.hpp"
-#  include "__subscribe.hpp"
 #  include "__utility.hpp"
 
 #  include "__prologue.hpp"
@@ -47,86 +41,16 @@ namespace STDEXEC
 {
   namespace __starts_on
   {
-    // Is the child a sequence sender? Then so is starts_on, which is lowered to a
-    // __sequence (see starts_on_t::transform_sender) that subscribes the child when the
-    // schedule operation completes. Such a starts_on has the completions of the sender it is
-    // lowered to, and the attributes below.
-    // (This matches the sender's template arguments, so that it does not require the
-    // sender to be complete.)
-    template <class _Sender>
-    inline constexpr bool __has_sequence_child_v = false;
-
-    template <class _Tag, class _Data, class _Child>
-    inline constexpr bool __has_sequence_child_v<__facade::__sender<_Tag, _Data, _Child>> =
-      __sequence_sender_tagged<_Child>;
-
-    template <class _Sexpr>
-    concept __has_sequence_child = __has_sequence_child_v<__decay_t<_Sexpr>>;
-
-    // The attributes of a starts_on whose child is a sequence sender
-    template <class _Scheduler, class _Child>
-    struct __attrs
-    {
-     private:
-      template <class... _Env>
-      static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env)
-      {
-        return __env::__join(STDEXEC::__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
-      }
-
-      template <class... _Env>
-      using __env2_t = decltype(__mk_env2(__declval<_Scheduler>(), __declval<_Env>()...));
-
-      _Scheduler       __sched_;
-      env_of_t<_Child> __attr_;
-
-     public:
-      constexpr explicit __attrs(_Scheduler __sch, env_of_t<_Child> __attr) noexcept
-        : __sched_(static_cast<_Scheduler&&>(__sch))
-        , __attr_(__attr)
-      {}
-
-      // Query for completion scheduler - delegates to child's env with
-      // augmented environment
-      template <class _SetTag, class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_scheduler_t<_SetTag> __query,
-                           _Env&&... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env...>>
-      {
-        // If child doesn't complete inline, delegate to child's completion
-        // scheduler
-        return __query(__attr_, __mk_env2(__sched_, __env...));
-      }
-
-      // Query for completion domain - calculate type from child's env with
-      // augmented environment
-      template <class _SetTag, class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env...>>
-      {
-        return {};
-      }
-
-      template <__forwarding_query _Query, class... _Args>
-        requires(!__completion_query<_Query>)
-             && __queryable_with<env_of_t<_Child>, _Query, _Args...>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Child>, _Query, _Args...>) -> decltype(auto)
-      {
-        return __attr_.query(_Query(), static_cast<_Args&&>(__args)...);
-      }
-    };
-
     // The key of starts_on's schedule operation
     struct __sched_op
     {};
 
     struct __algo;
 
-    template <class _Sender, class _Receiver>
+    // The state of a starts_on. If the starts_on is subscribed (_Subscribing is
+    // __facade::__subscribing_t), so is its child, when that is a sequence sender (see
+    // __facade::__attaches_child).
+    template <class _Sender, class _Receiver, class... _Subscribing>
     struct __state
     {
       using __env_t        = env_of_t<_Receiver>;
@@ -139,10 +63,18 @@ namespace STDEXEC
         __facade::__receiver_t<__algo, __sched_op, __state, _Sender, _Receiver>;
       using __child_rcvr_t =
         __facade::__receiver_t<__algo, __facade::__child<0>, __state, _Sender, _Receiver>;
+      using __child_op_t = __facade::
+        __child_op_t<__algo, _Sender, 0, __state, __child_t, __child_rcvr_t, _Subscribing...>;
 
       static constexpr bool __nothrow_v = __nothrow_callable<schedule_t, __scheduler_t const &>
                                        && __nothrow_connectable<__sched_sndr_t, __sched_rcvr_t>
-                                       && __nothrow_connectable<__child_t, __child_rcvr_t>;
+                                       && __facade::__nothrow_attachable_child<__algo,
+                                                                               _Sender,
+                                                                               0,
+                                                                               __state,
+                                                                               __child_t,
+                                                                               __child_rcvr_t,
+                                                                               _Subscribing...>;
 
       // The scheduler is not moved from. (The child's environment holds a copy of it.)
       constexpr explicit __state(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(__nothrow_v)
@@ -151,8 +83,7 @@ namespace STDEXEC
         , __sched_op_(STDEXEC::connect(STDEXEC::schedule(static_cast<__scheduler_t const &>(
                                          __facade::__get_data(__sndr))),
                                        __sched_rcvr_t{this}))
-        , __child_op_(STDEXEC::connect(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
-                                       __child_rcvr_t{this}))
+        , __child_op_(__attach_child(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr))))
       {}
 
       STDEXEC_IMMOVABLE(__state);
@@ -160,21 +91,43 @@ namespace STDEXEC
       _Receiver                                        __rcvr_;
       __env2_t const                                   __env2_;
       connect_result_t<__sched_sndr_t, __sched_rcvr_t> __sched_op_;
-      connect_result_t<__child_t, __child_rcvr_t>      __child_op_;
+      __child_op_t                                     __child_op_;
+
+     private:
+      // Connects the child, or attaches it (see __facade::__attaches_child)
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto __attach_child(__child_t&& __child) noexcept(__nothrow_v) -> __child_op_t
+      {
+        if constexpr (__facade::__attaches_child<__algo, _Sender, 0>)
+        {
+          using __attach_t =
+            __facade::__attach_child_t<__algo, _Sender, 0, __child_rcvr_t, _Subscribing...>;
+          return __attach_t()(*this, static_cast<__child_t&&>(__child), __child_rcvr_t{this});
+        }
+        else
+        {
+          return STDEXEC::connect(static_cast<__child_t&&>(__child), __child_rcvr_t{this});
+        }
+      }
     };
 
     // starts_on(sch, sndr): starts a schedule operation on sch. When that completes with a
     // value, sndr is started, and sees sch as its start scheduler. The completions of sndr,
     // and the error and stopped completions of the schedule operation, are the operation's.
+    // If sndr is a sequence sender, so is starts_on. Its items are sndr's, which it subscribes
+    // when it is subscribed.
     //
     // NOT TO SPEC: the specification requires that starts_on be lowered to
     // let_value(schedule(sch), []{ return child; }), but that is inefficient on the GPU,
     // because it makes the child dependent on the completion of the schedule operation.
-    // Here the child is connected up front.
+    // Here the child is connected, or subscribed, up front.
     struct __algo : __facade::__defaults
     {
-      // The child is connected with the state, and started by the schedule operation.
+      // The child is attached with the state, and started by the schedule operation.
       static constexpr bool __connects_children = false;
+
+      template <class _Sender>
+      using __item_source = __facade::__child<0>;
 
       // The value completion of the schedule operation, where the child starts
       using __sched_value_t = __facade::__via<__sched_op, set_value_t, __facade::__from_start>;
@@ -185,30 +138,6 @@ namespace STDEXEC
 
       template <class _Tag>
       using __empty_channel_source = __if_c<__same_as<_Tag, set_value_t>, __sched_value_t, void>;
-
-      // A starts_on whose child is a sequence sender has the completions of the sender it
-      // is lowered to, and the attributes above.
-      template <class _Sender>
-        requires __has_sequence_child<_Sender>
-      STDEXEC_ATTRIBUTE(host, device)
-      static constexpr auto __get_attrs(_Sender const & __sndr) noexcept
-      {
-        auto const & __child = __facade::__get_child<0>(__sndr);
-        return __attrs<__decay_t<decltype(__facade::__get_data(__sndr))>,
-                       __decay_t<decltype(__child)>>{__facade::__get_data(__sndr),
-                                                     STDEXEC::get_env(__child)};
-      }
-
-      template <class _Sender, class... _Env>
-        requires __has_sequence_child<_Sender>
-      static consteval auto __get_completion_signatures()
-      {
-        // (starts_on_t is incomplete here, so its transform_sender is named through the
-        // sender's tag.)
-        using __sndr_t =
-          __detail::__transform_sender_result_t<tag_of_t<_Sender>, set_value_t, _Sender, env<>>;
-        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      }
 
       // The child sees the scheduler as its start scheduler. (The schedule operation sees
       // the environment of the receiver: the default.)
@@ -252,13 +181,15 @@ namespace STDEXEC
           __facade::__get_data(__sndr)};
       }
 
-      template <class _Sender, class _Receiver>
+      // (The state of a subscribed starts_on takes __facade::__subscribing_t.)
+      template <class _Sender, class _Receiver, class... _Subscribing>
       STDEXEC_ATTRIBUTE(host, device)
-      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
-        noexcept(__state<_Sender, _Receiver>::__nothrow_v) -> __state<_Sender, _Receiver>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr, _Subscribing...)
+        noexcept(__state<_Sender, _Receiver, _Subscribing...>::__nothrow_v)
+          -> __state<_Sender, _Receiver, _Subscribing...>
       {
-        return __state<_Sender, _Receiver>(static_cast<_Sender&&>(__sndr),
-                                           static_cast<_Receiver&&>(__rcvr));
+        return __state<_Sender, _Receiver, _Subscribing...>(static_cast<_Sender&&>(__sndr),
+                                                            static_cast<_Receiver&&>(__rcvr));
       }
 
       template <class _State, class _Children>
@@ -288,6 +219,16 @@ namespace STDEXEC
       }
     };
   }  // namespace __starts_on
+
+  // A starts_on's state is incomplete while the starts_on subscribes its child, since that
+  // operation is part of the state. So the type of its receiver, to which the child's receiver
+  // forwards items, is read from the state's type.
+  template <class _Item, class _Sender, class _Receiver, class... _Subscribing>
+  struct __facade::__state_receiver<__starts_on::__state<_Sender, _Receiver, _Subscribing...>,
+                                    _Item>
+  {
+    using __t = _Receiver;
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   // [exec.starts.on]
@@ -398,23 +339,6 @@ namespace STDEXEC
       return __facade::__sender{starts_on_t(),
                                 static_cast<_Scheduler&&>(__sched),
                                 static_cast<_Sender&&>(__sndr)};
-    }
-
-    // A starts_on whose child is a sequence sender is itself a sequence sender. It is
-    // lowered to a __sequence, which can subscribe to its child.
-    template <class _Sender>
-      requires __starts_on::__has_sequence_child<_Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
-    {
-      if constexpr (__decay_copyable<_Sender>)
-      {
-        auto& [__tag, __sched, __child] = __sndr;
-        return __sequence(continues_on(just(), __sched), STDEXEC::__forward_like<_Sender>(__child));
-      }
-      else
-      {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_SENDER_<_Sender>>{};
-      }
     }
   };
 

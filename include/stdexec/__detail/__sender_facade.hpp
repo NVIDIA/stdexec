@@ -702,6 +702,16 @@ namespace STDEXEC
     concept __subscribes_child = (sizeof...(_Subscribing) != 0)
                               && __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>;
 
+    // Is the child keyed by __child<_Idx> the item source, and a sequence sender? An algorithm
+    // that attaches its children itself (see __connects_children) attaches such a child with
+    // __attach_child_t, so that it is subscribed when the algorithm's sender is, and connects
+    // the others. (Attaching passes the algorithm's state, whose type would then be repeated
+    // in the debug information of each child's connection.)
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Algo, class _Sender, std::size_t _Idx>
+    concept __attaches_child = __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>
+                            && __sequence_sender_tagged<__nth_child_of_t<_Sender, _Idx>>;
+
     // Is the child keyed by __child<_Idx> a sequence sender that is the item source, attached
     // in the walk (where its receiver, _Rcvr, is an archetype)? Then it is not attached: the
     // archetype cannot subscribe it, and connecting a sequence sender can be ill-formed. The
@@ -709,8 +719,7 @@ namespace STDEXEC
     // in for the operation, and attaching it is assumed to be potentially throwing.
     template <class _Algo, class _Sender, std::size_t _Idx, class _Rcvr>
     concept __walks_item_source = __std::derived_from<_Rcvr, __receiver_archetype_base>
-                               && __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>
-                               && __sequence_sender_tagged<__nth_child_of_t<_Sender, _Idx>>;
+                               && __attaches_child<_Algo, _Sender, _Idx>;
 
     struct __walk_op
     {
@@ -782,13 +791,66 @@ namespace STDEXEC
     // _Sender to a receiver of type _Rcvr: it connects the child, or subscribes it (see
     // __subscribes_child), or, in the walk, neither (see __walks_item_source). An algorithm
     // that attaches its children itself uses it for its item source, so that the item source
-    // is subscribed when the algorithm's sender is (see __subscribing_t).
+    // is subscribed when the algorithm's sender is (see __subscribing_t and
+    // __attaches_child).
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Algo, class _Sender, std::size_t _Idx, class _Rcvr, class... _Subscribing>
     using __attach_child_t = __if_c<
       __walks_item_source<_Algo, _Sender, _Idx, _Rcvr>,
       __walk_attach_t,
       __attach_child_fn<_Algo, _Idx, __subscribes_child<_Algo, _Sender, _Idx, _Subscribing...>>>;
+
+    template <class _Attach, class _State, class _Child, class _Rcvr>
+    using __attach_result_t =
+      decltype(_Attach()(__declval<_State &>(), __declval<_Child>(), __declval<_Rcvr>()));
+
+    template <class _Attach, class _State, class _Child, class _Rcvr>
+    using __connect_result_t = connect_result_t<_Child, _Rcvr>;
+
+    template <class _Attach, class _State, class _Child, class _Rcvr>
+    concept __nothrow_attachable = requires(_State &__state, _Child &&__child, _Rcvr &&__rcvr) {
+      {
+        _Attach()(__state, static_cast<_Child &&>(__child), static_cast<_Rcvr &&>(__rcvr))
+      } noexcept;
+    };
+
+    // The operation of the child keyed by __child<_Idx>, a sender of type _Child, that an
+    // algorithm with a state of type _State attaches itself to a receiver of type _Rcvr:
+    // attached with __attach_child_t or connected (see __attaches_child)
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Algo,
+              class _Sender,
+              std::size_t _Idx,
+              class _State,
+              class _Child,
+              class _Rcvr,
+              class... _Subscribing>
+    using __child_op_t =
+      __minvoke_if_c<__attaches_child<_Algo, _Sender, _Idx>,
+                     __q<__attach_result_t>,
+                     __q<__connect_result_t>,
+                     __attach_child_t<_Algo, _Sender, _Idx, _Rcvr, _Subscribing...>,
+                     _State,
+                     _Child,
+                     _Rcvr>;
+
+    // Can making that operation throw? (A disjunction, so that a sequence sender is not asked
+    // whether it can be connected.)
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Algo,
+              class _Sender,
+              std::size_t _Idx,
+              class _State,
+              class _Child,
+              class _Rcvr,
+              class... _Subscribing>
+    concept __nothrow_attachable_child =
+      (__attaches_child<_Algo, _Sender, _Idx>
+       && __nothrow_attachable<__attach_child_t<_Algo, _Sender, _Idx, _Rcvr, _Subscribing...>,
+                               _State,
+                               _Child,
+                               _Rcvr>)
+      || (!__attaches_child<_Algo, _Sender, _Idx> && __nothrow_connectable<_Child, _Rcvr>);
 
     template <class _Algo, class _Sender, class _Receiver, class _Indices, class... _Subscribing>
     struct __children_ops;
