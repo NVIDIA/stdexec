@@ -674,7 +674,7 @@ namespace experimental::execution
      public:
       using sender_concept = STDEXEC::sender_tag;
 
-      __future(__future&&)                    = default;
+      __future(__future&&) = default;
       auto operator=(__future&& __other) noexcept -> __future&
       {
         if (this != &__other)
