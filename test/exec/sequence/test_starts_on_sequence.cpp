@@ -67,6 +67,20 @@ namespace
     STATIC_REQUIRE(STDEXEC::__same_as<items_t, exec::item_types<decltype(STDEXEC::just(int{}))>>);
   }
 
+  // (Subscribing the sequence sender cannot fail with an exception after the schedule
+  // operation completes: it is subscribed up front. The completions of a sequence sender are
+  // read with the sequence-aware alias: with STDEXEC_ENABLE_EXTRA_TYPE_CHECKING,
+  // STDEXEC::completion_signatures_of_t would try to connect it.)
+  TEST_CASE("starts_on over a sequence sender adds only the schedule operation's completions",
+            "[sequence][starts_on]")
+  {
+    STDEXEC::run_loop loop;
+    using sndr_t = decltype(STDEXEC::starts_on(loop.get_scheduler(), single_item_sequence{}));
+    STATIC_REQUIRE(STDEXEC::__mset_eq<
+                   STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>,
+                   exec::__sequence_aware_completion_signatures_of_t<sndr_t, STDEXEC::env<>>>);
+  }
+
   TEST_CASE("starts_on over a sequence sender delivers its items on the scheduler",
             "[sequence][starts_on]")
   {
@@ -87,6 +101,21 @@ namespace
     CHECK(seen == 42);
     CHECK(item_id == pool_id);
     CHECK(item_id != std::this_thread::get_id());
+  }
+
+  TEST_CASE("a sequence can end in a starts_on of a sequence sender", "[sequence][starts_on]")
+  {
+    exec::static_thread_pool pool{1};
+    auto                     sndr = exec::sequence(STDEXEC::just(),
+                               STDEXEC::starts_on(pool.get_scheduler(), single_item_sequence{}));
+    using items_t = decltype(exec::get_item_types<decltype(sndr), STDEXEC::env<>>());
+    STATIC_REQUIRE(STDEXEC::__same_as<items_t, exec::item_types<decltype(STDEXEC::just(int{}))>>);
+
+    std::atomic<int> seen{0};
+    STDEXEC::sync_wait(std::move(sndr)
+                       | exec::transform_each(STDEXEC::then([&](int v) { seen = v; }))
+                       | exec::ignore_all_values());
+    CHECK(seen == 42);
   }
 
   TEST_CASE("starts_on over iterate delivers every item", "[sequence][starts_on]")
@@ -206,9 +235,8 @@ namespace
     STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
   };
 
-  // starts_on over a sequence sender is lowered to a sequence that ends in the sequence sender.
-  // Such a sequence too must hide the receiver's start scheduler from the sequence sender,
-  // unless the sender before it completes where it starts.
+  // A sequence that ends in a sequence sender must hide the receiver's start scheduler from
+  // the sequence sender, unless the sender before it completes where it starts.
   TEST_CASE("a sequence hides the receiver's start scheduler from a sequence sender that may "
             "not start there",
             "[sequence]")

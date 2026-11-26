@@ -144,31 +144,9 @@ namespace STDEXEC
 
     struct __algo;
 
-    // Is the _Idx-th sender of a sequence its item source: the last sender, when that is a
-    // sequence sender? It is attached as the facade attaches an item source, so that it is
-    // subscribed when the sequence is (see __facade::__attach_child_t), and the other senders
-    // are connected. (Attaching passes the state, whose type would then be repeated in the
-    // debug information of each operation's construction.)
-    template <class _Sender, std::size_t _Idx>
-    concept __is_item_source = (_Idx + 1 == __facade::__nbr_children_v<_Sender>)
-                            && __sequence_sender_tagged<__facade::__nth_child_of_t<_Sender, _Idx>>;
-
-    template <class _Attach, class _State, class _Sender, class _Receiver>
-    using __attach_result_t =
-      decltype(_Attach()(__declval<_State &>(), __declval<_Sender>(), __declval<_Receiver>()));
-
-    template <class _Attach, class _State, class _Sender, class _Receiver>
-    using __connect_result_t = connect_result_t<_Sender, _Receiver>;
-
-    template <class _Attach, class _State, class _Sender, class _Receiver>
-    concept __nothrow_attachable = requires(_State &__state, _Sender &&__sndr, _Receiver &&__rcvr) {
-      {
-        _Attach()(__state, static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr))
-      } noexcept;
-    };
-
     // The state of a sequence. If the sequence is subscribed (_Subscribing is
-    // __facade::__subscribing_t), so is its item source (see __is_item_source).
+    // __facade::__subscribing_t), so is its item source, the last sender, when that is a
+    // sequence sender (see __facade::__attaches_child).
     template <class _Sender, class _Receiver, class _Indices, class... _Subscribing>
     struct __seq_state;
 
@@ -186,11 +164,12 @@ namespace STDEXEC
       using __receiver_t =
         __facade::__receiver_t<__algo, __facade::__child<_Idx>, __seq_state, _Sender, _Receiver>;
 
-      // Is the _Idx-th sender the item source? (See __seq::__is_item_source.)
+      // Is the _Idx-th sender the item source, attached with __attach_t? (See
+      // __facade::__attaches_child.)
       template <std::size_t _Idx>
       static consteval auto __attaches() noexcept -> bool
       {
-        return __seq::__is_item_source<_Sender, _Idx>;
+        return __facade::__attaches_child<__algo, _Sender, _Idx>;
       }
 
       template <std::size_t _Idx>
@@ -199,25 +178,25 @@ namespace STDEXEC
 
       // The operation of the _Idx-th sender
       template <std::size_t _Idx>
-      using __op_t = __minvoke_if_c<__seq::__is_item_source<_Sender, _Idx>,
-                                    __q<__attach_result_t>,
-                                    __q<__connect_result_t>,
-                                    __attach_t<_Idx>,
-                                    __seq_state,
-                                    __sender_t<_Idx>,
-                                    __receiver_t<_Idx>>;
+      using __op_t = __facade::__child_op_t<__algo,
+                                            _Sender,
+                                            _Idx,
+                                            __seq_state,
+                                            __sender_t<_Idx>,
+                                            __receiver_t<_Idx>,
+                                            _Subscribing...>;
 
       // Can making the operation of the _Idx-th sender throw?
       template <std::size_t _Idx>
       static consteval auto __nothrow_attach() noexcept -> bool
       {
-        if constexpr (__seq::__is_item_source<_Sender, _Idx>)
-          return __nothrow_attachable<__attach_t<_Idx>,
-                                      __seq_state,
-                                      __sender_t<_Idx>,
-                                      __receiver_t<_Idx>>;
-        else
-          return __nothrow_connectable<__sender_t<_Idx>, __receiver_t<_Idx>>;
+        return __facade::__nothrow_attachable_child<__algo,
+                                                    _Sender,
+                                                    _Idx,
+                                                    __seq_state,
+                                                    __sender_t<_Idx>,
+                                                    __receiver_t<_Idx>,
+                                                    _Subscribing...>;
       }
 
       template <std::size_t _Idx>
