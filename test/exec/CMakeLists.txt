@@ -16,6 +16,7 @@
 
 set(exec_test_sources
     ../test_main.cpp
+    test_spawn_future_reentrant_cancel.cpp
     test_spawn_future_move_assignment.cpp
     test_bwos_lifo_queue.cpp
     test_atomic_intrusive_queue.cpp

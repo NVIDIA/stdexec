@@ -389,6 +389,9 @@ namespace STDEXEC
       // 4. any other value means __consume has "registered" its receiver to be
       //    completed by __complete when it is invoked
       __std::atomic<void*> __registered_receiver_{nullptr};
+      // The protocol owns one reference; an executing cancellation callback
+      // temporarily owns another because request_stop can complete inline.
+      __std::atomic<unsigned> __lifetime_refs_{1};
       // Type-erased completion callback.
       //
       // The void* will receive the address of the receiver, which will need to
@@ -402,6 +405,8 @@ namespace STDEXEC
 
       void __destroy() noexcept
       {
+        if (__lifetime_refs_.fetch_sub(1, __std::memory_order_acq_rel) != 1)
+          return;
         [[maybe_unused]]
         auto __assoc = std::move(__assoc_);
 
@@ -492,6 +497,8 @@ namespace STDEXEC
       static void __do_try_cancel(__try_cancelable* __base_ptr) noexcept
       {
         auto* __self = static_cast<__spawn_future_state*>(__base_ptr);
+        __self->__lifetime_refs_.fetch_add(1, __std::memory_order_relaxed);
+        __scope_guard __keep_alive{[__self]() noexcept { __self->__destroy(); }};
 
         // Consider: there's a sense in which we only need to invoke
         //           request_stop if we've arrived here before the producer has
