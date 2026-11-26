@@ -728,7 +728,8 @@ namespace experimental::execution
         bool                                  has_started_{false};
         __intrusive_queue<&_task_base::next_> tasks_{};
         std::size_t                           tasks_size_{};
-        __std::atomic<std::size_t>            countdown_{std::ranges::size(range_)};
+        // Keep start alive until all children have been started and enqueued.
+        __std::atomic<std::size_t> countdown_{std::ranges::size(range_) + 1};
       };
 
       template <class Range, class Receiver, class Pool>
@@ -822,7 +823,7 @@ namespace experimental::execution
 
         void set_value() noexcept
         {
-          std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
+          std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_acq_rel);
           if (countdown == 1)
           {
             STDEXEC::set_value(static_cast<Receiver&&>(op_->rcvr_));
@@ -831,7 +832,7 @@ namespace experimental::execution
 
         void set_stopped() noexcept
         {
-          std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
+          std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_acq_rel);
           if (countdown == 1)
           {
             STDEXEC::set_value(static_cast<Receiver&&>(op_->rcvr_));
@@ -918,9 +919,15 @@ namespace experimental::execution
             STDEXEC::start(items_[i].__get());
           }
 
-          std::unique_lock lock{this->start_mutex_};
-          this->has_started_ = true;
-          this->pool_.bulk_enqueue(remote_queue, std::move(this->tasks_), this->tasks_size_);
+          {
+            std::unique_lock lock{this->start_mutex_};
+            this->has_started_ = true;
+            this->pool_.bulk_enqueue(remote_queue, std::move(this->tasks_), this->tasks_size_);
+          }
+          if (this->countdown_.fetch_sub(1, __std::memory_order_acq_rel) == 1)
+          {
+            STDEXEC::set_value(std::move(this->rcvr_));
+          }
         }
 
        private:

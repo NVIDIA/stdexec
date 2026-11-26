@@ -16,6 +16,7 @@
 
 set(exec_test_sources
     ../test_main.cpp
+    test_schedule_all_inline_lifetime.cpp
     test_bwos_lifo_queue.cpp
     test_atomic_intrusive_queue.cpp
     test_any_sender.cpp
