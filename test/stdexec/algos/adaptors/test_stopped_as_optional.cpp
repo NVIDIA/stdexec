@@ -156,4 +156,30 @@ namespace
     check_sends_stopped<false>(ex::just(2) | ex::continues_on(sched2) | ex::stopped_as_optional());
     check_sends_stopped<false>(ex::just(3) | ex::continues_on(sched3) | ex::stopped_as_optional());
   }
+
+  TEST_CASE("stopped_as_optional reports the completion scheduler of the child channel that "
+            "feeds each channel",
+            "[adaptors][stopped_as_optional]")
+  {
+    ex::run_loop loop1, loop2, loop3;
+    auto         sch1 = loop1.get_scheduler();
+    auto         sch2 = loop2.get_scheduler();
+    auto         sch3 = loop3.get_scheduler();
+
+    SECTION("with a child that can complete on every channel")
+    {
+      auto sndr = make_per_channel_scheduler_sender(sch1, sch2, sch3);
+      auto snd  = sndr | ex::stopped_as_optional();
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_value_t, decltype(snd)>);
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd)) == sch2);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_stopped_t, decltype(snd)>);
+    }
+
+    SECTION("with a child that only completes with a value or stopped")
+    {
+      ex::prop env{ex::get_start_scheduler, sch1};
+      auto     snd = ex::just(42) | ex::stopped_as_optional();
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), env) == sch1);
+    }
+  }
 }  // namespace

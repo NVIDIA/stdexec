@@ -19,6 +19,7 @@
 
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = STDEXEC;
@@ -156,6 +157,44 @@ namespace
                                              ex::set_value_t(double),
                                              ex::set_value_t(int)>,
                                   completion_sigs>);
+    }
+  }
+
+  TEST_CASE("upon_error reports the completion scheduler of the child channel that feeds each "
+            "channel",
+            "[adaptors][upon_error]")
+  {
+    ex::run_loop loop1, loop2, loop3;
+    auto         sch1 = loop1.get_scheduler();
+    auto         sch2 = loop2.get_scheduler();
+    auto         sch3 = loop3.get_scheduler();
+    auto         sndr = make_per_channel_scheduler_sender(sch1, sch2, sch3);
+
+    SECTION("with a function that does not throw")
+    {
+      // A value can come from the child's value channel or from its error
+      // channel, so it is not known where a value completion happens.
+      auto snd = sndr | ex::upon_error([](int) noexcept { return 0; });
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_value_t, decltype(snd)>);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_error_t, decltype(snd)>);
+      CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sch3);
+    }
+
+    SECTION("with a function that may throw")
+    {
+      auto snd = sndr | ex::upon_error([](int) { return 0; });
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_value_t, decltype(snd)>);
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd)) == sch2);
+      CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sch3);
+    }
+
+    SECTION("with a child that only completes with an error")
+    {
+      // The value completion comes from the child's error completion, which
+      // happens inline on the starting scheduler.
+      ex::prop env{ex::get_start_scheduler, sch1};
+      auto     snd = ex::just_error(-1) | ex::upon_error([](int i) noexcept { return i; });
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), env) == sch1);
     }
   }
 }  // namespace

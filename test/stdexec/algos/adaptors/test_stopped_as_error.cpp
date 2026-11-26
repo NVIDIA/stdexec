@@ -20,6 +20,7 @@
 #include <exec/sender_for.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 #if STDEXEC_USE_MODULES()
@@ -183,5 +184,31 @@ namespace
     auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::stopped_as_error(-1);
     auto op  = ex::connect(std::move(snd), expect_error_receiver{-114514});
     ex::start(op);
+  }
+
+  TEST_CASE("stopped_as_error reports the completion scheduler of the child channel that feeds "
+            "each channel",
+            "[adaptors][stopped_as_error]")
+  {
+    ex::run_loop loop1, loop2, loop3;
+    auto         sch1 = loop1.get_scheduler();
+    auto         sch2 = loop2.get_scheduler();
+    auto         sch3 = loop3.get_scheduler();
+
+    SECTION("with a child that can complete on every channel")
+    {
+      auto sndr = make_per_channel_scheduler_sender(sch1, sch2, sch3);
+      auto snd  = sndr | ex::stopped_as_error(-1);
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sch1);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_error_t, decltype(snd)>);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_stopped_t, decltype(snd)>);
+    }
+
+    SECTION("with a child that only completes with stopped")
+    {
+      ex::prop env{ex::get_start_scheduler, sch1};
+      auto     snd = ex::just_stopped() | ex::stopped_as_error(-1);
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd), env) == sch1);
+    }
   }
 }  // namespace
