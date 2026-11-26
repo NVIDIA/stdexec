@@ -21,6 +21,7 @@
 
 #include "exec/sequence/transform_each.hpp"
 
+#include "exec/sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
 #include "exec/sequence_senders.hpp"
 #include <test_common/catch2.hpp>
@@ -98,6 +99,23 @@ namespace
       STDEXEC::write_env(STDEXEC::write_env(single_item_sequence<42>{}, STDEXEC::env<>{}),
                          STDEXEC::env<>{})
       | exec::transform_each(STDEXEC::then([&](int v) { value = v; })) | exec::ignore_all_values());
+    CHECK(value == 42);
+  }
+
+  // A sequence whose last sender is a write_env of a sequence sender is a
+  // sequence sender too. (This failed to compile when the sequence was lowered
+  // to a sender that asked whether its last sender could be connected.)
+  TEST_CASE("a sequence can end in a write_env of a sequence sender", "[sequence][write_env]")
+  {
+    auto sndr     = exec::sequence(STDEXEC::just(),
+                               STDEXEC::write_env(single_item_sequence<42>{}, STDEXEC::env<>{}));
+    using items_t = decltype(exec::get_item_types<decltype(sndr), STDEXEC::env<>>());
+    static_assert(STDEXEC::__same_as<items_t, exec::item_types<decltype(STDEXEC::just(int{}))>>);
+
+    int value = 0;
+    STDEXEC::sync_wait(std::move(sndr)
+                       | exec::transform_each(STDEXEC::then([&](int v) { value = v; }))
+                       | exec::ignore_all_values());
     CHECK(value == 42);
   }
 

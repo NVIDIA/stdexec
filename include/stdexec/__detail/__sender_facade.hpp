@@ -675,7 +675,7 @@ namespace STDEXEC
     // When an algorithm's sender is subscribed, the facade passes __subscribing_t to the
     // algorithm's __get_state, after the receiver. (The default __get_state ignores it.) An
     // algorithm that attaches its item source itself (see __connects_children) takes it, and
-    // subscribes the item source.
+    // subscribes the item source (see __attach_child_t).
     //
     // An operation takes the subscription as a pack, _Subscribing..., which is empty unless
     // the sender is subscribed, so that a connected operation's types are the same as if
@@ -694,6 +694,34 @@ namespace STDEXEC
     template <class _Algo, class _Sender, std::size_t _Idx, class... _Subscribing>
     concept __subscribes_child = (sizeof...(_Subscribing) != 0)
                               && __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>;
+
+    // Is the child keyed by __child<_Idx> a sequence sender that is the item source, attached
+    // in the walk (where its receiver, _Rcvr, is an archetype)? Then it is not attached: the
+    // archetype cannot subscribe it, and connecting a sequence sender can be ill-formed. The
+    // walk asks the child for its completions, not for its operation, so a placeholder stands
+    // in for the operation, and attaching it is assumed to be potentially throwing.
+    template <class _Algo, class _Sender, std::size_t _Idx, class _Rcvr>
+    concept __walks_item_source = __std::derived_from<_Rcvr, __receiver_archetype_base>
+                               && __same_as<__child<_Idx>, __item_source_t<_Algo, _Sender>>
+                               && __sequence_sender_tagged<__nth_child_of_t<_Sender, _Idx>>;
+
+    struct __walk_op
+    {
+      using operation_state_concept = operation_state_tag;
+
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void start() & noexcept {}
+    };
+
+    struct __walk_attach_t
+    {
+      template <class _State, class _Child, class _Rcvr>
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto operator()(_State &, _Child &&, _Rcvr &&) const noexcept(false) -> __walk_op
+      {
+        return {};
+      }
+    };
 
     // Connects the child keyed by __child<_Idx>, or, if _Subscribes, subscribes it. (A
     // specialization chooses, not constrained overloads: Clang 16 substitutes into a function
@@ -742,6 +770,18 @@ namespace STDEXEC
                                   static_cast<_Rcvr &&>(__rcvr));
       }
     };
+
+    // The function object that attaches the child keyed by __child<_Idx> of a sender of type
+    // _Sender to a receiver of type _Rcvr: it connects the child, or subscribes it (see
+    // __subscribes_child), or, in the walk, neither (see __walks_item_source). An algorithm
+    // that attaches its children itself uses it for its item source, so that the item source
+    // is subscribed when the algorithm's sender is (see __subscribing_t).
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Algo, class _Sender, std::size_t _Idx, class _Rcvr, class... _Subscribing>
+    using __attach_child_t = __if_c<
+      __walks_item_source<_Algo, _Sender, _Idx, _Rcvr>,
+      __walk_attach_t,
+      __attach_child_fn<_Algo, _Idx, __subscribes_child<_Algo, _Sender, _Idx, _Subscribing...>>>;
 
     template <class _Algo, class _Sender, class _Receiver, class _Indices, class... _Subscribing>
     struct __children_ops;

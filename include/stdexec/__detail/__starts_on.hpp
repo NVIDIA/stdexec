@@ -48,9 +48,9 @@ namespace STDEXEC
   namespace __starts_on
   {
     // Is the child a sequence sender? Then so is starts_on, which is lowered to a
-    // __sequence (see starts_on_t::transform_sender). The facade cannot connect a sequence
-    // sender, so such a starts_on has the completions of the sender it is lowered to, and
-    // the attributes below.
+    // __sequence (see starts_on_t::transform_sender) that subscribes the child when the
+    // schedule operation completes. Such a starts_on has the completions of the sender it is
+    // lowered to, and the attributes below.
     // (This matches the sender's template arguments, so that it does not require the
     // sender to be complete.)
     template <class _Sender>

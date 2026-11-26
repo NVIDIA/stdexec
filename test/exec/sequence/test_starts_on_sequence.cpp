@@ -206,9 +206,9 @@ namespace
     STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
   };
 
-  // A sequence that ends in a sequence sender is lowered to __seq::__sndr, as starts_on over a
-  // sequence sender is. It too must hide the receiver's start scheduler from the sequence
-  // sender, unless the sender before it completes where it starts.
+  // starts_on over a sequence sender is lowered to a sequence that ends in the sequence sender.
+  // Such a sequence too must hide the receiver's start scheduler from the sequence sender,
+  // unless the sender before it completes where it starts.
   TEST_CASE("a sequence hides the receiver's start scheduler from a sequence sender that may "
             "not start there",
             "[sequence]")
