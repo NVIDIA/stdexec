@@ -824,13 +824,13 @@ namespace experimental::execution
           STDEXEC::set_value_t,
           _Completions,
           __arg_of_t<_Sequence, _Sender, _Env...>,
-          STDEXEC::__mtry<STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>>>;
+          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>>;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
       using __nested_sequences_from_item_type_t =
-        STDEXEC::__minvoke<__gather_sequences_t<_Sequence, _Sender, _Env...>,
-                           STDEXEC::__completion_signatures_of_t<_Sender, _Env...>>;
+        STDEXEC::__mcall<__gather_sequences_t<_Sequence, _Sender, _Env...>,
+                         STDEXEC::__completion_signatures_of_t<_Sender, _Env...>>;
 
       template <class _Sequence, class... _Env>
       struct __nested_sequences_fn
@@ -838,7 +838,7 @@ namespace experimental::execution
         template <class... _Senders>
         using __f = __mapply<
           STDEXEC::__munique<STDEXEC::__qq<__mlist>>,
-          STDEXEC::__minvoke<
+          STDEXEC::__mcall<
             STDEXEC::__mconcat<STDEXEC::__qq<__mlist>>,
             __minvoke_q<__nested_sequences_from_item_type_t, _Sequence, _Senders, _Env...>...>>;
       };
@@ -855,8 +855,8 @@ namespace experimental::execution
       struct __all_nested_values_fn
       {
         template <class... _Sequences>
-        using __f = STDEXEC::__minvoke<STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>,
-                                       __item_types_of_t<_Sequences, _Env...>...>;
+        using __f = STDEXEC::__mcall<STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>,
+                                     __item_types_of_t<_Sequences, _Env...>...>;
       };
 
       template <class _Sequence, class... _Env>
@@ -893,7 +893,7 @@ namespace experimental::execution
       //
 
       template <class _Sequence, class... _Env>
-      using __errors_t = STDEXEC::__minvoke<
+      using __errors_t = STDEXEC::__mcall<
         STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>,
         // always include std::exception_ptr
         STDEXEC::__mlist<std::exception_ptr>,
@@ -924,9 +924,9 @@ namespace experimental::execution
       struct __nested_values_fn
       {
         template <class... _AllItems>
-        using __f = __minvoke<__munique<STDEXEC::__q<item_types>>,
-                              __merge_each::__nested_value_sender_t<_AllItems, _ErrorStorage>...,
-                              __merge_each::__error_sender_t<_ErrorStorage>>;
+        using __f = __mcall<__munique<STDEXEC::__q<item_types>>,
+                            __merge_each::__nested_value_sender_t<_AllItems, _ErrorStorage>...,
+                            __merge_each::__error_sender_t<_ErrorStorage>>;
       };
 
       template <class _Sequence, class... _Env>
@@ -948,11 +948,11 @@ namespace experimental::execution
       };
 
       template <class _Sequence, class _OperationBase>
-      using __nested_sequence_op_t = __minvoke<__nested_sequence_op_fn<_OperationBase>, _Sequence>;
+      using __nested_sequence_op_t = __mcall<__nested_sequence_op_fn<_OperationBase>, _Sequence>;
 
       template <class _Sequence, class _Receiver>
-      using __operation_base_t = __minvoke<
-        __mtry_q<__operation_base>,
+      using __operation_base_t = __mcall<
+        __q<__operation_base>,
         _Receiver,
         __error_variant_t<_Sequence, __env_with_inplace_stop_token_result_t<env_of_t<_Receiver>>>>;
 
@@ -1255,8 +1255,8 @@ namespace experimental::execution
       {
         return []<class... _Lists>(_Lists...)
         {
-          return STDEXEC::__minvoke<STDEXEC::__mconcat<STDEXEC::__munique<STDEXEC::__qq<__types>>>,
-                                    _Lists...>();
+          return STDEXEC::__mcall<STDEXEC::__mconcat<STDEXEC::__munique<STDEXEC::__qq<__types>>>,
+                                  _Lists...>();
         };
       }
 
@@ -1370,7 +1370,7 @@ namespace experimental::execution
             {
               using __error_variant_t = STDEXEC::__mapply_q<
                 STDEXEC::__uniqued_variant,
-                STDEXEC::__minvoke<
+                STDEXEC::__mcall<
                   STDEXEC::__mconcat<STDEXEC::__qq<__types>>,
                   __types<std::exception_ptr>,
                   STDEXEC::__error_types_t<decltype(__all_sigs), STDEXEC::__qq<__types>>>>;

@@ -198,24 +198,6 @@ namespace STDEXEC
   template <class... _What>
   struct _ERROR_
   {
-    using __t           = _ERROR_;
-    using __partitioned = _ERROR_;
-
-    template <class, class>
-    using __value_types = _ERROR_;
-
-    template <class, class>
-    using __error_types = _ERROR_;
-
-    template <class, class>
-    using __stopped_types = _ERROR_;
-
-    using __decay_copyable         = _ERROR_;
-    using __nothrow_decay_copyable = _ERROR_;
-    using __values                 = _ERROR_;
-    using __errors                 = _ERROR_;
-    using __all                    = _ERROR_;
-
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator+() const -> _ERROR_;
 
@@ -255,6 +237,10 @@ namespace STDEXEC
   template <class _Arg>
   concept __merror = !STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
+  //! @brief Calls a metafunction with the given arguments.
+  //!
+  //! Given a metafunction, `_Fn`, and args. We expect `_Fn::__f` to be a type
+  //! alias template "implementing" the metafunction `_Fn`.
   STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Args>
   using __mcall = _Fn::template __f<_Args...>;
@@ -293,55 +279,6 @@ namespace STDEXEC
   template <template <class, class> class _Fn, class _First, class _Second>
   concept __mcallable2_q = requires { typename __mcall2_q<_Fn, _First, _Second>; };
 
-  template <class... _Args>
-  concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
-
-  //! The struct `__i` is the implementation of P2300's
-  //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
-  //!
-  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): The purpose
-  //! > of META-APPLY is to make it valid to use non-variadic templates as
-  //! > Variant and Tuple arguments to gather-signatures. — end note]
-  //!
-  //! In addition to avoiding the dreaded "pack expanded into non-pack argument"
-  //! error, it is part of the meta-error propagation mechanism. if any of the
-  //! argument types are a specialization of `_ERROR_`, `__i` will short-circuit
-  //! and return the error. `__minvoke` and `__minvoke_q` are implemented in
-  //! terms of `__i`.
-  template <bool _OK>
-  struct __i;
-
-  template <>
-  struct __i<true>
-  {
-    template <template <class...> class _Fn, class... _Args>
-    using __g = _Fn<_Args...>;
-
-    template <class _Fn, class... _Args>
-    using __f = _Fn::template __f<_Args...>;
-  };
-
-  template <>
-  struct __i<false>
-  {
-    template <template <class...> class, class... _Args>
-    using __g = __mfind_error<_Args...>;
-
-    template <class... _Args>
-    using __f = __mfind_error<_Args...>;
-  };
-
-  template <template <class...> class _Fn, class... _Args>
-  using __minvoke_q = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
-
-  //! @brief Invokes a metafunction with the given arguments.
-  //!
-  //! Given a metafunction, `_Fn`, and args. We expect `_Fn::__f` to be a type
-  //! alias template "implementing" the metafunction `_Fn`.
-  STDEXEC_MODULE_EXPORT_META
-  template <class _Fn, class... _Args>
-  using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
-
   STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __qq
@@ -349,6 +286,40 @@ namespace STDEXEC
     template <class... _Args>
     using __f = _Fn<_Args...>;
   };
+
+  //! `__i` is the implementation of P2300's
+  //! [_`indirect-meta-apply`_](https://eel.is/c++draft/exec#cmplsig-5).
+  //!
+  //! > [Note [1](https://eel.is/c++draft/exec#cmplsig-note-1): The purpose
+  //! > of META-APPLY is to make it valid to use non-variadic templates as
+  //! > Variant and Tuple arguments to gather-signatures. — end note]
+  //!
+  //! It avoids the dreaded "pack expanded into non-pack argument" error. The
+  //! `bool` parameter is always `true`; it is there so that uses of `__i`
+  //! depend on the arguments, which defers the check until they are known. It
+  //! must depend on the argument *types*: nvc++ treats an expression that only
+  //! involves `sizeof...(_Args)` as non-dependent.
+  template <class...>
+  inline constexpr bool __true_v = true;
+
+  template <bool>
+  struct __i
+  {
+    template <class _Fn, class... _Args>
+    using __f = _Fn::template __f<_Args...>;
+
+    template <template <class...> class _Fn, class... _Args>
+    using __g = _Fn<_Args...>;
+  };
+
+  template <template <class...> class _Fn, class... _Args>
+  using __minvoke_q = __i<__true_v<_Args...>>::template __g<_Fn, _Args...>;
+
+  //! Like `__mcall`, but safe to use where `_Args...` is a pack that is
+  //! forwarded from an enclosing alias template and `_Fn` may have a non-variadic
+  //! `__f`. Plain `__mcall` would be rejected there (CWG 1430).
+  template <class _Fn, class... _Args>
+  using __minvoke = __i<__true_v<_Args...>>::template __f<_Fn, _Args...>;
 
   STDEXEC_MODULE_EXPORT_META
   template <template <class> class _Fn>
@@ -367,35 +338,13 @@ namespace STDEXEC
 
   //! This struct template is like
   //! [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
-  //! It turns an alias/class template into a metafunction that also propagates
-  //! "meta-exceptions". All of the meta utilities recognize specializations of
-  //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the
-  //! evaluation of the metafunction and are automatically propagated like an
-  //! exception. Note: `__minvoke` and `__minvoke_q` also participate in this
-  //! error propagation.
-  //!
-  //! This design lets us report type errors briefly at the library boundary,
-  //! even if the actual error happens deep inside a meta-program.
+  //! It turns an alias/class template into a metafunction.
   STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __q
   {
     template <class... _Args>
-    using __f = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
-  };
-
-  template <template <class...> class _Fn>
-  using __mtry_q = __q<_Fn>;
-
-  template <class _Fn>
-  struct __mtry : __mtry_q<_Fn::template __f>
-  {};
-
-  template <__merror _Error>
-  struct __mtry<_Error>
-  {
-    template <class...>
-    using __f = _Error;
+    using __f = __minvoke_q<_Fn, _Args...>;
   };
 
   STDEXEC_MODULE_EXPORT_META
@@ -491,18 +440,18 @@ namespace STDEXEC
   //! second. This is similar to `std::conditional_t<Pred, Then, Else>` but
   //! instantiates fewer templates.
   template <class _Pred, class _Then, class _Else>
-  using __if = __minvoke_q<__detail::__if_t, _Pred, _Then, _Else>;
+  using __if = __detail::__if_t<_Pred, _Then, _Else>;
 
   STDEXEC_MODULE_EXPORT_META
   template <bool _Pred, class _Then, class _Else>
-  using __if_c = __minvoke<__detail::__if_<_Pred>, _Then, _Else>;
+  using __if_c = __mcall<__detail::__if_<_Pred>, _Then, _Else>;
 
   template <class _Pred, class _Then, class _Else, class... _Args>
-  using __minvoke_if = __minvoke<__if<_Pred, _Then, _Else>, _Args...>;
+  using __minvoke_if = __mcall<__if<_Pred, _Then, _Else>, _Args...>;
 
   STDEXEC_MODULE_EXPORT_META
   template <bool _Pred, class _Then, class _Else, class... _Args>
-  using __minvoke_if_c = __minvoke<__if_c<_Pred, _Then, _Else>, _Args...>;
+  using __minvoke_if_c = __mcall<__if_c<_Pred, _Then, _Else>, _Args...>;
 
   STDEXEC_MODULE_EXPORT_META
   template <class _Tp>
@@ -516,7 +465,7 @@ namespace STDEXEC
   struct __mtry_catch_q
   {
     template <class... _Args>
-    using __f = __minvoke<__if_c<__minvocable_q<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __mcall<__if_c<__minvocable_q<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>
@@ -535,17 +484,17 @@ namespace STDEXEC
   using __mwith_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
   template <class _Fn, class _Default, class... _Args>
-  using __minvoke_or = __minvoke<__mwith_default<_Fn, _Default>, _Args...>;
+  using __minvoke_or = __mcall<__mwith_default<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn, class _Default, class... _Args>
-  using __minvoke_or_q = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
+  using __minvoke_or_q = __mcall<__mwith_default_q<_Fn, _Default>, _Args...>;
 
   STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mtransform
   {
     template <class... _Args>
-    using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
+    using __f = __minvoke<_Continuation, __mcall1<_Fn, _Args>...>;
   };
 
 #  define _M0(_Iy, _Ty) , class _Ty ## _Iy
@@ -556,10 +505,10 @@ namespace STDEXEC
   struct __mfold_left_
   {
     template <class _Fn, class _State STDEXEC_PP_REPEAT(8, _M0, _T), class... _Rest>
-    using __f = __minvoke<__mfold_left_<sizeof...(_Rest)>,
-                          _Fn,
-                          STDEXEC_PP_REPEAT(8, _M1, _Fn) _State STDEXEC_PP_REPEAT(8, _M2, _T),
-                          _Rest...>;
+    using __f = __mcall<__mfold_left_<sizeof...(_Rest)>,
+                        _Fn,
+                        STDEXEC_PP_REPEAT(8, _M1, _Fn) _State STDEXEC_PP_REPEAT(8, _M2, _T),
+                        _Rest...>;
   };
 
   template <>
@@ -622,7 +571,7 @@ namespace STDEXEC
   struct __mfold_left
   {
     template <class... _Args>
-    using __f = __minvoke<__mfold_left_<sizeof...(_Args)>, _Fn, _Init, _Args...>;
+    using __f = __mcall<__mfold_left_<sizeof...(_Args)>, _Fn, _Init, _Args...>;
   };
 
 #  undef _M2
@@ -658,21 +607,14 @@ namespace STDEXEC
   struct __mfor<__indices<_Ns...>>
   {
     template <class _Fn>
-    using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
+    using __f = __mcall<_Fn, __msize_t<_Ns>...>;
   };
 
   template <template <class _Np, _Np...> class _Cp, class _Np, _Np... _Ns>
   struct __mfor<_Cp<_Np, _Ns...>>
   {
     template <class _Fn>
-    using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
-  };
-
-  template <class... _What>
-  struct __mfor<_ERROR_<_What...>>
-  {
-    template <class _Fn>
-    using __f = _ERROR_<_What...>;
+    using __f = __mcall<_Fn, std::integral_constant<_Np, _Ns>...>;
   };
 
   STDEXEC_MODULE_EXPORT_META
@@ -763,7 +705,7 @@ namespace STDEXEC
   struct __mcount_if
   {
     template <class... _Ts>
-    using __f = __msize_t<(bool(__minvoke<_Fn, _Ts>::value) + ... + 0)>;
+    using __f = __msize_t<(bool(__mcall1<_Fn, _Ts>::value) + ... + 0)>;
   };
 
   STDEXEC_MODULE_EXPORT_META
@@ -815,23 +757,23 @@ namespace STDEXEC
   struct __mreplace
   {
     template <class... _Args>
-    using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
+    using __f = __mcall<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
   template <class _Old, class _Continuation = __q<__mlist>>
   struct __mremove
   {
     template <class... _Args>
-    using __f = __minvoke<__mconcat<_Continuation>,
-                          __if_c<__same_as<_Args, _Old>, __mlist<>, __mlist<_Args>>...>;
+    using __f = __mcall<__mconcat<_Continuation>,
+                        __if_c<__same_as<_Args, _Old>, __mlist<>, __mlist<_Args>>...>;
   };
 
   template <class _Pred, class _Continuation = __q<__mlist>>
   struct __mremove_if
   {
     template <class... _Args>
-    using __f = __minvoke<__mconcat<_Continuation>,
-                          __if<__minvoke<_Pred, _Args>, __mlist<>, __mlist<_Args>>...>;
+    using __f =
+      __mcall<__mconcat<_Continuation>, __if<__mcall1<_Pred, _Args>, __mlist<>, __mlist<_Args>>...>;
   };
 
   STDEXEC_MODULE_EXPORT_META
@@ -899,15 +841,9 @@ namespace STDEXEC
   using __m_at = __m_at_c<_Np::value, _Ts...>;
 #  endif
 
-  namespace __detail
-  {
-    template <class _Ty, class...>
-    using __mfront_ = _Ty;
-  }  // namespace __detail
-
   STDEXEC_MODULE_EXPORT_META
   template <class... _As>
-  using __mfront = __minvoke_q<__detail::__mfront_, _As...>;
+  using __mfront = __m_at_c<0, _As...>;
 
   template <class... _As>
   using __mback = __m_at_c<sizeof...(_As) - 1, _As...>;
@@ -932,14 +868,14 @@ namespace STDEXEC
   struct __mzip_with2_<_Cp<_Cs...>, _Dp<_Ds...>>
   {
     template <class _Fn, class _Continuation>
-    using __f = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
+    using __f = __minvoke<_Continuation, __mcall2<_Fn, _Cs, _Ds>...>;
   };
 
   template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mzip_with2
   {
     template <class _Cp, class _Dp>
-    using __f = __minvoke<__mzip_with2_<_Cp, _Dp>, _Fn, _Continuation>;
+    using __f = __mcall<__mzip_with2_<_Cp, _Dp>, _Fn, _Continuation>;
   };
 
   template <class _Ty, class _Uy>
@@ -963,14 +899,14 @@ namespace STDEXEC
   struct __mfind_if_<false>
   {
     template <class _Fn, class _Continuation>
-    using __f = __minvoke<_Continuation>;
+    using __f = __mcall<_Continuation>;
   };
 
   template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mfind_if
   {
     template <class... _Args>
-    using __f = __minvoke<__mfind_if_<(sizeof...(_Args) != 0)>, _Fn, _Continuation, _Args...>;
+    using __f = __mcall<__mfind_if_<(sizeof...(_Args) != 0)>, _Fn, _Continuation, _Args...>;
   };
 
   template <class _Needle, class _Continuation = __q<__mlist>>
@@ -984,8 +920,7 @@ namespace STDEXEC
   struct __mfind_i
   {
     template <class... _Args>
-    using __f =
-      __msize_t<(sizeof...(_Args) - __minvoke<__mfind<_Needle, __msize>, _Args...>::value)>;
+    using __f = __msize_t<(sizeof...(_Args) - __mcall<__mfind<_Needle, __msize>, _Args...>::value)>;
   };
 
   template <class... _Booleans>
@@ -1002,7 +937,7 @@ namespace STDEXEC
   template <class _Boolean>
   using __mnot_t = __mbool<!_Boolean::value>;
   template <class _Boolean>
-  using __mnot = __minvoke_q<__mnot_t, _Boolean>;
+  using __mnot = __mnot_t<_Boolean>;
 
   template <class _Fn>
   struct __mall_of
@@ -1095,7 +1030,7 @@ namespace STDEXEC
   {
 #  if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
     template <class... _Ts>
-    using __f = __minvoke<_Continuation, __builtin_dedup_pack<_Ts...>...>;
+    using __f = __mcall<_Continuation, __builtin_dedup_pack<_Ts...>...>;
 #  else
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
@@ -1117,7 +1052,7 @@ namespace STDEXEC
     template <class _Continuation, auto _Ids, std::size_t... _Is>
     struct __msort_apply<_Continuation, _Ids, __indices<_Is...>>
     {
-      using __t = __minvoke<_Continuation, __msplice<_Ids[_Is]>...>;
+      using __t = __mcall<_Continuation, __msplice<_Ids[_Is]>...>;
     };
   }  // namespace __detail
 

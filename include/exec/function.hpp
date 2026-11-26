@@ -1149,7 +1149,7 @@ namespace experimental::execution
     template <template <class...> class _List, class... _Types>
     struct __canonical<_List<_Types...>>
     {
-      using type = __minvoke<__munique<__msort<__q<_List>>>, _Types...>;
+      using type = __mcall<__munique<__msort<__q<_List>>>, _Types...>;
     };
 
     //! Map the type-list _Sigs to a canonical form, which sorts and uniques the

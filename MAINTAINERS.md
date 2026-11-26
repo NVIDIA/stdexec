@@ -314,9 +314,6 @@ them, even ones that are errors:
   function returns something that cannot be connected, `let_value`'s state
   holds a placeholder in place of its operation, and the handler reports
   `_FUNCTION_DOES_NOT_RETURN_A_SENDER_`.
-* Do not pass an `__mexception` type (a type error) through `__if_c` or any other
-  metafunction built on `__minvoke`: they propagate an error argument, whatever
-  the condition. Use `std::conditional_t`, or a specialization.
 * A handler that connects a sender made at run time must check that it can.
   If the sender does not type-check in its environment, return the token that
   starts it anyway (without connecting it): the walk then asks the sender for

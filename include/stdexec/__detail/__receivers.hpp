@@ -105,7 +105,7 @@ namespace STDEXEC
   struct set_value_t : __detail::__completion_tag<__disposition::__value>
   {
     template <class _Fn, class... _As>
-    using __f = __minvoke<_Fn, _As...>;
+    using __f = __mcall<_Fn, _As...>;
 
     //! @brief Deliver a value completion to @c __rcvr.
     //!
@@ -177,7 +177,7 @@ namespace STDEXEC
   {
     template <class _Fn, class... _Args>
       requires(sizeof...(_Args) == 1)
-    using __f = __minvoke<_Fn, _Args...>;
+    using __f = __mcall<_Fn, _Args...>;
 
     //! @brief Deliver an error completion to @c __rcvr.
     //!
@@ -243,7 +243,7 @@ namespace STDEXEC
   {
     template <class _Fn, class... _Args>
       requires(sizeof...(_Args) == 0)
-    using __f = __minvoke<_Fn, _Args...>;
+    using __f = __mcall<_Fn, _Args...>;
 
     //! @brief Deliver a stopped completion to @c __rcvr.
     //!

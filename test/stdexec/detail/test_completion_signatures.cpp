@@ -61,7 +61,7 @@ namespace
 
     using tr = ex::__mtransform<set_value_f, ex::__q<ex::__mlist>>;
 
-    using res = ex::__minvoke<tr, int, double, string>;
+    using res = ex::__mcall<tr, int, double, string>;
     using expected =
       ex::__mlist<ex::set_value_t(int), ex::set_value_t(double), ex::set_value_t(string)>;
     static_assert(is_same_v<res, expected>);
@@ -75,7 +75,7 @@ namespace
 
     using tr = ex::__mtransform<set_error_f, ex::__q<ex::__mlist>>;
 
-    using res      = ex::__minvoke<tr, exception_ptr, error_code, string>;
+    using res      = ex::__mcall<tr, exception_ptr, error_code, string>;
     using expected = ex::__mlist<ex::set_error_t(exception_ptr),
                                  ex::set_error_t(error_code),
                                  ex::set_error_t(string)>;
@@ -89,7 +89,7 @@ namespace
 
     using tr = ex::__mtransform<set_error_f, ex::__q<ex::__mlist>>;
 
-    using res      = ex::__minvoke<tr, exception_ptr>;
+    using res      = ex::__mcall<tr, exception_ptr>;
     using expected = ex::__mlist<ex::set_error_t(exception_ptr)>;
     static_assert(is_same_v<res, expected>);
   }

@@ -59,7 +59,7 @@ namespace STDEXEC
     struct __gather_sigs_fn<set_stopped_t>
     {
       template <class _Sigs, class _Tuple, class _Variant>
-      using __f = __stopped_types_t<_Sigs, _Variant, __minvoke<_Tuple>>;
+      using __f = __stopped_types_t<_Sigs, _Variant, __mcall<_Tuple>>;
     };
   }  // namespace __detail
 

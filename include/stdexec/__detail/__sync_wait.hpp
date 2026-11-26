@@ -87,7 +87,7 @@ namespace STDEXEC::__sync_wait
 
   template <class _CvSender>
   using __sync_wait_with_variant_result_t =
-    __result_t<__result_of<into_variant, _CvSender>, __q<__midentity>>;
+    __result_t<__result_of<into_variant, _CvSender>, __q1<__midentity>>;
 
   struct __state
   {
@@ -206,10 +206,10 @@ namespace STDEXEC::__sync_wait
     __sync_wait_error_t<_SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_, _CvSender>;
 
   template <class _CvSender>
-  concept __valid_sync_wait_argument = __ok<__minvoke<
-    __mtry_catch_q<__single_sender_value_t, __q<__too_many_successful_completions_error_t>>,
-    _CvSender,
-    __env>>;
+  concept __valid_sync_wait_argument = __ok<
+    __mcall<__mtry_catch_q<__single_sender_value_t, __q<__too_many_successful_completions_error_t>>,
+            _CvSender,
+            __env>>;
 }  // namespace STDEXEC::__sync_wait
 
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)

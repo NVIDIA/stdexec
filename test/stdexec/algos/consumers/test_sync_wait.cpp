@@ -163,7 +163,7 @@ namespace
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
 
     using variant_t =
-      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+      ex::__mcall<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
     std::optional<variant_t> res = ex::sync_wait_with_variant(std::move(snd));
 
     CHECK(res.has_value());

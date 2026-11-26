@@ -261,6 +261,38 @@ if(NOT STDEXEC_BUILD_MODULES)
     NAME test_when_all_fail1 SOURCE
     stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
 
+  stdexec_add_build_failure_test(
+    NAME test_let_error_fail1 SOURCE stdexec/algos/adaptors/test_let_error_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_let_stopped_fail1 SOURCE stdexec/algos/adaptors/test_let_stopped_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_let_value_fail2 SOURCE stdexec/algos/adaptors/test_let_value_fail2.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_starts_on_fail1 SOURCE stdexec/algos/adaptors/test_starts_on_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_continues_on_fail1 SOURCE stdexec/algos/adaptors/test_continues_on_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_into_variant_fail1 SOURCE stdexec/algos/adaptors/test_into_variant_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_upon_stopped_fail1 SOURCE stdexec/algos/adaptors/test_upon_stopped_fail1.cpp
+    LIBRARIES stdexec)
+
+  stdexec_add_build_failure_test(
+    NAME test_read_env_fail1 SOURCE stdexec/algos/factories/test_read_env_fail1.cpp
+    LIBRARIES stdexec)
+
   # With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect reports a sender that
   # completes with a result it did not declare as a deprecation warning. When
   # stdexec is not the main project, its include directory is a SYSTEM one, and

@@ -85,7 +85,7 @@ namespace
     ex::sender auto snd = std::move(in_snd) | ex::into_variant();
 
     using variant_t =
-      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+      ex::__mcall<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
     wait_for_value(std::move(snd), variant_t{std::make_tuple(13)});
   }
 
@@ -132,7 +132,7 @@ namespace
                                                                              | ex::into_variant());
 
     using variant_t =
-      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+      ex::__mcall<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
     check_val_types<ex::__mset<pack<variant_t>>>(
       fallible_just{13}
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); })

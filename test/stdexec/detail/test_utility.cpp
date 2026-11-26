@@ -36,15 +36,16 @@ namespace
   TEST_CASE("transform identity will return the given types (wrapped in __mlist)",
             "[detail][transform]")
   {
-    using tr  = __mtransform<__q<__midentity>>;
-    using res = __minvoke<tr, int, char>;
+    using tr  = __mtransform<__q1<__midentity>>;
+    using res = __mcall<tr, int, char>;
     static_assert(is_same_v<res, __mlist<int, char>>);
   }
 
-  TEST_CASE("transform can avoid the __mlist wrapping with __q<__midentity>", "[detail][transform]")
+  TEST_CASE("transform can avoid the __mlist wrapping with __q1<__midentity>",
+            "[detail][transform]")
   {
-    using tr  = __mtransform<__q<__midentity>, __q<__midentity>>;
-    using res = __minvoke<tr, int>;
+    using tr  = __mtransform<__q1<__midentity>, __q1<__midentity>>;
+    using res = __mcall<tr, int>;
     static_assert(is_same_v<res, int>);
   }
 
@@ -54,7 +55,7 @@ namespace
   TEST_CASE("transform can wrap input types", "[detail][transform]")
   {
     using tr  = __mtransform<__q<as_optional>>;
-    using res = __minvoke<tr, int, char>;
+    using res = __mcall<tr, int, char>;
     static_assert(is_same_v<res, __mlist<optional<int>, optional<char>>>);
   }
 
@@ -62,21 +63,20 @@ namespace
             "[detail][transform]")
   {
     using tr  = __mtransform<__q<as_optional>, __q<tuple>>;
-    using res = __minvoke<tr, int, char>;
+    using res = __mcall<tr, int, char>;
     static_assert(is_same_v<res, tuple<optional<int>, optional<char>>>);
   }
   TEST_CASE("sort orders a type list independently of the input order", "[detail][sort]")
   {
     using sort = __msort<>;
-    static_assert(
-      is_same_v<__minvoke<sort, int, char, double>, __minvoke<sort, double, int, char>>);
-    static_assert(is_same_v<__minvoke<sort, int>, __mlist<int>>);
+    static_assert(is_same_v<__mcall<sort, int, char, double>, __mcall<sort, double, int, char>>);
+    static_assert(is_same_v<__mcall<sort, int>, __mlist<int>>);
   }
 
   TEST_CASE("sort accepts an empty type list", "[detail][sort]")
   {
-    static_assert(is_same_v<__minvoke<__msort<>>, __mlist<>>);
-    static_assert(is_same_v<__minvoke<__munique<__msort<>>>, __mlist<>>);
+    static_assert(is_same_v<__mcall<__msort<>>, __mlist<>>);
+    static_assert(is_same_v<__mcall<__munique<__msort<>>>, __mlist<>>);
   }
 
 #if !STDEXEC_USE_MODULES()
