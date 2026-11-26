@@ -67,6 +67,13 @@ namespace STDEXEC
   //////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
 #  if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 2100)
+#    if STDEXEC_CLANG() && !STDEXEC_CLANG_CL()
+  // Clang mangles __decay in a function signature, as a vendor-extended type, so the alias
+  // can name it directly. Each use is then one type, not a nested specialization's worth.
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Ty>
+  using __decay_t = __decay(_Ty);
+#    else
   namespace __tt
   {
     template <class>
@@ -80,9 +87,13 @@ namespace STDEXEC
     };
   }  // namespace __tt
 
+  // GCC rejects __decay in a function signature (see #1439), so the alias names it through a
+  // member alias template of a class that depends on _Ty. (__wrap<_Ty> * is well-formed for
+  // every _Ty, unlike a function returning _Ty, which an array or a function cannot be.)
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
-  using __decay_t = __tt::__decay_<bool(sizeof(__declfn_t<_Ty>))>::template __f<_Ty>;
+  using __decay_t = __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
+#    endif
 #  else
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>

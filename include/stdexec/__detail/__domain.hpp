@@ -206,16 +206,20 @@ namespace STDEXEC
 
   namespace __detail
   {
+    // (These name the query calls directly, not through __call_result_t, an alias that
+    // would add its own types to each use.)
     template <class _Env>
-    using __starting_domain_t = __call_result_t<get_domain_t, _Env const &>;
+    using __starting_domain_t = decltype(STDEXEC::get_domain(__declval<_Env const &>()));
 
     template <class _Tag, class _Sender, class... _Env>
     using __completing_domain_t =
-      __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, _Env const &...>;
+      decltype(STDEXEC::get_completion_domain<_Tag>(__declval<env_of_t<_Sender>>(),
+                                                    __declval<_Env const &>()...));
 
     template <class _Sch, class... _Env>
     using __scheduler_domain_t =
-      __call_result_t<get_completion_domain_t<set_value_t>, _Sch, _Env...>;
+      decltype(STDEXEC::get_completion_domain<set_value_t>(__declval<_Sch>(),
+                                                           __declval<_Env>()...));
 
     constexpr auto __find_pos(bool const *const __begin, bool const *const __end) noexcept -> size_t
     {
