@@ -306,10 +306,11 @@ namespace STDEXEC
       using __new_sndr_t        = decltype(__new_sndr);
 
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-      if constexpr (sender_in<__new_sndr_t, env_of_t<_Receiver>>)
+      if constexpr (!__child_receiver<_Receiver> && sender_in<__new_sndr_t, env_of_t<_Receiver>>)
       {
         // Instantiate __debug_sender via completion_signatures_of_t to check that
-        // the actual completions match the declared completions.
+        // the actual completions match the declared completions. (Only at the outermost
+        // connect: see __child_receiver.)
         using __checked_signatures
           [[maybe_unused]] = completion_signatures_of_t<__new_sndr_t, env_of_t<_Receiver>>;
       }

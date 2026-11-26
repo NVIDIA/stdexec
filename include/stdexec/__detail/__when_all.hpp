@@ -437,7 +437,7 @@ namespace STDEXEC
 
     template <class _Env, class... _CvSenders>
     using __uses_stop_source_t =
-      __mbool<(__can_fail<completion_signatures_of_t<_CvSenders, _Env>> || ...)>;
+      __mbool<(__can_fail<__completion_signatures_of_t<_CvSenders, _Env>> || ...)>;
 
     template <class _Env, class... _CvSenders>
     using __env_t = __if<__uses_stop_source_t<_Env, _CvSenders...>, __stoppable_env_t<_Env>, _Env>;

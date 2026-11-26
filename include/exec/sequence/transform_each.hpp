@@ -59,7 +59,8 @@ namespace experimental::execution
     template <class _Receiver, class _Adaptor>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       template <class _Item>
       auto set_next(_Item&& __item) & noexcept(

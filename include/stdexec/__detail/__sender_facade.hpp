@@ -501,7 +501,8 @@ namespace STDEXEC
     template <class _Algo, class _Key, class _State, class _Env>
     struct __receiver : _Algo::__receiver_base
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr explicit __receiver(_State *__state) noexcept
@@ -560,7 +561,8 @@ namespace STDEXEC
     template <class _Algo, class _Key, class _State, class _Env>
     struct __nested_receiver : _Algo::__receiver_base
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr explicit __nested_receiver(_State *__state) noexcept

@@ -177,7 +177,8 @@ namespace experimental::execution
     template <class _Range, class _Receiver>
     struct __next_receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       constexpr void set_value() noexcept
       {

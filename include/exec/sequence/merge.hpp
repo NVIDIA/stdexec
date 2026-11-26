@@ -42,7 +42,8 @@ namespace experimental::execution
     template <class _Receiver>
     struct __result_receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       void set_value() noexcept
       {

@@ -207,6 +207,16 @@ namespace STDEXEC
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
+  // With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect checks a sender's completions by also
+  // connecting it to a debug receiver, which instantiates its children's operations as well.
+  // So the check happens once, at the outermost connect: a receiver to which an algorithm
+  // connects a child (or subscribes a sequence) declares a member type __child_receiver_t,
+  // and connecting to it skips the check. (Checking each child again would instantiate the
+  // operations below it again, at every level.)
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Receiver>
+  concept __child_receiver = requires { typename __decay_t<_Receiver>::__child_receiver_t; };
+
   namespace __debug
   {
     struct __completion_signatures
