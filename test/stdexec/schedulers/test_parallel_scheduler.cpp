@@ -29,6 +29,7 @@
 import std;
 #else
 #  include <atomic>
+#  include <chrono>
 #  include <memory>
 #  include <stdexcept>
 #  include <thread>
@@ -614,6 +615,88 @@ struct tracked_value_sender
   destructor_tracked_value    value_;
 };
 
+// Like tracked_value_sender, but it completes with set_stopped. Its operation state holds
+// the tracked value.
+struct stopped_tracked_value_sender
+{
+  using sender_concept = ex::sender_tag;
+  using completion_signatures =
+    ex::completion_signatures<ex::set_value_t(destructor_tracked_value), ex::set_stopped_t()>;
+
+  template <class Receiver>
+  struct operation
+  {
+    using operation_state_concept = ex::operation_state_tag;
+
+    Receiver                 rcvr_;
+    destructor_tracked_value value_;
+
+    void start() & noexcept
+    {
+      ex::set_stopped(std::move(rcvr_));
+    }
+  };
+
+  [[nodiscard]]
+  auto get_env() const noexcept -> tracked_value_sender::env
+  {
+    return {sched_};
+  }
+
+  template <ex::receiver Receiver>
+  auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+  {
+    return {std::move(rcvr), std::move(value_)};
+  }
+
+  STDEXEC::parallel_scheduler sched_;
+  destructor_tracked_value    value_;
+};
+
+// A value that, once it has been moved from, takes a while to destroy on a thread other than
+// the one that made it, so that a test can tell whether a pool thread destroys it before or
+// after the operation that holds it completes. (Destroying it on the test's thread is quick,
+// so that it does not give a pool thread time to catch up.)
+struct slowly_destroyed_value
+{
+  explicit slowly_destroyed_value(std::shared_ptr<std::atomic<int>> live) noexcept
+    : live_(std::move(live))
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+  }
+
+  slowly_destroyed_value(slowly_destroyed_value const & other) noexcept
+    : live_(other.live_)
+    , origin_(other.origin_)
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+  }
+
+  slowly_destroyed_value(slowly_destroyed_value&& other) noexcept
+    : live_(other.live_)
+    , origin_(other.origin_)
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+    other.moved_from_ = true;
+  }
+
+  auto operator=(slowly_destroyed_value const &) -> slowly_destroyed_value& = delete;
+  auto operator=(slowly_destroyed_value&&) -> slowly_destroyed_value&       = delete;
+
+  ~slowly_destroyed_value()
+  {
+    if (moved_from_ && std::this_thread::get_id() != origin_)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    live_->fetch_sub(1, std::memory_order_relaxed);
+  }
+
+  std::shared_ptr<std::atomic<int>> live_;
+  std::thread::id                   origin_     = std::this_thread::get_id();
+  bool                              moved_from_ = false;
+};
+
 TEST_CASE("can change the implementation of parallel scheduler at runtime",
           "[scheduler][parallel_scheduler]")
 {
@@ -672,6 +755,66 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values",
     REQUIRE(result.has_value());
   }
 
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values before it completes",
+          "[scheduler][parallel_scheduler]")
+{
+  // The predecessor completes on the pool, so the bulk operation completes there too. The
+  // values that it stored, and what they were moved from, must be destroyed before the
+  // operation completes, or by its operation state, not afterwards on the pool thread.
+  //
+  // The predecessor sends the value from its operation state. (A then sender would send a
+  // temporary, which lives on the thread that ran the predecessor until the bulk work has been
+  // scheduled, and the bulk work can complete on another thread before that.)
+  auto live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    auto sched = STDEXEC::get_parallel_scheduler();
+    auto snd   = ex::starts_on(sched, ex::just(slowly_destroyed_value{live}))
+             | ex::bulk(ex::par, 16, [](std::size_t, slowly_destroyed_value&) noexcept {});
+
+    auto result = ex::sync_wait(std::move(snd));
+    REQUIRE(result.has_value());
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys the predecessor's operation state after stopped",
+          "[scheduler][parallel_scheduler]")
+{
+  auto live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    auto sched = STDEXEC::get_parallel_scheduler();
+    auto snd   = stopped_tracked_value_sender{sched, destructor_tracked_value{live}}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+
+    auto result = ex::sync_wait(std::move(snd));
+    CHECK_FALSE(result.has_value());
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys the predecessor's operation state if it is not "
+          "started",
+          "[scheduler][parallel_scheduler]")
+{
+  auto live  = std::make_shared<std::atomic<int>>(0);
+  int  state = -1;
+
+  {
+    auto sched = STDEXEC::get_parallel_scheduler();
+    auto snd   = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+
+    auto op = ex::connect(std::move(snd), logging_receiver{state});
+  }
+
+  CHECK(state == -1);
   CHECK(live->load(std::memory_order_relaxed) == 0);
 }
 

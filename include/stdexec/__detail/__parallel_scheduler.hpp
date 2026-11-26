@@ -393,7 +393,11 @@ namespace STDEXEC
       }
 
       //! Calls `set_value()` on the final receiver of the bulk operation, using
-      //! the values from the previous sender.
+      //! the values from the previous sender. They are sent from the operation
+      //! state, which destroys them (see `__system_bulk_op`). Moving them out
+      //! first would destroy what was moved from after the operation completes,
+      //! on the thread that completes it, maybe after the receiver's owner is
+      //! done with the operation.
       void set_value() noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
@@ -405,11 +409,8 @@ namespace STDEXEC
             return;
           }
         }
-        auto __args = std::move(__base_t::__arguments_.__get());
-        __base_t::__arguments_.__destroy();
-        std::destroy_at(this);
         auto const __fun = STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value));
-        __visit(__fun, std::move(__args), std::move(__state->__rcvr_));
+        __visit(__fun, std::move(__base_t::__arguments_.__get()), std::move(__state->__rcvr_));
       }
 
       //! Calls `set_error()` on the final receiver of the bulk operation,
@@ -417,8 +418,6 @@ namespace STDEXEC
       void set_error(std::exception_ptr __ex) noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        __base_t::__arguments_.__destroy();
-        std::destroy_at(this);
         STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__ex));
       }
 
@@ -426,8 +425,6 @@ namespace STDEXEC
       void set_stopped() noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        __base_t::__arguments_.__destroy();
-        std::destroy_at(this);
         STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
@@ -552,7 +549,7 @@ namespace STDEXEC
       _Rcvr __rcvr_;
 
       //! Function that prepares the preallocated storage for calling the
-      //! backend.
+      //! backend. It is null once it has been called.
       std::span<std::byte> (*__prepare_storage_for_backend)(__bulk_state_base*){nullptr};
       //! The size of the bulk operation.
       _Size __size_;
@@ -561,6 +558,10 @@ namespace STDEXEC
       __std::atomic<bool> __has_exception_{false};
       //! The exception thrown by the first bulk item call that throws.
       std::exception_ptr __exception_;
+
+      //! The object in `__forward_args_helper_` that holds the values sent by
+      //! the previous sender, once there is one. The operation state destroys it.
+      __forward_args_helper_t* __forward_args_{nullptr};
 
       __bulk_state_base(_Fn&& __fun, _Rcvr&& __rcvr, _Size __size)
         : __fun_{std::move(__fun)}
@@ -601,6 +602,7 @@ namespace STDEXEC
             __typed_forward_args_receiver<_Previous, _BulkState, _As...>;
           auto __r = ::new (&__state_.__forward_args_helper_)
             __typed_forward_args_receiver_t(std::forward<_As>(__as)...);
+          __state_.__forward_args_ = __r;
 
           auto __scheduler = __sched_;
           auto __size      = static_cast<size_t>(__state_.__size_);
@@ -700,6 +702,8 @@ namespace STDEXEC
         auto* __self = static_cast<__system_bulk_op*>(__base);
         // We don't need anymore the storage for the previous operation state.
         __self->__preallocated_.template __as<__inner_op_state>().~__inner_op_state();
+        // Say that it is gone (see the destructor).
+        __self->__prepare_storage_for_backend = nullptr;
         // Reuse the preallocated storage for the backend.
         return __self->__preallocated_.__as_storage();
       }
@@ -728,6 +732,23 @@ namespace STDEXEC
       __system_bulk_op(__system_bulk_op&&)                          = delete;
       auto operator=(__system_bulk_op const &) -> __system_bulk_op& = delete;
       auto operator=(__system_bulk_op&&) -> __system_bulk_op&       = delete;
+
+      //! Destroys what the storage still holds: the inner operation state,
+      //! unless the previous sender completed with a value (it is still there if
+      //! the previous sender completed with an error or stopped, or the operation
+      //! was not started), and the values that the previous sender sent.
+      ~__system_bulk_op()
+      {
+        if (__bulk_state_base_t::__prepare_storage_for_backend != nullptr)
+        {
+          std::destroy_at(&__preallocated_.template __as<__inner_op_state>());
+        }
+        if (auto* __args = __bulk_state_base_t::__forward_args_)
+        {
+          __args->__arguments_.__destroy();
+          std::destroy_at(__args);
+        }
+      }
 
       //! Starts the work stored in `*this`.
       void start() & noexcept
