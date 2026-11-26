@@ -361,6 +361,23 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Wait for Docker Engine
+        shell: pwsh
+        run: |
+          $retries = 30
+          while ($retries -gt 0) {
+            docker info > $null 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Docker Engine is ready."
+              exit 0
+            }
+            Write-Host "Waiting for Docker Engine to start..."
+            Start-Sleep -Seconds 2
+            $retries--
+          }
+          Write-Error "Docker Engine failed to start in time."
+          exit 1
+
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
         run: |
