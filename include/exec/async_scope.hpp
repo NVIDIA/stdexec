@@ -675,7 +675,17 @@ namespace experimental::execution
       using sender_concept = STDEXEC::sender_tag;
 
       __future(__future&&)                    = default;
-      auto operator=(__future&&) -> __future& = default;
+      auto operator=(__future&& __other) noexcept -> __future&
+      {
+        if (this != &__other)
+        {
+          // Apply the existing destructor's pending-state ownership transfer
+          // to the old future instead of deleting its unique_ptr directly.
+          __future __old{std::move(*this)};
+          __state_ = std::move(__other.__state_);
+        }
+        return *this;
+      }
 
       ~__future() noexcept
       {
