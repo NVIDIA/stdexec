@@ -393,18 +393,18 @@ namespace STDEXEC
         static_cast<_Sender &&>(__sndr));
     }
 
-    // The I-th child of a sender, with the sender's value category
+    // The I-th child of a sender, with the sender's value category. (Read from the sender's
+    // member __child_t, not by applying __m_at to its template arguments, a metaprogram that
+    // adds several types to each use.)
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender, std::size_t _Idx>
     using __nth_child_of_t =
-      __copy_cvref_t<_Sender,
-                     __mapply<__mbind_front_q<__m_at, __msize_t<_Idx + 2>>, __decay_t<_Sender>>>;
+      __copy_cvref_t<_Sender, typename __decay_t<_Sender>::template __child_t<_Idx>>;
 
     // The data of a sender, with the sender's value category
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
-    using __data_of_t =
-      __copy_cvref_t<_Sender, __mapply<__mbind_front_q<__m_at, __msize_t<1>>, __decay_t<_Sender>>>;
+    using __data_of_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__data_t>;
 
     // The number of children of a sender
     STDEXEC_MODULE_EXPORT_AUTHORING
@@ -2302,6 +2302,14 @@ namespace STDEXEC
       using __tag_t      = _Tag;
       using __data_t     = _Data;
       using __children_t = __mlist<_Child...>;
+
+#  if STDEXEC_HAS_BUILTIN(__type_pack_element)
+      template <std::size_t _Idx>
+      using __child_t = __type_pack_element<_Idx, _Child...>;
+#  else
+      template <std::size_t _Idx>
+      using __child_t = __m_at_c<_Idx, _Child...>;
+#  endif
 
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<__algorithm<_Tag>, __copy_cvref_t<_Self, __sender>, _Receiver>;
