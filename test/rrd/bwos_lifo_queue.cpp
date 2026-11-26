@@ -21,6 +21,38 @@
 
 #include <optional>
 
+// The value type of the queues below. Its payload is an rl::var, so Relacy
+// checks every access to a ring buffer slot for data races: a thief that reads
+// a slot without happening after the owner's write of that slot is reported,
+// even when the value it reads happens to be the expected one.
+struct item
+{
+  rl::var<int> value_;
+
+  item()
+    : value_(0)
+  {}
+
+  item(int value)  // NOLINT(google-explicit-constructor)
+    : value_(value)
+  {}
+
+  item(item const & other)
+    : value_(other.value_($).load())
+  {}
+
+  auto operator=(item const & other) -> item&
+  {
+    value_($).store(other.value_($).load());
+    return *this;
+  }
+
+  operator int() const  // NOLINT(google-explicit-constructor)
+  {
+    return value_($).load();
+  }
+};
+
 // Test 1: Owner pushes items, single thief steals.
 //
 // Invariant: every pushed item is either popped by owner or stolen by thief
@@ -31,9 +63,9 @@ struct bwos_push_steal_no_loss : rl::test_suite<bwos_push_steal_no_loss, 2>
   static constexpr std::size_t block_size = 2;
   static constexpr std::size_t num_items  = 4;
 
-  std::optional<exec::bwos::lifo_queue<int>> queue{};
-  int                                        owner_sum{0};
-  int                                        thief_sum{0};
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         owner_sum{0};
+  int                                         thief_sum{0};
 
   void before()
   {
@@ -99,10 +131,10 @@ struct bwos_grant_steal_race : rl::test_suite<bwos_grant_steal_race, 2>
   static constexpr std::size_t num_blocks = 4;
   static constexpr std::size_t block_size = 2;
 
-  std::optional<exec::bwos::lifo_queue<int>> queue{};
-  int                                        owner_count{0};
-  int                                        thief_count{0};
-  bool                                       seen[7]{};
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         owner_count{0};
+  int                                         thief_count{0};
+  bool                                        seen[7]{};
 
   void before()
   {
@@ -183,9 +215,9 @@ struct bwos_takeover_steal_race : rl::test_suite<bwos_takeover_steal_race, 2>
   static constexpr std::size_t num_blocks = 4;
   static constexpr std::size_t block_size = 2;
 
-  std::optional<exec::bwos::lifo_queue<int>> queue{};
-  int                                        owner_count{0};
-  int                                        thief_count{0};
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         owner_count{0};
+  int                                         thief_count{0};
 
   void before()
   {
@@ -249,11 +281,11 @@ struct bwos_two_thieves : rl::test_suite<bwos_two_thieves, 3>
   static constexpr std::size_t block_size = 2;
   static constexpr int         num_items  = 4;
 
-  std::optional<exec::bwos::lifo_queue<int>> queue{};
-  int                                        owner_count{0};
-  int                                        thief1_count{0};
-  int                                        thief2_count{0};
-  bool                                       seen[5]{};
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         owner_count{0};
+  int                                         thief1_count{0};
+  int                                         thief2_count{0};
+  bool                                        seen[5]{};
 
   void before()
   {
@@ -332,10 +364,10 @@ struct bwos_reclaim_race : rl::test_suite<bwos_reclaim_race, 2>
   static constexpr std::size_t num_blocks = 2;
   static constexpr std::size_t block_size = 2;
 
-  std::optional<exec::bwos::lifo_queue<int>> queue{};
-  int                                        total_owner{0};
-  int                                        total_thief{0};
-  int                                        total_pushed{0};
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         total_owner{0};
+  int                                         total_thief{0};
+  int                                         total_pushed{0};
 
   void before()
   {
@@ -411,6 +443,109 @@ struct bwos_reclaim_race : rl::test_suite<bwos_reclaim_race, 2>
   }
 };
 
+// Test 6: Two thieves steal while the owner moves back and forth across the
+// boundary between the two blocks: popping out of an empty block takes the
+// previous block back (takeover()), and pushing into a full one grants it to
+// the thieves again. A thief must happen after the owner's write of every
+// slot it claims, including when it claims a slot of a block that has been
+// granted again. This needs the acquire on the claiming CAS in steal(): the
+// thief's earlier load of tail_ can return a value older than the owner's last
+// write of the slot.
+struct bwos_two_thieves_regrant : rl::test_suite<bwos_two_thieves_regrant, 3>
+{
+  static constexpr std::size_t num_blocks = 2;
+  static constexpr std::size_t block_size = 2;
+  static constexpr int         num_items  = 8;
+
+  std::optional<exec::bwos::lifo_queue<item>> queue{};
+  int                                         seen[num_items + 1]{};
+  int                                         pushed{0};
+
+  void before()
+  {
+    queue.emplace(num_blocks, block_size);
+    for (auto& s: seen)
+    {
+      s = 0;
+    }
+    pushed = 0;
+  }
+
+  void after()
+  {
+    while (true)
+    {
+      int val = queue->pop_back();
+      if (val == 0)
+      {
+        break;
+      }
+      take(val);
+    }
+    for (int i = 1; i <= pushed; ++i)
+    {
+      RL_ASSERT(seen[i] == 1);
+    }
+    queue.reset();
+  }
+
+  void take(int val)
+  {
+    RL_ASSERT(val >= 1 && val <= num_items);
+    RL_ASSERT(seen[val] == 0);
+    seen[val] = 1;
+  }
+
+  void push(int val)
+  {
+    while (!queue->push_back(val))
+    {
+      if (int popped = queue->pop_back(); popped != 0)
+      {
+        take(popped);
+      }
+    }
+    pushed = val;
+  }
+
+  void pop()
+  {
+    if (int val = queue->pop_back(); val != 0)
+    {
+      take(val);
+    }
+  }
+
+  void thread(unsigned thread_id)
+  {
+    if (thread_id == 0)
+    {
+      push(1);
+      push(2);
+      push(3);  // grants block 0
+      pop();    // 3
+      pop();    // takes block 0 back
+      push(4);  // refills the slot just popped
+      push(5);  // grants block 0 again
+      pop();
+      pop();
+      push(6);
+      push(7);
+      push(8);
+    }
+    else
+    {
+      for (int attempt = 0; attempt < 3; ++attempt)
+      {
+        if (int val = queue->steal_front(); val != 0)
+        {
+          take(val);
+        }
+      }
+    }
+  }
+};
+
 auto main() -> int
 {
   rl::test_params p;
@@ -418,10 +553,13 @@ auto main() -> int
   p.execution_depth_limit = 10000;
   p.search_type           = rl::random_scheduler_type;
 
-  rl::simulate<bwos_push_steal_no_loss>(p);
-  rl::simulate<bwos_grant_steal_race>(p);
-  rl::simulate<bwos_takeover_steal_race>(p);
-  rl::simulate<bwos_two_thieves>(p);
-  rl::simulate<bwos_reclaim_race>(p);
-  return 0;
+  // rl::simulate reports failures by returning false; it does not abort.
+  bool ok = true;
+  ok &= rl::simulate<bwos_push_steal_no_loss>(p);
+  ok &= rl::simulate<bwos_grant_steal_race>(p);
+  ok &= rl::simulate<bwos_takeover_steal_race>(p);
+  ok &= rl::simulate<bwos_two_thieves>(p);
+  ok &= rl::simulate<bwos_reclaim_race>(p);
+  ok &= rl::simulate<bwos_two_thieves_regrant>(p);
+  return ok ? 0 : 1;
 }
