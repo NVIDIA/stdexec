@@ -35,7 +35,8 @@ namespace experimental::execution
     template <class Receiver>
     struct _receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       template <class... Args>
       constexpr void set_value(Args&&... args) noexcept
@@ -121,7 +122,8 @@ namespace experimental::execution
     template <class Receiver>
     struct _receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       template <__completion_tag Tag, class... Args>
         requires __callable<Tag, Receiver, Args...>

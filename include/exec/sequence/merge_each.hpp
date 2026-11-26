@@ -265,7 +265,8 @@ namespace experimental::execution
     template <class _ErrorStorage, class _EnvFn>
     struct __error_next_receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
 
@@ -525,7 +526,8 @@ namespace experimental::execution
     template <class _NestedValueReceiver, class _ErrorStorage>
     struct __receive_nested_value
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
 
@@ -715,7 +717,8 @@ namespace experimental::execution
     template <class _OperationBase>
     struct __receive_nested_values
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       using __error_storage_t = _OperationBase::__error_storage_t;
       using __receiver_t      = decltype(_OperationBase::__rcvr_);
@@ -827,7 +830,7 @@ namespace experimental::execution
       template <class _Sequence, class _Sender, class... _Env>
       using __nested_sequences_from_item_type_t =
         STDEXEC::__minvoke<__gather_sequences_t<_Sequence, _Sender, _Env...>,
-                           __sequence_aware_completion_signatures_of_t<_Sender, _Env...>>;
+                           STDEXEC::__completion_signatures_of_t<_Sender, _Env...>>;
 
       template <class _Sequence, class... _Env>
       struct __nested_sequences_fn
@@ -870,7 +873,7 @@ namespace experimental::execution
       {
         template <class _Sender>
         using __f =
-          STDEXEC::__error_types_t<__sequence_aware_completion_signatures_of_t<_Sender, _Env...>,
+          STDEXEC::__error_types_t<STDEXEC::__completion_signatures_of_t<_Sender, _Env...>,
                                    STDEXEC::__qq<STDEXEC::__mlist>>;
       };
 
@@ -970,7 +973,8 @@ namespace experimental::execution
     template <class _NextReceiver, class _OperationBase, class _NestedSeqOp>
     struct __receive_nested_sequence
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       using __next_op_base_t = __next_operation_base<_NextReceiver, _OperationBase, _NestedSeqOp>;
 
@@ -1111,7 +1115,8 @@ namespace experimental::execution
     template <class _OperationBase, class _NestedSeqOp>
     struct __receive_nested_sequences
     {
-      using receiver_concept = receiver_tag;
+      using receiver_concept   = receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       template <class _NestedSequenceSender>
       using __next_sequence_sender_t =

@@ -151,7 +151,8 @@ namespace experimental::execution
     struct __receiver
     {
      public:
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       explicit __receiver(__opstate_base<_Receiver, _ResultVariant>* __op) noexcept
         : __op_{__op}

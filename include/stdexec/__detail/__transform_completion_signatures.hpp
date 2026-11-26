@@ -187,7 +187,7 @@ namespace STDEXEC
             template <class...> class _ErrorTransform = __cmplsigs::__default_set_error,
             class _StoppedSigs                        = completion_signatures<set_stopped_t()>>
   using __transform_completion_signatures_of_t =
-    __transform_completion_signatures_t<completion_signatures_of_t<_Sndr, _Env>,
+    __transform_completion_signatures_t<__completion_signatures_of_t<_Sndr, _Env>,
                                         _MoreSigs,
                                         _ValueTransform,
                                         _ErrorTransform,
@@ -589,7 +589,7 @@ namespace STDEXEC
             class _StoppedSigs                        = completion_signatures<set_stopped_t()>>
   using transform_completion_signatures_of
     [[deprecated(STDEXEC_TRANSFORM_COMPLETION_SIGNATURES_DEPRECATION_MESSAGE)]] =
-      __transform_completion_signatures_t<completion_signatures_of_t<_Sndr, _Env>,
+      __transform_completion_signatures_t<__completion_signatures_of_t<_Sndr, _Env>,
                                           _MoreSigs,
                                           _ValueTransform,
                                           _ErrorTransform,

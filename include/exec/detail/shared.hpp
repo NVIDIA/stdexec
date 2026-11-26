@@ -92,7 +92,8 @@ namespace experimental::execution::__shared
   template <class _Env, class _Variant>
   struct __receiver
   {
-    using receiver_concept = receiver_tag;
+    using receiver_concept   = receiver_tag;
+    using __child_receiver_t = void;  // see STDEXEC::__child_receiver
     template <class... _As>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr void set_value(_As &&...__as) noexcept

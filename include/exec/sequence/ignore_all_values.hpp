@@ -72,7 +72,8 @@ namespace experimental::execution
     template <class _ItemReceiver, class _ResultsStorage>
     struct __item_receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
       __item_operation_base<_ItemReceiver, _ResultsStorage>* __op_;
 
       template <class... _Args>
@@ -255,7 +256,8 @@ namespace experimental::execution
     template <class _State>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_tag;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
 
       constexpr explicit __receiver(_State* __state) noexcept
         : __state_{__state}

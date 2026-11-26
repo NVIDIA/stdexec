@@ -125,7 +125,7 @@ namespace experimental::execution
     && STDEXEC::__mapply<
       STDEXEC::__mbind_front_q<STDEXEC::__mset_contains_t,
                                STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>>,
-      STDEXEC::completion_signatures_of_t<_Sender, _Env>>::value;
+      STDEXEC::__completion_signatures_of_t<_Sender, _Env>>::value;
 
   namespace __sequence_sndr
   {
@@ -176,8 +176,9 @@ namespace experimental::execution
     template <class _Receiver>
     struct __stopped_means_break
     {
-      using receiver_concept = STDEXEC::receiver_tag;
-      using __token_t        = stop_token_of_t<env_of_t<_Receiver>>;
+      using receiver_concept   = STDEXEC::receiver_tag;
+      using __child_receiver_t = void;  // see STDEXEC::__child_receiver
+      using __token_t          = stop_token_of_t<env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
       {
@@ -784,15 +785,19 @@ namespace experimental::execution
         {
           // Instantiate the sequence completion signatures and item_types to
           // check that the actual completions and item_types match the
-          // expected completions and values. (N.B. don't use
+          // expected completions and values, at the outermost subscribe only
+          // (see STDEXEC::__child_receiver). (N.B. don't use
           // completion_signatures_of_t here: sequence senders are not regular
           // senders, and with STDEXEC_ENABLE_EXTRA_TYPE_CHECKING=ON that
           // alias would instantiate __debug_sender, which tries to connect()
           // the sequence sender.)
-          using __checked_signatures [[maybe_unused]] =
-            __sequence_completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
-          using __checked_item_types
-            [[maybe_unused]] = item_types_of_t<_Sequence, env_of_t<_Receiver>>;
+          if constexpr (!__child_receiver<_Receiver>)
+          {
+            using __checked_signatures [[maybe_unused]] =
+              __sequence_completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
+            using __checked_item_types
+              [[maybe_unused]] = item_types_of_t<_Sequence, env_of_t<_Receiver>>;
+          }
         }
         else
         {
