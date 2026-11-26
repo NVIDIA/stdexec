@@ -155,9 +155,10 @@ namespace STDEXEC
   template <class _Tp>
   using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
+  // (Not __copy_cvref_fn<_From>::__f<_To>, which would add that alias's types to each use.)
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _From, class _To>
-  using __copy_cvref_t = __copy_cvref_fn<_From>::template __f<_To>;
+  using __copy_cvref_t = decltype(__cpcvr<_From>)::template __f<_To>;
 
   template <class>
   inline constexpr bool __is_const_ = false;
