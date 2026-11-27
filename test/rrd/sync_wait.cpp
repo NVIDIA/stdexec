@@ -42,6 +42,5 @@ auto main() -> int
   p.iteration_count       = 50000;
   p.execution_depth_limit = 10000;
   p.search_type           = rl::random_scheduler_type;
-  rl::simulate<sync_wait_bg_thread>(p);
-  return 0;
+  return rl::simulate<sync_wait_bg_thread>(p) ? 0 : 1;
 }
