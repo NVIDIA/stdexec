@@ -88,9 +88,25 @@ namespace STDEXEC
       // is. A caller holding a new sender an earlier step returned by value
       // skips such a step, so that the sender can be returned without being
       // moved.
+      //
+      // (The tag's transformation is checked only when the domain's isn't: naming the concept
+      // would check it even where `&&` skips it, and checking it can instantiate the tag's
+      // default transformation, which a domain that transforms the sender replaces.)
       template <class _Sndr, class _Env>
-      static constexpr bool __leaves_alone = __same_as<__domain_for_t<_Sndr, _Env>, default_domain>
-                                          && !__has_tag_transform_sender<_OpTag, _Sndr, _Env>;
+      static consteval auto __is_leaves_alone() noexcept -> bool
+      {
+        if constexpr (__same_as<__domain_for_t<_Sndr, _Env>, default_domain>)
+        {
+          return !__has_tag_transform_sender<_OpTag, _Sndr, _Env>;
+        }
+        else
+        {
+          return false;
+        }
+      }
+
+      template <class _Sndr, class _Env>
+      static constexpr bool __leaves_alone = __is_leaves_alone<_Sndr, _Env>();
 
       template <class _Sndr, class _Env, bool _Nothrow = true>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
@@ -237,6 +253,15 @@ namespace STDEXEC
                 __detail::__transform_sender<__detail::__completing_domain_t<void, _Sndr, _Env>,
                                              set_value_t>>;
 
+    // Does neither step transform the sender? Then transform_sender returns it as it is,
+    // without composing the steps.
+    template <class _Sndr, class _Env>
+    static constexpr bool __leaves_alone =
+      __detail::__transform_sender<__detail::__starting_domain_t<_Env>,
+                                   start_t>::template __leaves_alone<_Sndr, _Env>
+      && __detail::__transform_sender<__detail::__completing_domain_t<void, _Sndr, _Env>,
+                                      set_value_t>::template __leaves_alone<_Sndr, _Env>;
+
    public:
     // NOT TO SPEC:
     template <class _Sndr>
@@ -247,13 +272,24 @@ namespace STDEXEC
       return static_cast<_Sndr&&>(__sndr);
     }
 
-    template <class _Sndr, class _Env, class _ImplFn = __impl_fn_t<_Sndr, _Env>>
+    template <class _Sndr, class _Env>
+      requires __leaves_alone<_Sndr, _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
+    constexpr auto operator()(_Sndr&& __sndr, _Env const &) const noexcept -> _Sndr&&
+    {
+      return static_cast<_Sndr&&>(__sndr);
+    }
+
+    // (__impl_fn_t is named in the return type, not in a default template argument, which
+    // would be substituted before the constraint is checked.)
+    template <class _Sndr, class _Env>
+      requires(!__leaves_alone<_Sndr, _Env>)
     STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
     constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const
-      noexcept(__nothrow_callable<_ImplFn, _Sndr, _Env const &>)
-        -> __call_result_t<_ImplFn, _Sndr, _Env const &>
+      noexcept(__nothrow_callable<__impl_fn_t<_Sndr, _Env>, _Sndr, _Env const &>)
+        -> __call_result_t<__impl_fn_t<_Sndr, _Env>, _Sndr, _Env const &>
     {
-      return _ImplFn()(static_cast<_Sndr&&>(__sndr), __env);
+      return __impl_fn_t<_Sndr, _Env>()(static_cast<_Sndr&&>(__sndr), __env);
     }
   };
 

@@ -414,6 +414,12 @@ namespace
   }
 
 #  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  // GCC 12 wrongly warns that connect's copy of the receiver's std::stop_token (in the
+  // environment it passes to transform_sender) can free the shared stop state before the
+  // receiver is moved. The receiver's own reference keeps the state alive.
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wuse-after-free")
+
   enum class completion
   {
     value,
@@ -472,6 +478,8 @@ namespace
     REQUIRE(future.wait_for(std::chrono::seconds(10)) == std::future_status::ready);
     CHECK(future.get() == completion::stopped);
   }
+
+  STDEXEC_PRAGMA_POP()
 #  endif
 }  // namespace
 #endif
