@@ -847,8 +847,7 @@ namespace experimental::execution::__shared
     }
 
     template <class _Sender, class _Receiver>
-    static constexpr auto
-    __get_state([[maybe_unused]] _Sender &&__sndr, [[maybe_unused]] _Receiver __rcvr) noexcept
+    static constexpr auto __get_state_type() noexcept
     {
       using __handle_t = __algo::__handle_t<_Sender>;
       using __state_t  = __local_state<__algo,
@@ -858,9 +857,29 @@ namespace experimental::execution::__shared
                                        _Receiver>;
       if constexpr (__same_as<_Tag, ensure_started_t> && std::is_lvalue_reference_v<_Sender>)
       {
-        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                            _WHERE_(_IN_ALGORITHM_, ensure_started_t),
-                            _WHY_(_AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_)>();
+        return __mtype<
+          __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                       _WHERE_(_IN_ALGORITHM_, ensure_started_t),
+                       _WHY_(_AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_)>>();
+      }
+      else
+      {
+        return __mtype<__state_t>{};
+      }
+    }
+
+    template <class _Sender, class _Receiver>
+    using __get_state_type_t = decltype(__get_state_type<_Sender, _Receiver>())::__t;
+
+    template <class _Sender, class _Receiver>
+    static constexpr auto
+    __get_state([[maybe_unused]] _Sender &&__sndr, [[maybe_unused]] _Receiver __rcvr) noexcept
+      -> __get_state_type_t<_Sender, _Receiver>
+    {
+      using __state_t = __get_state_type_t<_Sender, _Receiver>;
+      if constexpr (STDEXEC::__merror<__state_t>)
+      {
+        return __state_t();
       }
       else
       {
