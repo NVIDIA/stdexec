@@ -63,13 +63,13 @@ namespace STDEXEC
     extern __q<__decayed_std_tuple> const __as_single;
 
     template <>
-    inline constexpr __q<__midentity> __as_single<1>;
+    inline constexpr __q1<__midentity> __as_single<1>;
 
     template <>
     inline constexpr __mconst<void> __as_single<0>;
 
     template <class... _Values>
-    using __single_value_t = __minvoke<decltype(__as_single<sizeof...(_Values)>), _Values...>;
+    using __single_value_t = __mcall<decltype(__as_single<sizeof...(_Values)>), _Values...>;
 
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<

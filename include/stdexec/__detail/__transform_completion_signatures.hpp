@@ -176,7 +176,7 @@ namespace STDEXEC
                                                _ValueTransform,
                                                _ErrorTransform,
                                                _StoppedSigs,
-                                               __mtry_q<__concat_completion_signatures_t>::__f,
+                                               __concat_completion_signatures_t,
                                                _MoreSigs>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -340,7 +340,7 @@ namespace STDEXEC
     {
       if constexpr ((__minvocable<_Fn, _Args> && ...))
       {
-        return completion_signatures<_SetTag(__minvoke<_Fn, _Args>...)>();
+        return completion_signatures<_SetTag(__mcall1<_Fn, _Args>...)>();
       }
       else
       {
@@ -578,7 +578,7 @@ namespace STDEXEC
                                                  _ValueTransform,
                                                  _ErrorTransform,
                                                  _StoppedSigs,
-                                                 __mtry_q<__concat_completion_signatures_t>::__f,
+                                                 __concat_completion_signatures_t,
                                                  _MoreSigs>;
 
   template <class _Sndr,

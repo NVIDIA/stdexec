@@ -151,7 +151,7 @@ namespace experimental::execution
       {
         return []<class... _ItemLists>(_ItemLists...)
         {
-          return STDEXEC::__minvoke<
+          return STDEXEC::__mcall<
             STDEXEC::__mconcat<STDEXEC::__munique<STDEXEC::__qq<exec::item_types>>>,
             _ItemLists...>();
         };

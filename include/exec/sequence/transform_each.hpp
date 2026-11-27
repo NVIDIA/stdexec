@@ -163,7 +163,7 @@ namespace experimental::execution
       {
         return []<class... _Senders>(STDEXEC::__mtype<_Senders>...)
         {
-          return STDEXEC::__minvoke<STDEXEC::__munique<STDEXEC::__qq<item_types>>, _Senders...>();
+          return STDEXEC::__mcall<STDEXEC::__munique<STDEXEC::__qq<item_types>>, _Senders...>();
         };
       }
 

@@ -705,9 +705,9 @@ namespace STDEXEC
    public:
     template <class _Sender, class _Env>
     using __impl_t =
-      __minvoke<__mremove_if<__mbind_back_q<__never_sends_t, _Sender, __fwd_env_t<_Env const &>>,
-                             __qq<__impl>>,
-                _SetTags...>;
+      __mcall<__mremove_if<__mbind_back_q<__never_sends_t, _Sender, __fwd_env_t<_Env const &>>,
+                           __qq<__impl>>,
+              _SetTags...>;
 
     template <class _Sender, class _Env>
     constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept

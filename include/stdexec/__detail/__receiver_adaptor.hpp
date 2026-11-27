@@ -103,7 +103,7 @@ namespace STDEXEC
       __if_c<__has_base, __mbind_back_q<__copy_cvref_t, _Base>, __q<__base_from_derived_t>>;
 
     template <class _Self>
-    using __base_t = __minvoke<__get_base_fn, _Self&&>;
+    using __base_t = __mcall<__get_base_fn, _Self&&>;
 
     template <class _Self>
     STDEXEC_ATTRIBUTE(host, device)
