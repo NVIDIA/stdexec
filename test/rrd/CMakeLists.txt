@@ -38,9 +38,11 @@ function(add_relacy_test target_name)
   add_executable(${target_name} ${target_name}.cpp)
 
   target_link_libraries(${target_name} PRIVATE relacy)
-  # Disable TBB - Relacy simulates all threads with fibers anyway...
-  target_compile_definitions(${target_name}
-                             PRIVATE _GLIBCXX_USE_TBB_PAR_BACKEND=0)
+  # Disable TBB - Relacy simulates all threads with fibers anyway... Also use
+  # std::atomic, which Relacy can see, instead of cuda::std::atomic.
+  target_compile_definitions(
+    ${target_name} PRIVATE _GLIBCXX_USE_TBB_PAR_BACKEND=0
+                           STDEXEC_DISABLE_CUDA_STD_ATOMIC)
   target_include_directories(${target_name} PRIVATE ../../include)
   target_include_directories(${target_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   set_target_properties(
