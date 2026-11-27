@@ -847,28 +847,30 @@ namespace experimental::execution::__shared
     }
 
     template <class _Sender, class _Receiver>
-    static constexpr auto
-    __get_state([[maybe_unused]] _Sender &&__sndr, [[maybe_unused]] _Receiver __rcvr) noexcept
+    using __local_state_t = __local_state<__algo,
+                                          _Tag,
+                                          typename __algo::__handle_t<_Sender>::__child_type,
+                                          typename __algo::__handle_t<_Sender>::__env_type,
+                                          _Receiver>;
+
+    template <class _Sender, class _Receiver>
+    static constexpr auto __get_state(_Sender &&__sndr, _Receiver __rcvr) noexcept  //
+      -> __local_state_t<_Sender, _Receiver>
     {
-      using __handle_t = __algo::__handle_t<_Sender>;
-      using __state_t  = __local_state<__algo,
-                                       _Tag,
-                                       typename __handle_t::__child_type,
-                                       typename __handle_t::__env_type,
-                                       _Receiver>;
-      if constexpr (__same_as<_Tag, ensure_started_t> && std::is_lvalue_reference_v<_Sender>)
-      {
-        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                            _WHERE_(_IN_ALGORITHM_, ensure_started_t),
-                            _WHY_(_AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_)>();
-      }
-      else
-      {
-        // An rvalue sender gives the operation its reference to the shared state. A split
-        // sender's operation can share it.
-        return __state_t(__facade::__get_data(static_cast<_Sender &&>(__sndr)).__sh_state_,
-                         static_cast<_Receiver &&>(__rcvr));
-      }
+      using __state_t = __local_state_t<_Sender, _Receiver>;
+      // An rvalue sender gives the operation its reference to the shared state. A split
+      // sender's operation can share it.
+      return __state_t(__facade::__get_data(static_cast<_Sender &&>(__sndr)).__sh_state_,
+                       static_cast<_Receiver &&>(__rcvr));
+    }
+
+    template <class _Sender, class _Receiver>
+      requires __same_as<_Tag, ensure_started_t> && std::is_lvalue_reference_v<_Sender>
+    static constexpr auto __get_state(_Sender &&, __ignore) noexcept
+    {
+      return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                          _WHERE_(_IN_ALGORITHM_, ensure_started_t),
+                          _WHY_(_AN_ENSURE_STARTED_SENDER_CAN_ONLY_BE_CONNECTED_AS_AN_RVALUE_)>();
     }
 
     template <class _State, class _Children>
