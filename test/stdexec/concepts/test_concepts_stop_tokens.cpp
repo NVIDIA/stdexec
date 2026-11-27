@@ -76,6 +76,45 @@ namespace
 #endif
   }
 
+  struct runtime_stop_possible_token
+  {
+    template <class Fun>
+    struct callback_type
+    {
+      template <class Init>
+      explicit callback_type(runtime_stop_possible_token const &, Init&&) noexcept
+      {}
+    };
+
+    static auto stop_possible() noexcept -> bool
+    {
+      return false;
+    }
+
+    auto stop_requested() const noexcept -> bool
+    {
+      return false;
+    }
+
+    auto operator==(runtime_stop_possible_token const &) const noexcept -> bool = default;
+  };
+
+  struct constexpr_stop_possible_token : runtime_stop_possible_token
+  {
+    static constexpr auto stop_possible() noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  TEST_CASE("unstoppable_token requires a constant-false static stop_possible", "[concepts]")
+  {
+    STATIC_REQUIRE(::STDEXEC::stoppable_token<runtime_stop_possible_token>);
+    STATIC_REQUIRE(!::STDEXEC::unstoppable_token<runtime_stop_possible_token>);
+    STATIC_REQUIRE(::STDEXEC::stoppable_token<constexpr_stop_possible_token>);
+    STATIC_REQUIRE(!::STDEXEC::unstoppable_token<constexpr_stop_possible_token>);
+  }
+
   TEST_CASE("inplace_stop_callback supports class template argument deduction", "[stop_token]")
   {
     ::STDEXEC::inplace_stop_source   source;
