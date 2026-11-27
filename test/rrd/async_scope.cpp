@@ -137,13 +137,14 @@ struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_c
 
 auto main() -> int
 {
+  bool            ok = true;
   rl::test_params p;
   p.iteration_count       = 100000;
   p.execution_depth_limit = 10000;
-  rl::simulate<drop_async_scope_future>(p);
-  rl::simulate<attach_async_scope_future>(p);
-  rl::simulate<async_scope_future_set_result>(p);
-  rl::simulate<async_scope_request_stop<0>>(p);
-  rl::simulate<async_scope_request_stop<1>>(p);
-  return 0;
+  ok &= rl::simulate<drop_async_scope_future>(p);
+  ok &= rl::simulate<attach_async_scope_future>(p);
+  ok &= rl::simulate<async_scope_future_set_result>(p);
+  ok &= rl::simulate<async_scope_request_stop<0>>(p);
+  ok &= rl::simulate<async_scope_request_stop<1>>(p);
+  return ok ? 0 : 1;
 }
