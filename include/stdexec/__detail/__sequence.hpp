@@ -250,7 +250,7 @@ namespace STDEXEC
         , __env2s_(__later_t::__mk_env2s(__sndr, STDEXEC::get_env(__rcvr_)))
         , __sndrs_(__later_t::__take_senders(static_cast<_Sender &&>(__sndr)))
       {
-        if constexpr (__nbr != 0 && !__walking)
+        if constexpr (__nbr != 0 && !__walking())
         {
           if constexpr (__attaches<0>())
           {
@@ -276,7 +276,11 @@ namespace STDEXEC
       {
         using __t = __variant<__op_t<_Is>...>;
       };
-      static constexpr bool __walking = __facade::__walking_v<_Receiver>;
+      static consteval auto __walking() noexcept -> bool
+      {
+        return __facade::__walking_receiver<_Receiver>;
+      }
+
       using __ops_t =
         __facade::__lazy_state_ops_t<_Receiver, __ops_lazy, __variant<__facade::__walk_op>>;
 
@@ -348,6 +352,10 @@ namespace STDEXEC
       template <class _Sender, class _Receiver, class... _Subscribing>
       using __state_t =
         __seq_state<_Sender, _Receiver, __make_indices<__nbr_children_of<_Sender>>, _Subscribing...>;
+
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver, class... _Subscribing>
+      using __state_type = __state_t<_Sender, _Receiver, _Subscribing...>;
 
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
@@ -428,7 +436,7 @@ namespace STDEXEC
         using __started_t  = __facade::__effects<__facade::__starts<__facade::__child<_Idx>>>;
 
         // In a walk, only the effects matter (and the state holds no operations to make).
-        if constexpr (_State::__walking)
+        if constexpr (_State::__walking())
         {
           if constexpr (_State::template __nothrow_attach<_Idx>())
             return __started_t();

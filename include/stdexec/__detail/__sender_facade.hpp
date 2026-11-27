@@ -694,9 +694,41 @@ namespace STDEXEC
     struct __subscribing_t
     {};
 
+    // Does the algorithm name the type of its state with an alias, __state_type?
+    template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
+    concept __declares_state_type = requires {
+      typename _Algo::template __state_type<_Sender, _Receiver, _Subscribing...>;
+    };
+
+    // (A class keyed only by whether the algorithm declares __state_type, so that the debug
+    // information, which names the class when it names the state's type by this alias, does
+    // not repeat the types of the sender and the receiver.)
+    template <bool _Declared>
+    struct __state_type_of
+    {
+      template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
+      using __f = decltype(_Algo::__get_state(__declval<_Sender>(),
+                                              __declval<_Receiver>(),
+                                              _Subscribing()...));
+    };
+
+    template <>
+    struct __state_type_of<true>
+    {
+      template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
+      using __f = _Algo::template __state_type<_Sender, _Receiver, _Subscribing...>;
+    };
+
+    // The type of the algorithm's state: the one it declares with __state_type, or else the
+    // type that __get_state returns. Naming the type of a call needs the function's exception
+    // specification ([except.spec]), and its body if its return type is deduced. An algorithm
+    // whose state holds operations declares __state_type, so that the walk, which needs only
+    // the type, does not ask whether making the state can throw: that would name the
+    // operations below the state.
     template <class _Algo, class _Sender, class _Receiver, class... _Subscribing>
     using __state_type_t =
-      decltype(_Algo::__get_state(__declval<_Sender>(), __declval<_Receiver>(), _Subscribing()...));
+      __state_type_of<__declares_state_type<_Algo, _Sender, _Receiver, _Subscribing...>>::
+        template __f<_Algo, _Sender, _Receiver, _Subscribing...>;
 
     // Is the child keyed by __child<_Idx> subscribed? It is if it is the item source of the
     // sender, of type _Sender, and the sender is subscribed.
@@ -745,15 +777,17 @@ namespace STDEXEC
       using __f = __walk_op;
     };
 
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Rcvr, template <class...> class _Fn, class... _Args>
-    using __state_op_t = __op_or_walk_op<
-      __std::derived_from<_Rcvr, __receiver_archetype_base>>::template __f<_Fn, _Args...>;
-
-    // Is the state's receiver an archetype, as it is in a walk?
+    // Is the state's receiver an archetype, as it is in a walk? Then the state's operations
+    // are never made or started (the state is for a walk, or for asking whether connecting
+    // can throw), so it holds placeholders for them. (Whether making the state can throw is
+    // still asked of the real operations.)
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Rcvr>
-    inline constexpr bool __walking_v = __std::derived_from<_Rcvr, __receiver_archetype_base>;
+    concept __walking_receiver = __std::derived_from<_Rcvr, __receiver_archetype_base>;
+
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Rcvr, template <class...> class _Fn, class... _Args>
+    using __state_op_t = __op_or_walk_op<__walking_receiver<_Rcvr>>::template __f<_Fn, _Args...>;
 
     // The type of the operations that a state holds, as _Lazy::__t (a class that names it, so
     // that it is not instantiated unless used), or _Walk if the state is for a walk.
@@ -773,24 +807,8 @@ namespace STDEXEC
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Rcvr, class _Lazy, class _Walk>
-    using __lazy_state_ops_t = __lazy_state_ops<__walking_v<_Rcvr>>::template __f<_Lazy, _Walk>;
-
-    // Is a state's value of noexcept(...) that of the trait _Trait (a class with a static
-    // member `value`)? Not for a walk, whose state is never constructed: it is true, without
-    // instantiating the trait (which would name the operations below the state). Clang
-    // instantiates the exception specification of __get_state to get the state's type, and a
-    // concept-id in a disjunction is satisfied even when the other operand decides it, so
-    // the trait is what makes this lazy.
-    template <bool _Walking, class _Trait>
-    inline constexpr bool __nothrow_unless_walking_v = _Trait::value;
-
-    template <class _Trait>
-    inline constexpr bool __nothrow_unless_walking_v<true, _Trait> = true;
-
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Rcvr, class _Trait>
-    inline constexpr bool __nothrow_state_v =
-      __nothrow_unless_walking_v<__std::derived_from<_Rcvr, __receiver_archetype_base>, _Trait>;
+    using __lazy_state_ops_t =
+      __lazy_state_ops<__walking_receiver<_Rcvr>>::template __f<_Lazy, _Walk>;
 
     struct __walk_attach_t
     {

@@ -166,9 +166,20 @@ namespace STDEXEC
       struct __types<__mlist<_Ts...>>
       {
         using __tuple_t = __tuple<_Ts...>;
-        using __op_t    = __result_op_of<__minvoke_or_q<__invoke_result_t, void, __fn_t, _Ts&...>,
-                                         __receiver2_t<_Ts...>,
-                                         _Ts...>::__t;
+      };
+
+      // The operation of the sender that the function returns when it is called with the
+      // results in _List. (Kept apart from __types, which the results' storage names, so that
+      // naming the storage does not name the operations: see __ops_lazy.)
+      template <class _List>
+      struct __result_op_for;
+
+      template <class... _Ts>
+      struct __result_op_for<__mlist<_Ts...>>
+      {
+        using __t = __result_op_of<__minvoke_or_q<__invoke_result_t, void, __fn_t, _Ts&...>,
+                                   __receiver2_t<_Ts...>,
+                                   _Ts...>::__t;
       };
 
       // The child is connected with the state. The operation of the sender that the
@@ -182,8 +193,13 @@ namespace STDEXEC
       struct __variants
       {
         using __args_t = __variant<typename __types<_Lists>::__tuple_t...>;
-        using __ops_t  = __variant<connect_result_t<__child_t, __child_rcvr_t>,
-                                   typename __types<_Lists>::__op_t...>;
+      };
+
+      template <class... _Lists>
+      struct __ops_variant
+      {
+        using __t = __variant<connect_result_t<__child_t, __child_rcvr_t>,
+                              typename __result_op_for<_Lists>::__t...>;
       };
 
       using __variants_t = __mapply_q<__variants, __args_lists_t>;
@@ -192,11 +208,15 @@ namespace STDEXEC
       // and of the senders that the function returns: they would be connected to archetypes.)
       struct __ops_lazy
       {
-        using __t = __variants_t::__ops_t;
+        using __t = __mapply_q<__ops_variant, __args_lists_t>::__t;
       };
       using __ops_t =
         __facade::__lazy_state_ops_t<_Receiver, __ops_lazy, __variant<__facade::__walk_op>>;
-      static constexpr bool __walking = __facade::__walking_v<_Receiver>;
+
+      static consteval auto __walking() noexcept -> bool
+      {
+        return __facade::__walking_receiver<_Receiver>;
+      }
 
       static constexpr bool __nothrow_v = __nothrow_decay_copyable<__data_of<_Sender>>
                                        && __nothrow_connectable<__child_t, __child_rcvr_t>;
@@ -209,7 +229,7 @@ namespace STDEXEC
         , __env2_(__mk_secondary_env_t<__set_tag_t>()(__facade::__get_child<0>(__sndr),
                                                       STDEXEC::get_env(__rcvr_)))
       {
-        if constexpr (!__walking)
+        if constexpr (!__walking())
         {
           __ops_.__emplace_from(STDEXEC::connect,
                                 __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
@@ -287,6 +307,10 @@ namespace STDEXEC
 
       using __facade::__defaults::__nested_sender;
 
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver>
+      using __state_type = __state<_LetTag, _Sender, _Receiver>;
+
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
@@ -361,7 +385,7 @@ namespace STDEXEC
           using __started_t = __facade::__effects<__facade::__starts<__key_t>>;
 
           // In a walk, only the effects matter (and the state holds no operations to make).
-          if constexpr (_State::__walking)
+          if constexpr (_State::__walking())
           {
             if constexpr (__nothrow_v)
               return __started_t();
