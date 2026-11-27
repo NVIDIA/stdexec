@@ -161,7 +161,7 @@ namespace STDEXEC
     template <sender _Sender, __movable_value _Fun>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const
-      noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto;
+      noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> auto;
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
     //!        sender, produces `upon_error(sndr, __fun)`.
@@ -195,11 +195,11 @@ namespace STDEXEC
   template <sender _Sender, __movable_value _Fun>
   STDEXEC_ATTRIBUTE(host, device)
   inline constexpr auto upon_error_t::operator()(_Sender && __sndr, _Fun __fun) const
-    noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto
+    noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> auto
   {
-    return upon_error_t::__sender{upon_error_t(),
-                                  static_cast<_Fun&&>(__fun),
-                                  static_cast<_Sender&&>(__sndr)};
+    return STDEXEC::__check_well_formed(upon_error_t::__sender{upon_error_t(),
+                                                               static_cast<_Fun&&>(__fun),
+                                                               static_cast<_Sender&&>(__sndr)});
   }
 
   //! @brief The customization point object for the @c upon_error sender

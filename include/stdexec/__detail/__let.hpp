@@ -68,11 +68,10 @@ namespace STDEXEC
     struct __let_t
     {
       template <sender _Sender, __movable_value _Fun>
-      constexpr auto operator()(_Sender&& __sndr, _Fun __fn) const -> __well_formed_sender auto
+      constexpr auto operator()(_Sender&& __sndr, _Fun __fn) const -> auto
       {
-        return __facade::__sender{_LetTag(),
-                                  static_cast<_Fun&&>(__fn),
-                                  static_cast<_Sender&&>(__sndr)};
+        return STDEXEC::__check_well_formed(
+          __facade::__sender{_LetTag(), static_cast<_Fun&&>(__fn), static_cast<_Sender&&>(__sndr)});
       }
 
       template <class _Fun>

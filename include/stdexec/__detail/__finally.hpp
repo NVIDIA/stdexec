@@ -57,12 +57,12 @@ namespace STDEXEC
   {
     template <sender _Initial, sender _Final>
     constexpr auto operator()(_Initial&& __initial, _Final&& __final) const  //
-      -> __well_formed_sender auto
+      -> auto
     {
-      return __facade::__sender{__finally_t(),
-                                __(),
-                                static_cast<_Initial&&>(__initial),
-                                static_cast<_Final&&>(__final)};
+      return STDEXEC::__check_well_formed(__facade::__sender{__finally_t(),
+                                                             __(),
+                                                             static_cast<_Initial&&>(__initial),
+                                                             static_cast<_Final&&>(__final)});
     }
 
     template <sender _Final>

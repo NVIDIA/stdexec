@@ -148,11 +148,12 @@ namespace experimental::execution
   struct repeat_until_t
   {
     template <STDEXEC::sender _Sender>
-    constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> auto
     {
-      return STDEXEC::__facade::__sender{repeat_until_t(),
-                                         STDEXEC::__(),
-                                         static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        STDEXEC::__facade::__sender{repeat_until_t(),
+                                    STDEXEC::__(),
+                                    static_cast<_Sender &&>(__sndr)});
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -167,11 +168,10 @@ namespace experimental::execution
   struct repeat_t
   {
     template <STDEXEC::sender _Sender>
-    constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> auto
     {
-      return STDEXEC::__facade::__sender{repeat_t(),
-                                         STDEXEC::__(),
-                                         static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        STDEXEC::__facade::__sender{repeat_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)});
     }
 
     STDEXEC_ATTRIBUTE(always_inline)

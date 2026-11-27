@@ -50,11 +50,10 @@ namespace STDEXEC
     // customize it: it has the parts of that sender (the scheduler, and just's sender as
     // continues_on keeps it), and continues_on's algorithm.
     template <scheduler _Scheduler, __movable_value... _Values>
-    constexpr auto
-    operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto
+    constexpr auto operator()(_Scheduler&& __sched, _Values&&... __vals) const -> auto
     {
-      return __facade::__retagged<__transfer_just_t>(
-        continues_on(just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched)));
+      return STDEXEC::__check_well_formed(__facade::__retagged<__transfer_just_t>(
+        continues_on(just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched))));
     }
 
     // transform __transfer_just(sch, vals...) into continues_on(just(vals...), sch): the

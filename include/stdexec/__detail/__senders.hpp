@@ -74,13 +74,23 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
-  STDEXEC_MODULE_EXPORT_AUTHORING
+  //! Returns its argument after checking that it is a well-formed sender: one
+  //! that type-checks on its own (`sender_in<_Sender>`) or whose completions
+  //! depend on its environment (`dependent_sender<_Sender>`). A sender that is
+  //! not well-formed is reported by a `static_assert` that names the reason,
+  //! rather than by an unsatisfied return-type constraint whose explanation
+  //! compilers truncate.
   template <class _Sender>
-  concept __well_formed_sender = sender_in<_Sender> || dependent_sender<_Sender>;
-
-  template <__well_formed_sender _Sender>
-  constexpr void __ensure_well_formed_sender() noexcept
-  {}
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto __check_well_formed(_Sender __sndr) noexcept(__nothrow_move_constructible<_Sender>)
+    -> _Sender
+  {
+    if constexpr (!sender_in<_Sender> && !dependent_sender<_Sender>)
+    {
+      STDEXEC::__diagnose_sender_concept_failure<_Sender>();
+    }
+    return static_cast<_Sender&&>(__sndr);
+  }
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

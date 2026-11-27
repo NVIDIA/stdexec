@@ -165,8 +165,7 @@ Each `operator()` overload gets its own short comment block with
 //! @pre @c __fun must be invocable with every value-completion argument
 //!      pack of @c __sndr ...
 template <sender _Sender, __movable_value _Fun>
-constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const
-  -> __well_formed_sender auto;
+constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> auto;
 ```
 
 Document **every overload**, including the pipeable (unary) form.

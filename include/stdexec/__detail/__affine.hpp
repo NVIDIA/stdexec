@@ -68,9 +68,10 @@ namespace STDEXEC
   struct affine_t : sender_adaptor_closure<affine_t>
   {
     template <sender _Sender>
-    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> auto
     {
-      return __facade::__sender{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        __facade::__sender{affine_t(), __(), static_cast<_Sender &&>(__sndr)});
     }
 
     // Keeps the older spelling `sndr | affine()` working.

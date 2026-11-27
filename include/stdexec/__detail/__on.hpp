@@ -443,17 +443,16 @@ namespace STDEXEC
     //!          @c get_start_scheduler) before forwarding @c __sndr's
     //!          completion to the receiver.
     template <scheduler _Scheduler, sender _Sender>
-    constexpr auto
-    operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> auto
     {
       // (on(sch, sndr) keeps the sender that it runs. See __on::__sndr.)
       using __starts_on_t = __call_result_t<starts_on_t, _Scheduler, _Sender>;
-      return __on::__sndr<on_t, __, __starts_on_t>{
+      return STDEXEC::__check_well_formed(__on::__sndr<on_t, __, __starts_on_t>{
         __facade::__sender{on_t(),
                            __(),
                            starts_on(static_cast<_Scheduler&&>(__sched),
                            static_cast<_Sender&&>(__sndr))}
-      };
+      });
     }
 
     //! @brief Form 2: run @c __sndr in place, hop to @c __sched, apply
@@ -474,14 +473,14 @@ namespace STDEXEC
     //!          scheduler of @c __sndr, with the result of
     //!          `__clsur(continues_on(__sndr, __sched))`.
     template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
-    constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
-      -> __well_formed_sender auto
+    constexpr auto
+    operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const -> auto
     {
-      return __facade::__sender{
+      return STDEXEC::__check_well_formed(__facade::__sender{
         on_t(),
         __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
         static_cast<_Sender&&>(__sndr)
-      };
+      });
     }
 
     //! @brief Pipe form of Form 2: construct a sender-adaptor closure that,

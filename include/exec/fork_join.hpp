@@ -464,12 +464,12 @@ namespace experimental::execution
       requires(sizeof...(Closures) > 1)
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const
-      noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>)
-        -> STDEXEC::__well_formed_sender auto
+      noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>) -> auto
     {
-      return STDEXEC::__facade::__sender{fork_join_t(),
-                                         STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
-                                         static_cast<Sndr&&>(sndr)};
+      return STDEXEC::__check_well_formed(
+        STDEXEC::__facade::__sender{fork_join_t(),
+                                    STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
+                                    static_cast<Sndr&&>(sndr)});
     }
 
     /// One or more closures.

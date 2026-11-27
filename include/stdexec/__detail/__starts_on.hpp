@@ -333,12 +333,11 @@ namespace STDEXEC
     //!          @c __sndr there, and forwards @c __sndr's completion to the
     //!          receiver.
     template <scheduler _Scheduler, sender _Sender>
-    constexpr auto
-    operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> auto
     {
-      return __facade::__sender{starts_on_t(),
-                                static_cast<_Scheduler&&>(__sched),
-                                static_cast<_Sender&&>(__sndr)};
+      return STDEXEC::__check_well_formed(__facade::__sender{starts_on_t(),
+                                                             static_cast<_Scheduler&&>(__sched),
+                                                             static_cast<_Sender&&>(__sndr)});
     }
   };
 

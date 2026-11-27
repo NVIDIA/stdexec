@@ -430,7 +430,7 @@ namespace experimental::execution
                              _WITH_SEQUENCE_<_Sequence>>;
 
   template <class _Sequence, class _Item>
-    requires STDEXEC::__well_formed_sender<_Item>
+    requires(STDEXEC::sender_in<_Item> || STDEXEC::dependent_sender<_Item>)
   auto __check_item(_Item*) -> STDEXEC::__msuccess;
 
   struct _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_
@@ -496,7 +496,7 @@ namespace experimental::execution
 
   template <class _Sequence>
   concept __well_formed_sequence_sender =  //
-    STDEXEC::__well_formed_sender<_Sequence>
+    (STDEXEC::sender_in<_Sequence> || STDEXEC::dependent_sender<_Sequence>)
     && enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>
     && (__well_formed_item_senders<_Sequence> || STDEXEC::dependent_sender<_Sequence>);
 

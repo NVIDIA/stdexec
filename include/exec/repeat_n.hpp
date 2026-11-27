@@ -82,9 +82,10 @@ namespace experimental::execution
   {
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const  //
-      -> STDEXEC::__well_formed_sender auto
+      -> auto
     {
-      return STDEXEC::__facade::__sender{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)};
+      return STDEXEC::__check_well_formed(
+        STDEXEC::__facade::__sender{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)});
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
