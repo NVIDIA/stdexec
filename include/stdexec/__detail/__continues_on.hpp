@@ -63,8 +63,13 @@ namespace STDEXEC
     constexpr auto __mk_env2(_Child const & __child, _Env const & __env) noexcept
     {
       using __mk_env2_t = __mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
-      if constexpr (__callable<__mk_env2_t, _Child const &, _Env const &>)
-        return __mk_env2_t()(__child, __env);
+      // The child is connected to a receiver whose environment is the forwarded environment,
+      // so that is the environment in which to ask where it completes. (Asking in the
+      // receiver's own environment would analyze the child a second time, in a second
+      // environment type.)
+      using __child_env_t = __fwd_env_t<_Env const &>;
+      if constexpr (__callable<__mk_env2_t, _Child const &, __child_env_t const &>)
+        return __mk_env2_t()(__child, __fwd_env(__env));
       else
         return env{};
     }
