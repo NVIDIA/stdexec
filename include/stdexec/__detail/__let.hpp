@@ -188,6 +188,16 @@ namespace STDEXEC
 
       using __variants_t = __mapply_q<__variants, __args_lists_t>;
 
+      // (A walk needs only the state's type, so it does not name the operations of the child
+      // and of the senders that the function returns: they would be connected to archetypes.)
+      struct __ops_lazy
+      {
+        using __t = __variants_t::__ops_t;
+      };
+      using __ops_t =
+        __facade::__lazy_state_ops_t<_Receiver, __ops_lazy, __variant<__facade::__walk_op>>;
+      static constexpr bool __walking = __facade::__walking_v<_Receiver>;
+
       static constexpr bool __nothrow_v = __nothrow_decay_copyable<__data_of<_Sender>>
                                        && __nothrow_connectable<__child_t, __child_rcvr_t>;
 
@@ -199,9 +209,12 @@ namespace STDEXEC
         , __env2_(__mk_secondary_env_t<__set_tag_t>()(__facade::__get_child<0>(__sndr),
                                                       STDEXEC::get_env(__rcvr_)))
       {
-        __ops_.__emplace_from(STDEXEC::connect,
-                              __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
-                              __child_rcvr_t{this});
+        if constexpr (!__walking)
+        {
+          __ops_.__emplace_from(STDEXEC::connect,
+                                __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                                __child_rcvr_t{this});
+        }
       }
 
       STDEXEC_IMMOVABLE(__state);
@@ -214,7 +227,7 @@ namespace STDEXEC
       // The results of the child, and the operation of the child, and then of the sender
       // that the function returned
       typename __variants_t::__args_t __args_{__no_init};
-      typename __variants_t::__ops_t  __ops_{__no_init};
+      __ops_t                         __ops_{__no_init};
     };
 
     // let_value(sndr, fn), let_error(sndr, fn), and let_stopped(sndr, fn): when the child
@@ -345,37 +358,52 @@ namespace STDEXEC
           constexpr bool __nothrow_v = __nothrow_decay_copyable<_Args...>
                                     && __nothrow_invocable<__fn_t, __decay_t<_Args>&...>
                                     && __nothrow_connectable<__sender2_t, __receiver2_t>;
+          using __started_t = __facade::__effects<__facade::__starts<__key_t>>;
 
-          // The function is called while the child's operation is still alive. Connecting
-          // the sender it returns then destroys the child's operation.
-          auto __start_next = [&]()
+          // In a walk, only the effects matter (and the state holds no operations to make).
+          if constexpr (_State::__walking)
           {
-            auto&          __tupl  = __state.__args_.__emplace_from(__mktuple,
-                                                          static_cast<_Args&&>(__args)...);
-            decltype(auto) __sndr2 = STDEXEC::__apply(static_cast<__fn_t&&>(__state.__fn_), __tupl);
-            auto&          __op    = __state.__ops_.__emplace_from(STDEXEC::connect,
-                                                       static_cast<__sender2_t&&>(__sndr2),
-                                                       __receiver2_t{&__state});
-            return __facade::__start_nested<__key_t>(__op);
-          };
-
-          if constexpr (__nothrow_v)
-          {
-            return __start_next();
+            if constexpr (__nothrow_v)
+              return __started_t();
+            else
+              return __facade::__union_t<__started_t,
+                                         __facade::__effects<set_error_t(std::exception_ptr)>>(
+                __started_t());
           }
           else
           {
-            using __result_t =
-              __facade::__union_t<decltype(__start_next()),
-                                  __facade::__effects<set_error_t(std::exception_ptr)>>;
-            STDEXEC_TRY
+            // The function is called while the child's operation is still alive. Connecting
+            // the sender it returns then destroys the child's operation.
+            auto __start_next = [&]()
             {
-              return __result_t(__start_next());
+              auto&          __tupl  = __state.__args_.__emplace_from(__mktuple,
+                                                            static_cast<_Args&&>(__args)...);
+              decltype(auto) __sndr2 = STDEXEC::__apply(static_cast<__fn_t&&>(__state.__fn_),
+                                                        __tupl);
+              auto&          __op    = __state.__ops_.__emplace_from(STDEXEC::connect,
+                                                         static_cast<__sender2_t&&>(__sndr2),
+                                                         __receiver2_t{&__state});
+              return __facade::__start_nested<__key_t>(__op);
+            };
+
+            if constexpr (__nothrow_v)
+            {
+              return __start_next();
             }
-            STDEXEC_CATCH_ALL
+            else
             {
-              return __result_t(
-                __facade::__send(__state.__rcvr_, set_error, std::current_exception()));
+              using __result_t =
+                __facade::__union_t<decltype(__start_next()),
+                                    __facade::__effects<set_error_t(std::exception_ptr)>>;
+              STDEXEC_TRY
+              {
+                return __result_t(__start_next());
+              }
+              STDEXEC_CATCH_ALL
+              {
+                return __result_t(
+                  __facade::__send(__state.__rcvr_, set_error, std::current_exception()));
+              }
             }
           }
         }

@@ -731,6 +731,67 @@ namespace STDEXEC
       constexpr void start() & noexcept {}
     };
 
+    template <bool _Walking>
+    struct __op_or_walk_op
+    {
+      template <template <class...> class _Fn, class... _Args>
+      using __f = _Fn<_Args...>;
+    };
+
+    template <>
+    struct __op_or_walk_op<true>
+    {
+      template <template <class...> class _Fn, class... _Args>
+      using __f = __walk_op;
+    };
+
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Rcvr, template <class...> class _Fn, class... _Args>
+    using __state_op_t = __op_or_walk_op<
+      __std::derived_from<_Rcvr, __receiver_archetype_base>>::template __f<_Fn, _Args...>;
+
+    // Is the state's receiver an archetype, as it is in a walk?
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Rcvr>
+    inline constexpr bool __walking_v = __std::derived_from<_Rcvr, __receiver_archetype_base>;
+
+    // The type of the operations that a state holds, as _Lazy::__t (a class that names it, so
+    // that it is not instantiated unless used), or _Walk if the state is for a walk.
+    template <bool _Walking>
+    struct __lazy_state_ops
+    {
+      template <class _Lazy, class _Walk>
+      using __f = _Lazy::__t;
+    };
+
+    template <>
+    struct __lazy_state_ops<true>
+    {
+      template <class _Lazy, class _Walk>
+      using __f = _Walk;
+    };
+
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Rcvr, class _Lazy, class _Walk>
+    using __lazy_state_ops_t = __lazy_state_ops<__walking_v<_Rcvr>>::template __f<_Lazy, _Walk>;
+
+    // Is a state's value of noexcept(...) that of the trait _Trait (a class with a static
+    // member `value`)? Not for a walk, whose state is never constructed: it is true, without
+    // instantiating the trait (which would name the operations below the state). Clang
+    // instantiates the exception specification of __get_state to get the state's type, and a
+    // concept-id in a disjunction is satisfied even when the other operand decides it, so
+    // the trait is what makes this lazy.
+    template <bool _Walking, class _Trait>
+    inline constexpr bool __nothrow_unless_walking_v = _Trait::value;
+
+    template <class _Trait>
+    inline constexpr bool __nothrow_unless_walking_v<true, _Trait> = true;
+
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Rcvr, class _Trait>
+    inline constexpr bool __nothrow_state_v =
+      __nothrow_unless_walking_v<__std::derived_from<_Rcvr, __receiver_archetype_base>, _Trait>;
+
     struct __walk_attach_t
     {
       template <class _State, class _Child, class _Rcvr>
@@ -1933,7 +1994,7 @@ namespace STDEXEC
       static consteval auto __get_sched_place() noexcept
       {
         if constexpr (sizeof...(_QEnv) > 1)
-          return __mtype<void>();
+          return __mtype<void>();  // NOLINT(bugprone-branch-clone)
         else if constexpr (__customized_v<_QEnv...>)
           return __mtype<typename __attrs<__customized_t<_QEnv...>,
                                           _Sender>::template __sched_place_t<_Tag, _QEnv...>>();
