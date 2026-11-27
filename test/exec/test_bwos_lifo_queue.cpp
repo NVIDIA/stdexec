@@ -116,10 +116,10 @@ TEST_CASE("exec::bwos::lifo_queue - two blocks of size one", "[bwos]")
   int                          x = 1;
   int                          y = 2;
 
-  // First cycle: push, no steal possible from current block, pop
+  // First cycle: the push fills the first block, so the thieves get it at once
   CHECK(queue.push_back(&x));
+  CHECK(queue.steal_front() == &x);
   CHECK(queue.steal_front() == nullptr);
-  CHECK(queue.pop_back() == &x);
   CHECK(queue.pop_back() == nullptr);
 
   // Second cycle: push two items across blocks
@@ -135,6 +135,45 @@ TEST_CASE("exec::bwos::lifo_queue - two blocks of size one", "[bwos]")
   CHECK(queue.push_back(&x));
   CHECK(queue.pop_back() == &x);
   CHECK(queue.pop_back() == nullptr);
+}
+
+TEST_CASE("exec::bwos::lifo_queue - thieves can steal from a block as soon as it is full", "[bwos]")
+{
+  exec::bwos::lifo_queue<int*> queue(4, 2);
+  int                          x = 1;
+  int                          y = 2;
+
+  SECTION("push one item at a time")
+  {
+    CHECK(queue.push_back(&x));
+    CHECK(queue.grant_count() == 0);
+    CHECK(queue.steal_front() == nullptr);  // the block is not full yet
+    CHECK(queue.push_back(&y));
+    CHECK(queue.grant_count() == 1);
+    CHECK(queue.steal_front() == &x);
+    CHECK(queue.pop_back() == &y);
+    CHECK(queue.pop_back() == nullptr);
+  }
+  SECTION("push a range of items")
+  {
+    std::vector<int*> items{&x, &y};
+    CHECK(queue.push_back(items.begin(), items.end()) == items.end());
+    CHECK(queue.grant_count() == 1);
+    CHECK(queue.steal_front() == &x);
+    CHECK(queue.pop_back() == &y);
+    CHECK(queue.pop_back() == nullptr);
+  }
+  SECTION("granting a block that the thieves emptied does not count")
+  {
+    CHECK(queue.push_back(&x));
+    CHECK(queue.push_back(&y));
+    CHECK(queue.steal_front() == &x);
+    CHECK(queue.steal_front() == &y);
+    CHECK(queue.pop_back() == nullptr);  // takes the empty block back
+    CHECK(queue.push_back(&x));          // grants it again
+    CHECK(queue.grant_count() == 1);
+    CHECK(queue.pop_back() == &x);
+  }
 }
 
 TEST_CASE("exec::bwos::lifo_queue - round counter wraparound", "[bwos]")

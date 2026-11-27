@@ -65,6 +65,15 @@ import stdexec;
  *    - Synchronized through takeover()/grant() atomic swaps
  *    - Verified by is_writable() before block reuse
  *
+ * GRANTING BLOCKS:
+ * ---------------
+ * Thieves never steal from the owner's current block. The owner grants a block
+ * to the thieves when it moves on to the next block, which it does as soon as
+ * a push fills the block, not when the next push needs room. So every item is
+ * up for stealing once its block is full, and with blocks of one item, as soon
+ * as it is pushed. grant_count() tells the owner when that happened, so that
+ * it can make sure some thread looks for the items.
+ *
  * THREAD SAFETY:
  * -------------
  * - Owner thread: Exclusively calls push_back() and pop_back()
@@ -118,6 +127,12 @@ namespace experimental::execution::bwos
     [[nodiscard]]
     auto num_blocks() const noexcept -> std::size_t;
 
+    // The number of times the owner has granted a block with items in it to
+    // the thieves. Only the owner may call this. A push that increments it has
+    // made items available for stealing.
+    [[nodiscard]]
+    auto grant_count() const noexcept -> std::size_t;
+
    private:
     template <class Sp>
     using allocator_of_t = std::allocator_traits<Allocator>::template rebind_alloc<Sp>;
@@ -146,9 +161,13 @@ namespace experimental::execution::bwos
       [[nodiscard]]
       auto is_writable(std::uint32_t round) const noexcept -> bool;
 
-      void grant() noexcept;
+      // Returns whether the block has items for the thieves now.
+      auto grant() noexcept -> bool;
 
       auto reclaim(std::uint32_t round) noexcept -> void;
+
+      [[nodiscard]]
+      auto is_full() const noexcept -> bool;
 
       [[nodiscard]]
       auto block_size() const noexcept -> std::size_t;
@@ -211,6 +230,9 @@ namespace experimental::execution::bwos
 
     // log2(blocks_.size()) for extracting the round from counters.
     int round_shift_{};
+
+    // See grant_count(). Only the owner thread accesses it.
+    std::size_t grant_count_{};
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -292,6 +314,12 @@ namespace experimental::execution::bwos
       auto        ec            = current_block.put(value);
       if (ec == lifo_queue_error_code::success)
       {
+        if (current_block.is_full())
+        {
+          // Grant the full block right away (see GRANTING BLOCKS). If the
+          // next block is not free yet, the next push tries again.
+          advance_put_index(owner);
+        }
         return true;
       }
       assert(ec == lifo_queue_error_code::full);
@@ -312,6 +340,11 @@ namespace experimental::execution::bwos
       first                     = current_block.bulk_put(first, last);
     }
     while (first != last && advance_put_index(owner));
+    if (first == last && blocks_[index_of(owner)].is_full())
+    {
+      // Grant the full block right away (see GRANTING BLOCKS).
+      advance_put_index(owner);
+    }
     return first;
   }
 
@@ -325,6 +358,12 @@ namespace experimental::execution::bwos
   auto lifo_queue<Tp, Allocator>::num_blocks() const noexcept -> std::size_t
   {
     return blocks_.size();
+  }
+
+  template <class Tp, class Allocator>
+  auto lifo_queue<Tp, Allocator>::grant_count() const noexcept -> std::size_t
+  {
+    return grant_count_;
   }
 
   template <class Tp, class Allocator>
@@ -388,7 +427,10 @@ namespace experimental::execution::bwos
       start_block_.store(first + 1, STDEXEC::__std::memory_order_relaxed);
     }
     block_type& current_block = blocks_[owner_index];
-    current_block.grant();
+    if (current_block.grant())
+    {
+      ++grant_count_;
+    }
     owner = next;
     next_block.reclaim(next_round);
     last_block_.store(owner, STDEXEC::__std::memory_order_relaxed);
@@ -648,7 +690,13 @@ namespace experimental::execution::bwos
   }
 
   template <class Tp, class Allocator>
-  void lifo_queue<Tp, Allocator>::block_type::grant() noexcept
+  auto lifo_queue<Tp, Allocator>::block_type::is_full() const noexcept -> bool
+  {
+    return (tail_.load(STDEXEC::__std::memory_order_relaxed) & 0xFFFF'FFFFu) == block_size();
+  }
+
+  template <class Tp, class Allocator>
+  auto lifo_queue<Tp, Allocator>::block_type::grant() noexcept -> bool
   {
     // Called when the owner moves forward to a new block. Makes the current
     // block fully available for stealing by swapping head_ and steal_tail_. The
@@ -660,6 +708,9 @@ namespace experimental::execution::bwos
     // Release ordering ensures thieves see all items we wrote before starting
     // to steal. It pairs with the acquire of a successful claim in steal().
     steal_tail_.store(old_head, STDEXEC::__std::memory_order_release);
+    // The owner grants only full blocks, so the thieves have items to steal
+    // unless they stole all of them before the owner last took the block back.
+    return (old_head & 0xFFFF'FFFFu) < block_size();
   }
 }  // namespace experimental::execution::bwos
 

@@ -101,6 +101,16 @@ namespace experimental::execution
     }  // namespace _schedule_all
   }  // namespace _pool
 
+  //! Parameters of the queues of `static_thread_pool`'s workers. A worker keeps
+  //! the tasks that it schedules in a queue of `numBlocks` blocks of `blockSize`
+  //! tasks (`numBlocks` is rounded up to a power of two). Other workers can
+  //! steal a task only once its block is full, and a worker keeps the tasks for
+  //! which its queue has no room to itself.
+  //!
+  //! So when a task waits for tasks that it scheduled on the same pool (with
+  //! `sync_wait`, say), only if `blockSize` is 1 and the queue had room for
+  //! them can other workers be relied on to run them. Otherwise the task can
+  //! wait forever.
   struct bwos_params
   {
     std::size_t numBlocks{32};
