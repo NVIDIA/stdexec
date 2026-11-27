@@ -26,7 +26,9 @@ import stdexec;
 #  include "__concepts.hpp"  // IWYU pragma: keep for __std::integral
 
 #  if !STDEXEC_USE_MODULES()
-#    if __has_include(<cuda/std/atomic>)
+#    // Define STDEXEC_DISABLE_CUDA_STD_ATOMIC to use std::atomic even when <cuda/std/atomic> is
+#    // available, e.g., so that Relacy can see the atomics.
+#    if !defined(STDEXEC_DISABLE_CUDA_STD_ATOMIC) && __has_include(<cuda/std/atomic>)
 #      include <cuda/std/atomic>
 #      define STDEXEC_HAS_CUDA_STD_ATOMIC() 1
 #    else
