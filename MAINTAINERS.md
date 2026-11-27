@@ -436,6 +436,45 @@ facade uses a hook if the algorithm has one that accepts the sender, so a hook
 can be constrained to the senders it is for. Use these only as a last resort:
 the reason for the facade is that it derives these.
 
+### Hook reference
+
+Every hook is optional. An algorithm overrides a hook by declaring one of the
+same name in its class, which hides the one in `__facade::__defaults`. Hooks
+marked "opt-in" have no default, and the facade looks for them. Most
+algorithms need only `__complete`, and perhaps `__start`.
+
+| Hook | Default | Override it when | Example |
+|---|---|---|---|
+| `__complete(key, state, tag, args...)` | forwards the completion to the receiver | the algorithm transforms, saves, or counts a completion of a child or nested operation, or starts something from it | `then`, `when_all`, `continues_on` |
+| `__start(state, children)` | starts every child with `children.__start_all()` | the algorithm completes from `start`, starts only some of its children, or starts a nested operation | `just`, `let_value`, `repeat_n` |
+| `__get_state(sndr, rcvr)` | a `__basic_state` that holds the receiver and the sender's data | the state holds more than the data (nested operations, saved results, a stop source), or the algorithm rejects its inputs by returning an `__mexception` | `when_all`, `continues_on`, `let_value` |
+| `__get_state(sndr, rcvr, __subscribing_t)` | the same as the above | the state of a subscribed (sequence) sender differs from that of a connected one | |
+| `__connects_children` | `true` | the algorithm connects a child itself, in its state: to connect it later, to start it from a nested operation, or to destroy its operation early | `__sequence`, `starts_on`, `let_value` |
+| `__connect(key, state, sndr, rcvr)` | `STDEXEC::connect(sndr, rcvr)` | a child or nested operation must be connected to a different kind of receiver, as when a domain adapts a child whose operation completes from a kernel | nvexec |
+| `__receiver_base` | an empty struct | a domain's algorithm needs the facade's receivers to have a base class, so that its senders complete them in the way they expect | nvexec |
+| `__nested_sender(key, sndr, env...)` | for `__child<I>`, the `I`-th child | the algorithm has nested operations of its own, to say what their senders are (the sender itself, or `__mtype<Sender>()` if it is made at run time) | `continues_on`, `let_value`, `exec::split` |
+| `__nested_attrs(key, sndr, env...)` (opt-in) | the nested sender's attributes | a nested operation knows better where it completes than its sender's attributes say | `continues_on`, `starts_on` (`__schedule_attrs`) |
+| `__env_for(key, sndr, env)` | the receiver's environment, unchanged | the algorithm gives a child or nested operation an environment of its own (it must forward `env` with its value category) | `read_env`, `continues_on`, `repeat_n`, `on` |
+| `__get_env(key, state)` | the receiver's environment, at run time | the algorithm overrides `__env_for`. It must return the same *type* as `__env_for` | the same |
+| `__fwd_sender(sndr)` | the child, if there is exactly one | the other forwarding queries, which are not completion queries, should be answered by a sender other than the only child, or when there is more than one child | |
+| `__depends_on_env<Sender>` | `false` | the algorithm's own completions depend on the environment (dependence through a child needs nothing) | `read_env`, `on` |
+| `__dispatch_source` | `void`, the domain of the value completions | `transform_sender` should look for customizations in the domain of another completion | `let_value`, `exec::repeat_n` |
+| `__empty_channel_source<Tag>` | `void`, no attributes for a channel that never completes | the algorithm reports attributes for a channel on which nothing completes, as the standard's `SCHED-ATTRS` does | `continues_on`, `starts_on` |
+| `__item_source<Sender>` | `void` | one child's items are the algorithm's items, which makes the sender a sequence sender when that child is one | |
+| `__subscribe(key, state, sndr, rcvr)` | transforms the sender, then subscribes it | the item source must be subscribed in a different way | |
+| `__get_completion_signatures<Sender, Env...>()` (opt-in) | the signatures that the walk derives | the signatures cannot be derived, and only as a last resort. Constrain the hook to the senders it is for | `on`, `when_all_with_variant`, `__sequence` |
+| `__get_attrs(sndr)` (opt-in) | the attributes that the facade derives | the same, for the attributes | `on`, `__sequence`, `starts_on` |
+| `__retags_facade_senders` (a domain, opt-in) | not set | a domain customizes facade algorithms by re-tagging their senders, so that the facade answers completion queries as the re-tagged sender would | nvexec's `stream_domain` |
+
+Choose the least powerful hook that does the job. A hook that only changes
+what an algorithm does with a completion (`__complete`, `__start`) leaves
+everything else for the facade to derive. A hook that changes the algorithm's
+operations (`__get_state`, `__connect`, `__connects_children`) must still
+keep every effect in the tokens the handlers return. The last two hooks,
+`__get_completion_signatures` and `__get_attrs`, replace what the facade
+derives, and so are what lets an algorithm's completions drift away from its
+signatures again.
+
 ### Senders that describe other senders
 
 `exec::split(sndr)` makes a sender for its domain to customize, and the sender
