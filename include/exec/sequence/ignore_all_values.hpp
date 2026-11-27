@@ -223,6 +223,10 @@ namespace experimental::execution
         return {};
       }
 
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver>
+      using __state_type = __state<_Sender, _Receiver>;
+
       template <class _Sender, class _Receiver>
       static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
         noexcept(__nothrow_constructible_from<__state<_Sender, _Receiver>, _Sender, _Receiver>)
@@ -306,12 +310,6 @@ namespace experimental::execution
     // saved result. (The receiver's type does not name the operation's sender, as the state's
     // does: the types of the items' operations name it, and they would grow with the size of
     // the sender, as would the debug info that names them.)
-    template <class _Child, class _Rcvr>
-    struct __nothrow_subscribe_t
-    {
-      static constexpr bool value = __nothrow_subscribable<_Child, _Rcvr>;
-    };
-
     template <class _Receiver, class _Variant>
     struct __state_base : __result_type<_Variant>
     {
@@ -332,8 +330,8 @@ namespace experimental::execution
       using __base_t  = __state_base<_Receiver, __result_variant_t<__child_t, env_of_t<_Receiver>>>;
       using __seq_rcvr_t = __ignore_all_values::__receiver<__base_t>;
 
-      explicit __state(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
-        __facade::__nothrow_state_v<_Receiver, __nothrow_subscribe_t<__child_t, __seq_rcvr_t>>)
+      explicit __state(_Sender&& __sndr, _Receiver&& __rcvr)
+        noexcept(__nothrow_subscribable<__child_t, __seq_rcvr_t>)
         : __base_t{{}, static_cast<_Receiver&&>(__rcvr)}
         , __op_{__subscribe_child(static_cast<_Sender&&>(__sndr), this)}
       {}

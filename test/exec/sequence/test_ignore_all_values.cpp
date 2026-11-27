@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "exec/sequence.hpp"
 #include "exec/sequence/empty_sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
 
@@ -112,6 +113,58 @@ namespace
                                               STDEXEC::set_error_t(int),
                                               STDEXEC::set_error_t(std::exception_ptr)>;
     STATIC_REQUIRE(STDEXEC::__mset_eq<ExpectedSigs, ActualSigs>);
+  }
+
+  // A sequence with no items and no error completions, whose subscription throws
+  template <class Rcvr>
+  struct throwing_subscribe_op
+  {
+    void start() & noexcept
+    {
+      STDEXEC::set_value(static_cast<Rcvr&&>(rcvr_));
+    }
+
+    Rcvr rcvr_;
+  };
+
+  struct throwing_subscribe_sequence
+  {
+    using sender_concept        = exec::sequence_sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+    using item_types            = exec::item_types<>;
+
+    template <STDEXEC::receiver_of<completion_signatures> Rcvr>
+    auto subscribe(Rcvr) const noexcept(false) -> throwing_subscribe_op<Rcvr>
+    {
+      throw std::runtime_error("subscribe");
+    }
+  };
+
+  TEST_CASE("ignore_all_values - connecting can throw if subscribing can",
+            "[sequence_senders][ignore_all_values]")
+  {
+    using Sender = decltype(exec::ignore_all_values(throwing_subscribe_sequence{}));
+    STATIC_REQUIRE(
+      !STDEXEC::__nothrow_connectable<Sender, STDEXEC::__receiver_archetype<STDEXEC::env<>>>);
+
+    // So an algorithm that connects it when another sender completes reports the exception.
+    // (The function is noexcept, so the exception can come only from connecting.)
+    auto fn = []() noexcept
+    {
+      return exec::ignore_all_values(throwing_subscribe_sequence{});
+    };
+    using Let  = decltype(STDEXEC::let_value(STDEXEC::just(), fn));
+    using Seq  = decltype(exec::sequence(STDEXEC::just(), fn()));
+    using Eptr = STDEXEC::set_error_t(std::exception_ptr);
+    STATIC_REQUIRE(
+      STDEXEC::__mapply<STDEXEC::__mcontains<Eptr>,
+                        STDEXEC::completion_signatures_of_t<Let, STDEXEC::env<>>>::value);
+    STATIC_REQUIRE(
+      STDEXEC::__mapply<STDEXEC::__mcontains<Eptr>,
+                        STDEXEC::completion_signatures_of_t<Seq, STDEXEC::env<>>>::value);
+    CHECK_THROWS_AS(STDEXEC::sync_wait(STDEXEC::let_value(STDEXEC::just(), fn)),
+                    std::runtime_error);
+    CHECK_THROWS_AS(STDEXEC::sync_wait(exec::sequence(STDEXEC::just(), fn())), std::runtime_error);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace
