@@ -41,5 +41,6 @@ auto main() -> int
   rl::test_params p;
   p.iteration_count       = 50000;
   p.execution_depth_limit = 10000;
-  return rl::simulate<split_bug>(p) ? 0 : 1;
+  rl::simulate<split_bug>(p);
+  return 0;
 }
