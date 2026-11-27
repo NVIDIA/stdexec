@@ -155,24 +155,57 @@ namespace experimental::execution
                                         STDEXEC::__facade::__nth_child_of_t<Sndr, 0>,
                                         STDEXEC::__fwd_env_t<Env>...>;
 
-    // The operation of a sender that cannot be connected to the receiver it is given (in the
-    // walk, where the receiver is an archetype, when the closures' senders depend on the
-    // environment). The walk asks the sender for its completions, and reports its error.
+    // The operation of a sender that cannot be connected to the receiver it is given. (The
+    // walk asks the sender for its completions, and reports its error.)
     struct _no_op
     {};
 
-    template <bool Connectable>
+    // The type of an operation that the state holds: the operation, or _no_op, or, if the
+    // state is for a walk (its receiver is an archetype), a placeholder, since the walk needs
+    // only the state's type. Naming the operation there would instantiate the operations
+    // below it, connected to archetypes. (A class keyed by bools only, so that the debug
+    // information, which names the class when it names the operation's type, does not repeat
+    // the sender's and the receiver's types.)
+    template <bool Walking, bool Connectable>
     struct _op_of
     {
       template <class Sender, class Receiver>
       using __f = STDEXEC::connect_result_t<Sender, Receiver>;
     };
 
+    template <bool Connectable>
+    struct _op_of<true, Connectable>
+    {
+      template <class, class>
+      using __f = STDEXEC::__facade::__walk_op;
+    };
+
     template <>
-    struct _op_of<false>
+    struct _op_of<false, false>
     {
       template <class, class>
       using __f = _no_op;
+    };
+
+    // Can the operations be connected? A walk does not ask: its state holds placeholders.
+    template <bool Walking>
+    struct _connectable_of
+    {
+      template <class Child, class ChildRcvr, class Fork, class ForkRcvr>
+      static consteval auto __f() noexcept -> bool
+      {
+        return STDEXEC::sender_to<Child, ChildRcvr> && STDEXEC::sender_to<Fork, ForkRcvr>;
+      }
+    };
+
+    template <>
+    struct _connectable_of<true>
+    {
+      template <class, class, class, class>
+      static consteval auto __f() noexcept -> bool
+      {
+        return true;
+      }
     };
 
     template <class Sndr, class Rcvr>
@@ -196,10 +229,13 @@ namespace experimental::execution
       static constexpr bool _child_stays_put =
         STDEXEC::__trnsfr::__child_stays_put_v<_child_t, STDEXEC::env_of_t<Rcvr>>;
 
-      static constexpr bool _connectable = STDEXEC::sender_to<_child_t, _child_rcvr_t>
-                                        && STDEXEC::sender_to<_when_all_sndr_t, _fork_rcvr_t>;
-      using _child_op_t = _op_of<_connectable>::template __f<_child_t, _child_rcvr_t>;
-      using _fork_op_t  = _op_of<_connectable>::template __f<_when_all_sndr_t, _fork_rcvr_t>;
+      // (A walk's state holds placeholders: see _op_of.)
+      using _connectable_of_t = _connectable_of<STDEXEC::__facade::__walking_receiver<Rcvr>>;
+      static constexpr bool _connectable =
+        _connectable_of_t::template __f<_child_t, _child_rcvr_t, _when_all_sndr_t, _fork_rcvr_t>();
+      using _op_of_t    = _op_of<STDEXEC::__facade::__walking_receiver<Rcvr>, _connectable>;
+      using _child_op_t = _op_of_t::template __f<_child_t, _child_rcvr_t>;
+      using _fork_op_t  = _op_of_t::template __f<_when_all_sndr_t, _fork_rcvr_t>;
 
       static constexpr bool _nothrow_v =
         STDEXEC::__nothrow_applicable<_mk_when_all_fn, _closures_t, _cache_sndr_t>
@@ -215,7 +251,7 @@ namespace experimental::execution
                                                STDEXEC::get_env(__rcvr_)))
         , _fork_op_(_state::_connect_fork(static_cast<Sndr&&>(sndr), this))
       {
-        if constexpr (_connectable)
+        if constexpr (_connectable && !STDEXEC::__facade::__walking_receiver<Rcvr>)
         {
           _child_op_.__emplace_from(STDEXEC::connect,
                                     STDEXEC::__facade::__get_child<0>(static_cast<Sndr&&>(sndr)),
@@ -236,7 +272,7 @@ namespace experimental::execution
       static constexpr auto
       _connect_fork(Sndr&& sndr, _state* self) noexcept(_nothrow_v) -> _fork_op_t
       {
-        if constexpr (_connectable)
+        if constexpr (_connectable && !STDEXEC::__facade::__walking_receiver<Rcvr>)
         {
           return STDEXEC::connect(STDEXEC::__apply(_mk_when_all_fn{},
                                                    STDEXEC::__facade::__get_data(
@@ -249,6 +285,42 @@ namespace experimental::execution
           return {};
         }
       }
+    };
+
+    // The type that __get_state returns: the state, or the type error that it reports.
+    // (Classes keyed by bools only, as _op_of is.)
+    template <bool DecayCopyable>
+    struct _state_if_copyable
+    {
+      template <class Sndr, class Rcvr>
+      using __f = _state<Sndr, Rcvr>;
+    };
+
+    template <>
+    struct _state_if_copyable<false>
+    {
+      template <class Sndr, class Rcvr>
+      using __f = STDEXEC::__mexception<STDEXEC::_WHAT_(
+                                          STDEXEC::_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                                        STDEXEC::_IN_ALGORITHM_(fork_join_t)>;
+    };
+
+    template <bool HasDomain>
+    struct _state_if_valid
+    {
+      template <class Sndr, class Rcvr>
+      using __f = _state_if_copyable<STDEXEC::__decay_copyable_results_t<
+        typename _state<Sndr, Rcvr>::_child_completions_t>::value>::template __f<Sndr, Rcvr>;
+    };
+
+    template <>
+    struct _state_if_valid<false>
+    {
+      template <class Sndr, class Rcvr>
+      using __f =
+        STDEXEC::__mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                              STDEXEC::_WITH_SENDERS_<STDEXEC::__facade::__nth_child_of_t<Sndr, 0>>,
+                              STDEXEC::_WITH_ENVIRONMENT_(STDEXEC::env_of_t<Rcvr>)>;
     };
 
     // fork_join(sndr, closures...): when the child completes, its results are cached, its
@@ -365,6 +437,13 @@ namespace experimental::execution
         else
           return true;
       }
+
+      // (See __facade::__state_type_t.)
+      template <class Sndr, class Rcvr>
+      using __state_type =
+        _state_if_valid<STDEXEC::__minvocable_q<_child_domain_t,
+                                                Sndr,
+                                                STDEXEC::env_of_t<Rcvr>>>::template __f<Sndr, Rcvr>;
 
       template <class Sndr, class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
