@@ -88,9 +88,25 @@ namespace STDEXEC
       // is. A caller holding a new sender an earlier step returned by value
       // skips such a step, so that the sender can be returned without being
       // moved.
+      //
+      // (The tag's transformation is checked only when the domain's isn't: naming the concept
+      // would check it even where `&&` skips it, and checking it can instantiate the tag's
+      // default transformation, which a domain that transforms the sender replaces.)
       template <class _Sndr, class _Env>
-      static constexpr bool __leaves_alone = __same_as<__domain_for_t<_Sndr, _Env>, default_domain>
-                                          && !__has_tag_transform_sender<_OpTag, _Sndr, _Env>;
+      static consteval auto __is_leaves_alone() noexcept -> bool
+      {
+        if constexpr (__same_as<__domain_for_t<_Sndr, _Env>, default_domain>)
+        {
+          return !__has_tag_transform_sender<_OpTag, _Sndr, _Env>;
+        }
+        else
+        {
+          return false;
+        }
+      }
+
+      template <class _Sndr, class _Env>
+      static constexpr bool __leaves_alone = __is_leaves_alone<_Sndr, _Env>();
 
       template <class _Sndr, class _Env, bool _Nothrow = true>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
