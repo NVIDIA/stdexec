@@ -1583,10 +1583,14 @@ namespace STDEXEC
                                  __declval<__decay_t<__sndr_t> const &>(),
                                  __declval<_QEnv const &>()...))>>;
 
+      // (The nested operation's environment is computed from _QEnv, as the walk computes it
+      // and as connect does, not from _QEnv const &. An algorithm that joins the environment
+      // with another one, as starts_on does, gives a reference a different type, and the
+      // nested sender would be walked again in that environment.)
       using __own_behavior_t =
         __call_result_t<__get_completion_behavior_t<_Tag>,
                         __attrs_t const &,
-                        __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>;
+                        __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>;
       static constexpr bool __affine = __completion_behavior::__is_affine(__own_behavior_t());
       static constexpr __behavior_t __behavior = __facade::__seq(__up_t::__behavior,
                                                                  __own_behavior_t::value);
@@ -1594,11 +1598,11 @@ namespace STDEXEC
       static constexpr bool __has_own_domain =
         __callable<typename get_completion_domain_t<_Tag>::__read_query_t,
                    __attrs_t const &,
-                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>;
+                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>;
       static constexpr bool __has_own_sched =
         __callable<typename get_completion_scheduler_t<_Tag>::__read_query_t,
                    __attrs_t const &,
-                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>;
+                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>;
 
       // A nested sender created at run time cannot be asked for its scheduler.
       static constexpr bool __type_only = __type_only_v<__algo_t, __sndr_t, _Key, _QEnv...>;
@@ -1607,7 +1611,7 @@ namespace STDEXEC
       static constexpr bool __has_domain =
         __callable<get_completion_domain_t<_Tag>,
                    __attrs_t const &,
-                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>;
+                   __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>;
 
       // The nested operation's dispatch domain: the domain in which its customizations are
       // found, which is the domain that implements it
@@ -1615,7 +1619,7 @@ namespace STDEXEC
         sizeof...(_QEnv) == 1
         && __callable<get_completion_domain_t<>,
                       __attrs_t const &,
-                      __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>;
+                      __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>;
 
       // If the nested operation completes where it started, it completes on the scheduler
       // on which it was started (at _Src), when that is known. Then its scheduler and domain
@@ -1631,8 +1635,7 @@ namespace STDEXEC
       // there.)
       static constexpr bool __env_says_where =
         sizeof...(_QEnv) != 0
-        && (__callable<get_start_scheduler_t,
-                       __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>>
+        && (__callable<get_start_scheduler_t, __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>>
             && ...);
 
       // Otherwise, it completes where its own scheduler says, if it has one; or, if it
@@ -1651,26 +1654,23 @@ namespace STDEXEC
         if constexpr (__at_src)
           return __mtype<typename __up_t::__domain_t>();
         else if constexpr (__believe_own_sched && __has_domain)
-          return __mtype<
-            __call_result_t<get_completion_domain_t<_Tag>,
-                            __attrs_t const &,
-                            __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>>();
+          return __mtype<__call_result_t<get_completion_domain_t<_Tag>,
+                                         __attrs_t const &,
+                                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>>();
         else if constexpr (__affine)
           return __mtype<typename __up_t::__domain_t>();
         else if constexpr ((__has_own_domain || __has_own_sched) && __has_domain)
-          return __mtype<
-            __call_result_t<get_completion_domain_t<_Tag>,
-                            __attrs_t const &,
-                            __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>>();
+          return __mtype<__call_result_t<get_completion_domain_t<_Tag>,
+                                         __attrs_t const &,
+                                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>>();
         // Otherwise, nothing says where the nested operation completes this way. It completes
         // as the domain that implements it completes it, which can be in ways that its
         // sender's attributes do not mention. (A CUDA stream operation adds error completions,
         // for example, which happen on the stream.) So it completes in that domain.
         else if constexpr (__has_dispatch_domain)
-          return __mtype<
-            __call_result_t<get_completion_domain_t<>,
-                            __attrs_t const &,
-                            __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>>();
+          return __mtype<__call_result_t<get_completion_domain_t<>,
+                                         __attrs_t const &,
+                                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>>();
         else if constexpr (sizeof...(_QEnv) == 1)
           return __mtype<default_domain>();
         else
@@ -1683,7 +1683,7 @@ namespace STDEXEC
       using __sched_place_t =
         __sched_place_of<__attrs_t,
                          _Tag2,
-                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>::__t;
+                         __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>::__t;
 
       // The first of the nested operation's kinds of completion whose completions get their
       // scheduler from the same place as its _Tag completions do. Their scheduler names the
@@ -1824,7 +1824,7 @@ namespace STDEXEC
       {
         if constexpr (__sends<_Tag,
                               typename _Ctx::template __nested_sender_t<_Key>,
-                              __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv const &>...>)
+                              __facade::__env_t<__algo_t, _Key, __sndr_t, _QEnv>...>)
           return __mtype<typename __resolved_t::__domain_t>();
         else if constexpr (__resolved_t::__has_own_domain || __resolved_t::__own_sched)
           return __mtype<typename __resolved_t::__domain_t>();
