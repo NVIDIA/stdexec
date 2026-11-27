@@ -83,6 +83,22 @@ namespace STDEXEC
     template <class _Env>
     concept __is_fwd_env = __is_instance_of<__decay_t<_Env>, __fwd>;
 
+    // The type in which an environment adaptor holds the environment it adapts, given the
+    // type of the expression it adapts: an environment that is free to copy (trivially
+    // copy-constructible and trivially destructible) is held by value, as is an rvalue; any
+    // other lvalue is held by reference.
+    //
+    // So the type of an adaptor of an environment that is free to copy does not depend on
+    // whether the adaptor was given an lvalue or an rvalue. Everything computed from the type
+    // of an environment (completion signatures, completion domains, and so on, for the
+    // operation and for the operations nested in it) is computed once for each type, and an
+    // environment that was reachable both ways had two.
+    template <class _Env>
+    using __held_t = __if_c<std::is_trivially_copy_constructible_v<__decay_t<_Env>>
+                              && std::is_trivially_destructible_v<__decay_t<_Env>>,
+                            __decay_t<_Env>,
+                            _Env>;
+
     struct __fwd_fn
     {
       template <class _Env>
@@ -91,11 +107,11 @@ namespace STDEXEC
       {
         if constexpr (__decays_to<_Env, env<>> || __is_fwd_env<_Env>)
         {
-          return static_cast<_Env>(static_cast<_Env &&>(__env));
+          return static_cast<__held_t<_Env>>(static_cast<_Env &&>(__env));
         }
         else
         {
-          return __fwd<_Env>{static_cast<_Env &&>(__env)};
+          return __fwd<__held_t<_Env>>{static_cast<_Env &&>(__env)};
         }
       }
     };
@@ -108,7 +124,7 @@ namespace STDEXEC
     {
       template <class _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(_Env &&__env) const noexcept -> _Env
+      constexpr auto operator()(_Env &&__env) const noexcept -> __held_t<_Env>
       {
         return static_cast<_Env &&>(__env);
       }
@@ -123,12 +139,13 @@ namespace STDEXEC
         }
         else if constexpr (__decays_to<_Env2, env<>>)
         {
-          return static_cast<_Env1>(static_cast<_Env1 &&>(__env1));
+          return static_cast<__held_t<_Env1>>(static_cast<_Env1 &&>(__env1));
         }
         else
         {
-          return env<_Env1, __fwd_env_t<_Env2>>{static_cast<_Env1 &&>(__env1),
-                                                __fwd_fn()(static_cast<_Env2 &&>(__env2))};
+          using __env1_t = __held_t<_Env1>;
+          return env<__env1_t, __fwd_env_t<_Env2>>{static_cast<_Env1 &&>(__env1),
+                                                   __fwd_fn()(static_cast<_Env2 &&>(__env2))};
         }
       }
     };
