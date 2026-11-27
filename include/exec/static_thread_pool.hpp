@@ -1007,6 +1007,22 @@ namespace experimental::execution
       }
     }
 
+    // The seq_cst fence of the handshake between wake_thief() and
+    // wait_for_task(). TSan does not model fences, and GCC rejects them with
+    // -fsanitize=thread (-Wtsan). That does not matter here: the fence only
+    // orders accesses to atomics (num_active_ and the metadata of the queues),
+    // and a worker that steals a task synchronizes with the worker that granted
+    // it through the queue, which TSan does model.
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
+
+    inline void _wake_handshake_fence() noexcept
+    {
+      __std::atomic_thread_fence(__std::memory_order_seq_cst);
+    }
+
+    STDEXEC_PRAGMA_POP()
+
     // Called by the owner of local_queue_ after it granted a block to the
     // thieves. Wakes a sleeping worker to steal from the block, unless a worker
     // is stealing already. That worker either finds the block, or it looks at
@@ -1016,7 +1032,7 @@ namespace experimental::execution
       // Pairs with the fence in wait_for_task() between set_sleeping() and the
       // last look for work: either that look finds the block, or this load
       // sees that the worker is going to sleep.
-      __std::atomic_thread_fence(__std::memory_order_seq_cst);
+      _wake_handshake_fence();
       std::uint32_t const num_active  = pool_->num_active_.load(__std::memory_order_relaxed);
       std::uint32_t const num_thieves = num_active & 0xffffu;
       std::uint32_t const num_awake   = (num_active >> 16u) + num_thieves;
@@ -1093,7 +1109,7 @@ namespace experimental::execution
         // this worker is going to sleep and wakes a worker, or the look below
         // finds the block.
         set_sleeping();
-        __std::atomic_thread_fence(__std::memory_order_seq_cst);
+        _wake_handshake_fence();
         result = try_steal_all();
         if (result.task)
         {
