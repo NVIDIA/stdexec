@@ -547,7 +547,6 @@ namespace experimental::execution::bwos
                                            : lifo_queue_error_code::empty;
       return result;
     }
-    // Acquire ordering ensures we see items written by owner's release in put()
     std::uint64_t back = tail_.load(STDEXEC::__std::memory_order_acquire);
     if (sidx == back)
     {
@@ -555,8 +554,19 @@ namespace experimental::execution::bwos
       result.status = lifo_queue_error_code::empty;
       return result;
     }
-    // Try to claim the item at spos by atomically incrementing steal_tail_
-    if (!steal_tail_.compare_exchange_strong(spos, spos + 1, STDEXEC::__std::memory_order_relaxed))
+    // Try to claim the item at spos by atomically incrementing steal_tail_.
+    //
+    // The acquire on success pairs with the release store of steal_tail_ in
+    // grant(), either directly or through the claims of other thieves, which
+    // continue its release sequence. That is what makes the owner's write of
+    // the claimed slot visible here. The tail_ load above does not: the value
+    // it reads can be older than the owner's last write to this slot, e.g.
+    // when the owner took the block back with takeover(), refilled the slot,
+    // and granted the block again after the load.
+    if (!steal_tail_.compare_exchange_strong(spos,
+                                             spos + 1,
+                                             STDEXEC::__std::memory_order_acquire,
+                                             STDEXEC::__std::memory_order_relaxed))
     {
       // Another thief claimed this item, retry
       result.status = lifo_queue_error_code::conflict;
@@ -648,7 +658,7 @@ namespace experimental::execution::bwos
     std::uint64_t block_end = steal_tail_.load(STDEXEC::__std::memory_order_relaxed);
     std::uint64_t old_head  = head_.exchange(block_end, STDEXEC::__std::memory_order_relaxed);
     // Release ordering ensures thieves see all items we wrote before starting
-    // to steal
+    // to steal. It pairs with the acquire of a successful claim in steal().
     steal_tail_.store(old_head, STDEXEC::__std::memory_order_release);
   }
 }  // namespace experimental::execution::bwos

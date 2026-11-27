@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <ranges>
 #include <thread>
 #include <utility>
@@ -548,4 +550,85 @@ TEST_CASE("exec::bwos::lifo_queue - keeps all items across wraps of the block ri
   }
   CHECK(queue.steal_front() == nullptr);
   CHECK(pushed == taken);
+}
+
+TEST_CASE("exec::bwos::lifo_queue - thieves see the items of a block granted again", "[bwos]")
+{
+  // Two blocks of two items, and an owner that pops a few items after most
+  // pushes. Popping out of an empty block takes back the block granted
+  // before it (takeover()), whose slots the owner then pops and refills
+  // before granting the block again. A thief that read the block's metadata
+  // before the takeover and claims a slot after the new grant must read the
+  // value written before that grant. Without an acquire on the claiming CAS
+  // that read is a data race, and on weakly-ordered hardware it can return
+  // the old value: one item is taken twice, and another is lost. TSan only
+  // sees the race when a thief is preempted at the wrong moment; the Relacy
+  // test bwos_two_thieves_regrant (test/rrd) finds it reliably.
+  constexpr std::size_t numItems   = 20'000;
+  constexpr std::size_t numThieves = 2;
+
+  exec::bwos::lifo_queue<std::size_t> queue(2, 2);
+  std::vector<std::atomic<int>>       taken(numItems + 1);
+  std::atomic<bool>                   ownerDone{false};
+  auto const                          take = [&](std::size_t item)
+  {
+    if (item != 0 && item <= numItems)
+    {
+      taken[item].fetch_add(1, std::memory_order_relaxed);
+    }
+    else if (item != 0)
+    {
+      taken[0].fetch_add(1, std::memory_order_relaxed);  // garbage value
+    }
+  };
+
+  std::vector<std::thread> thieves;
+  thieves.reserve(numThieves);
+  for (std::size_t t = 0; t < numThieves; ++t)
+  {
+    thieves.emplace_back(
+      [&]
+      {
+        while (!ownerDone.load(std::memory_order_acquire))
+        {
+          take(queue.steal_front());
+        }
+      });
+  }
+
+  std::uint32_t rng = 12345;
+  for (std::size_t item = 1; item <= numItems; ++item)
+  {
+    while (!queue.push_back(item))
+    {
+      take(queue.pop_back());
+    }
+    rng                   = (rng * 1'103'515'245u) + 12'345u;
+    std::uint32_t numPops = (rng >> 16) % 4;
+    for (std::uint32_t i = 0; i < numPops; ++i)
+    {
+      take(queue.pop_back());
+    }
+  }
+  ownerDone.store(true, std::memory_order_release);
+  for (auto& thief: thieves)
+  {
+    thief.join();
+  }
+  for (std::size_t item = queue.pop_back(); item != 0; item = queue.pop_back())
+  {
+    take(item);
+  }
+
+  CHECK(taken[0].load() == 0);
+  std::size_t lost       = 0;
+  std::size_t duplicated = 0;
+  for (std::size_t item = 1; item <= numItems; ++item)
+  {
+    int const count = taken[item].load();
+    lost += count == 0 ? 1 : 0;
+    duplicated += count > 1 ? 1 : 0;
+  }
+  CHECK(lost == 0);
+  CHECK(duplicated == 0);
 }
