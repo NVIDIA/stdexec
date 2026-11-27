@@ -27,6 +27,7 @@ import stdexec;
 
 #  include "__completion_behavior.hpp"
 #  include "__concepts.hpp"
+#  include "__env.hpp"
 #  include "__meta.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__utility.hpp"
@@ -238,8 +239,8 @@ namespace STDEXEC
   template <class _Env, class... _Queries>
   struct __hide_query
   {
-    constexpr explicit __hide_query(_Env &&__env, _Queries...) noexcept
-      : __env_{static_cast<_Env &&>(__env)}
+    constexpr explicit __hide_query(_Env __env, _Queries...) noexcept
+      : __env_(static_cast<_Env &&>(__env))
     {}
 
     template <class _Env2 = _Env, __none_of<_Queries...> _Query, class... _As>
@@ -255,22 +256,24 @@ namespace STDEXEC
     _Env __env_;
   };
 
+  // (The environment is held as __env::__held_t says.)
   template <class _Env, class... _Queries>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-  __hide_query(_Env &&, _Queries...) -> __hide_query<_Env, _Queries...>;
+  __hide_query(_Env &&, _Queries...) -> __hide_query<__env::__held_t<_Env>, _Queries...>;
 
   //! @brief A wrapper around an environment that hides the get_start_scheduler
   //! and get_domain queries.
   template <class _Env>
   struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t, get_domain_t>
   {
-    constexpr explicit __hide_scheduler(_Env &&__env) noexcept
+    constexpr explicit __hide_scheduler(_Env __env) noexcept
       : __hide_query<_Env, get_start_scheduler_t, get_domain_t>{static_cast<_Env &&>(__env), {}, {}}
     {}
   };
 
   template <class _Env>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __hide_scheduler(_Env &&) -> __hide_scheduler<_Env>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+  __hide_scheduler(_Env &&) -> __hide_scheduler<__env::__held_t<_Env>>;
 
   //////////////////////////////////////////////////////////////////////////////
   //! @brief A query type for asking a sender's attributes for the domain on
@@ -454,7 +457,7 @@ namespace STDEXEC
       else if constexpr (__callable<get_start_scheduler_t, _Env const &>)
       {
         using __sch_t = __call_result_t<get_start_scheduler_t, _Env const &>;
-        using __env_t = __hide_scheduler<_Env const &>;
+        using __env_t = __hide_scheduler<__env::__held_t<_Env const &>>;
         using __cmpl_sch_t =
           __call_result_t<get_completion_scheduler_t<set_value_t>, __sch_t, __env_t>;
         return __detail::__scheduler_domain_t<__cmpl_sch_t, __env_t>{};
