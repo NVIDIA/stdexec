@@ -53,8 +53,14 @@ function(add_relacy_test target_name)
   set_tests_properties(relacy-${target_name} PROPERTIES TIMEOUT 120)
 endfunction()
 
-set(relacy_tests async_scope bwos_lifo_queue intrusive_mpsc_queue split
-                 static_thread_pool_remote_poll sync_wait)
+set(relacy_tests
+    async_scope
+    bwos_lifo_queue
+    intrusive_mpsc_queue
+    split
+    static_thread_pool_nested_wait
+    static_thread_pool_remote_poll
+    sync_wait)
 
 foreach(test ${relacy_tests})
   add_relacy_test(${test})

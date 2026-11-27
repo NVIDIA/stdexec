@@ -26,6 +26,7 @@
 #include <chrono>
 #include <exception>
 #include <latch>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <ranges>
@@ -458,4 +459,54 @@ TEST_CASE("static_thread_pool drains remote work from producer schedulers",
           "[types][static_thread_pool][stress]")
 {
   run_remote_poll_stress(true);
+}
+
+// https://github.com/NVIDIA/stdexec/issues/1305: with blocks of one task, the
+// workers of a static_thread_pool can steal every task that a worker schedules
+// as soon as it schedules it, and a sleeping worker wakes up to do so.
+TEST_CASE("a task on static_thread_pool can wait for a task that it schedules on the pool",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{2, exec::bwos_params{.blockSize = 1}};
+  auto                     sched = pool.get_scheduler();
+  for (int i = 0; i < 100; ++i)
+  {
+    auto [value] = ex::sync_wait(
+                     ex::starts_on(sched,
+                                   ex::just()
+                                     | ex::then(
+                                       [&]
+                                       {
+                                         auto [inner] =
+                                           ex::sync_wait(ex::starts_on(sched, ex::just(i))).value();
+                                         return inner;
+                                       })))
+                     .value();
+    CHECK(value == i);
+  }
+}
+
+TEST_CASE("tasks that a task on static_thread_pool schedules run in parallel with it",
+          "[types][static_thread_pool]")
+{
+  constexpr int            num_threads = 4;
+  exec::static_thread_pool pool{num_threads, exec::bwos_params{.blockSize = 1}};
+  auto                     sched = pool.get_scheduler();
+  for (int i = 0; i < 100; ++i)
+  {
+    // Shared, because a child can still be in arrive_and_wait() when the parent
+    // returns from it.
+    auto all_running = std::make_shared<std::latch>(num_threads);
+    auto parent      = [&]
+    {
+      for (int child = 1; child < num_threads; ++child)
+      {
+        exec::start_detached(
+          ex::starts_on(sched,
+                        ex::just() | ex::then([all_running] { all_running->arrive_and_wait(); })));
+      }
+      all_running->arrive_and_wait();
+    };
+    CHECK(ex::sync_wait(ex::starts_on(sched, ex::just() | ex::then(parent))));
+  }
 }

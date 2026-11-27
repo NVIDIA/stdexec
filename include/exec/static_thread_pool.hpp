@@ -555,8 +555,11 @@ namespace experimental::execution
         auto try_steal(std::span<_workstealing_victim> victims) -> pop_result;
         auto try_steal_near() -> pop_result;
         auto try_steal_any() -> pop_result;
+        auto try_steal_all() -> pop_result;
+        auto wait_for_task() -> pop_result;
 
         void notify_one_sleeping();
+        void wake_thief();
         void set_stealing();
         void clear_stealing();
         void set_sleeping();
@@ -936,11 +939,29 @@ namespace experimental::execution
       return try_steal(all_victims_);
     }
 
+    inline auto _static_thread_pool::_thread_state::try_steal_all()
+      -> _static_thread_pool::_thread_state::pop_result
+    {
+      for (_workstealing_victim& victim: all_victims_)
+      {
+        if (_task_base* task = victim.try_steal())
+        {
+          return {.task = task, .queue_index = victim.index()};
+        }
+      }
+      return {.task = nullptr, .queue_index = index_};
+    }
+
     inline void _static_thread_pool::_thread_state::push_local(_task_base* task)
     {
+      std::size_t const grant_count = local_queue_.grant_count();
       if (!local_queue_.push_back(task))
       {
         pending_queue_.push_back(task);
+      }
+      else if (local_queue_.grant_count() != grant_count)
+      {
+        wake_thief();
       }
     }
 
@@ -986,6 +1007,41 @@ namespace experimental::execution
       }
     }
 
+    // The seq_cst fence of the handshake between wake_thief() and
+    // wait_for_task(). TSan does not model fences, and GCC rejects them with
+    // -fsanitize=thread (-Wtsan). That does not matter here: the fence only
+    // orders accesses to atomics (num_active_ and the metadata of the queues),
+    // and a worker that steals a task synchronizes with the worker that granted
+    // it through the queue, which TSan does model.
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
+
+    inline void _wake_handshake_fence() noexcept
+    {
+      __std::atomic_thread_fence(__std::memory_order_seq_cst);
+    }
+
+    STDEXEC_PRAGMA_POP()
+
+    // Called by the owner of local_queue_ after it granted a block to the
+    // thieves. Wakes a sleeping worker to steal from the block, unless a worker
+    // is stealing already. That worker either finds the block, or it looks at
+    // every queue once more before it goes to sleep (see wait_for_task()).
+    inline void _static_thread_pool::_thread_state::wake_thief()
+    {
+      // Pairs with the fence in wait_for_task() between set_sleeping() and the
+      // last look for work: either that look finds the block, or this load
+      // sees that the worker is going to sleep.
+      _wake_handshake_fence();
+      std::uint32_t const num_active  = pool_->num_active_.load(__std::memory_order_relaxed);
+      std::uint32_t const num_thieves = num_active & 0xffffu;
+      std::uint32_t const num_awake   = (num_active >> 16u) + num_thieves;
+      if (num_thieves == 0 && num_awake < pool_->thread_count_)
+      {
+        notify_one_sleeping();
+      }
+    }
+
     inline void _static_thread_pool::_thread_state::notify_one_sleeping()
     {
       std::uniform_int_distribution<std::uint32_t> dist(0, pool_->thread_count_ - 1);
@@ -1005,6 +1061,20 @@ namespace experimental::execution
     }
 
     inline auto _static_thread_pool::_thread_state::pop()  //
+      -> _static_thread_pool::_thread_state::pop_result
+    {
+      // Moving tasks from the remote queues into local_queue_ can make some of
+      // them available for stealing.
+      std::size_t const grant_count = local_queue_.grant_count();
+      pop_result        result      = wait_for_task();
+      if (local_queue_.grant_count() != grant_count)
+      {
+        wake_thief();
+      }
+      return result;
+    }
+
+    inline auto _static_thread_pool::_thread_state::wait_for_task()  //
       -> _static_thread_pool::_thread_state::pop_result
     {
       pop_result result = try_pop();
@@ -1033,6 +1103,20 @@ namespace experimental::execution
         std::this_thread::yield();
         clear_stealing();
 
+        // Announce that this worker is going to sleep, then look for work in
+        // every queue once more. The fence pairs with the one in wake_thief():
+        // the owner of a block that it grants concurrently either sees that
+        // this worker is going to sleep and wakes a worker, or the look below
+        // finds the block.
+        set_sleeping();
+        _wake_handshake_fence();
+        result = try_steal_all();
+        if (result.task)
+        {
+          clear_sleeping();
+          return result;
+        }
+
         std::unique_lock lock{mut_};
         if (stop_requested_)
         {
@@ -1055,17 +1139,17 @@ namespace experimental::execution
                                            state::running,
                                            __std::memory_order_relaxed,
                                            __std::memory_order_relaxed);
+            lock.unlock();
+            clear_sleeping();
             return result;
           }
-          set_sleeping();
           cv_.wait(lock);
-          lock.unlock();
-          clear_sleeping();
         }
         if (lock.owns_lock())
         {
           lock.unlock();
         }
+        clear_sleeping();
         state_.exchange(state::running, __std::memory_order_acquire);
         result = try_pop();
       }
