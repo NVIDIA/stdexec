@@ -160,12 +160,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
   STDEXEC_MODULE_EXPORT
   template <class _Token>
-  concept unstoppable_token =
-    stoppable_token<_Token> //
-    && requires {
-      { _Token::stop_possible() } -> STDEXEC::__boolean_testable_;
-    } //
-    && (!_Token::stop_possible());
+  concept unstoppable_token = stoppable_token<_Token> && requires {
+    { _Token::stop_possible() } -> STDEXEC::__boolean_testable_;
+    requires STDEXEC::__mbool<(!_Token::stop_possible())>::value;
+  };
 
   template <unstoppable_token _Token>
   struct __stoppable_base_for<_Token>
