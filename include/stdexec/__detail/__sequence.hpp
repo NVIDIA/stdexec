@@ -250,7 +250,7 @@ namespace STDEXEC
         , __env2s_(__later_t::__mk_env2s(__sndr, STDEXEC::get_env(__rcvr_)))
         , __sndrs_(__later_t::__take_senders(static_cast<_Sender &&>(__sndr)))
       {
-        if constexpr (__nbr != 0)
+        if constexpr (__nbr != 0 && !__walking)
         {
           if constexpr (__attaches<0>())
           {
@@ -270,10 +270,20 @@ namespace STDEXEC
 
       STDEXEC_IMMOVABLE(__seq_state);
 
+      // (A walk needs only the state's type, so it does not name the senders' operations:
+      // they would be connected to archetypes.)
+      struct __ops_lazy
+      {
+        using __t = __variant<__op_t<_Is>...>;
+      };
+      static constexpr bool __walking = __facade::__walking_v<_Receiver>;
+      using __ops_t =
+        __facade::__lazy_state_ops_t<_Receiver, __ops_lazy, __variant<__facade::__walk_op>>;
+
       _Receiver                       __rcvr_;
       typename __later_t::__env2s_t   __env2s_;
       typename __later_t::__senders_t __sndrs_;
-      __variant<__op_t<_Is>...>       __ops_{__no_init};
+      __ops_t                         __ops_{__no_init};
     };
 
     // __sequence(sndrs...): starts the senders one after the other. Each but the last must
@@ -415,48 +425,62 @@ namespace STDEXEC
       {
         using __sender_t   = _State::template __sender_t<_Idx>;
         using __receiver_t = _State::template __receiver_t<_Idx>;
+        using __started_t  = __facade::__effects<__facade::__starts<__facade::__child<_Idx>>>;
 
-        // Connecting (or attaching) the next sender destroys the operation of the one that
-        // just completed.
-        auto __start = [&]()
+        // In a walk, only the effects matter (and the state holds no operations to make).
+        if constexpr (_State::__walking)
         {
-          if constexpr (_State::template __attaches<_Idx>())
-          {
-            using __attach_t = _State::template __attach_t<_Idx>;
-            auto &__op       = __state.__ops_.__emplace_from(
-              __attach_t(),
-              __state,
-              static_cast<__sender_t &&>(STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
-              __receiver_t{&__state});
-            return __facade::__start_nested<__facade::__child<_Idx>>(__op);
-          }
+          if constexpr (_State::template __nothrow_attach<_Idx>())
+            return __started_t();
           else
-          {
-            auto &__op = __state.__ops_.__emplace_from(
-              STDEXEC::connect,
-              static_cast<__sender_t &&>(STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
-              __receiver_t{&__state});
-            return __facade::__start_nested<__facade::__child<_Idx>>(__op);
-          }
-        };
-
-        if constexpr (_State::template __nothrow_attach<_Idx>())
-        {
-          return __start();
+            return __facade::__union_t<__started_t,
+                                       __facade::__effects<set_error_t(std::exception_ptr)>>(
+              __started_t());
         }
         else
         {
-          using __result_t =
-            __facade::__union_t<decltype(__start()),
-                                __facade::__effects<set_error_t(std::exception_ptr)>>;
-          STDEXEC_TRY
+          // Connecting (or attaching) the next sender destroys the operation of the one that
+          // just completed.
+          auto __start = [&]()
           {
-            return __result_t(__start());
+            if constexpr (_State::template __attaches<_Idx>())
+            {
+              using __attach_t = _State::template __attach_t<_Idx>;
+              auto &__op       = __state.__ops_.__emplace_from(
+                __attach_t(),
+                __state,
+                static_cast<__sender_t &&>(STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
+                __receiver_t{&__state});
+              return __facade::__start_nested<__facade::__child<_Idx>>(__op);
+            }
+            else
+            {
+              auto &__op = __state.__ops_.__emplace_from(
+                STDEXEC::connect,
+                static_cast<__sender_t &&>(STDEXEC::__get<_Idx - 1>(__state.__sndrs_)),
+                __receiver_t{&__state});
+              return __facade::__start_nested<__facade::__child<_Idx>>(__op);
+            }
+          };
+
+          if constexpr (_State::template __nothrow_attach<_Idx>())
+          {
+            return __start();
           }
-          STDEXEC_CATCH_ALL
+          else
           {
-            return __result_t(
-              __facade::__send(__state.__rcvr_, set_error, std::current_exception()));
+            using __result_t =
+              __facade::__union_t<decltype(__start()),
+                                  __facade::__effects<set_error_t(std::exception_ptr)>>;
+            STDEXEC_TRY
+            {
+              return __result_t(__start());
+            }
+            STDEXEC_CATCH_ALL
+            {
+              return __result_t(
+                __facade::__send(__state.__rcvr_, set_error, std::current_exception()));
+            }
           }
         }
       }

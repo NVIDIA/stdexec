@@ -306,6 +306,12 @@ namespace experimental::execution
     // saved result. (The receiver's type does not name the operation's sender, as the state's
     // does: the types of the items' operations name it, and they would grow with the size of
     // the sender, as would the debug info that names them.)
+    template <class _Child, class _Rcvr>
+    struct __nothrow_subscribe_t
+    {
+      static constexpr bool value = __nothrow_subscribable<_Child, _Rcvr>;
+    };
+
     template <class _Receiver, class _Variant>
     struct __state_base : __result_type<_Variant>
     {
@@ -326,16 +332,27 @@ namespace experimental::execution
       using __base_t  = __state_base<_Receiver, __result_variant_t<__child_t, env_of_t<_Receiver>>>;
       using __seq_rcvr_t = __ignore_all_values::__receiver<__base_t>;
 
-      explicit __state(_Sender&& __sndr, _Receiver&& __rcvr)
-        noexcept(__nothrow_subscribable<__child_t, __seq_rcvr_t>)
+      explicit __state(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
+        __facade::__nothrow_state_v<_Receiver, __nothrow_subscribe_t<__child_t, __seq_rcvr_t>>)
         : __base_t{{}, static_cast<_Receiver&&>(__rcvr)}
-        , __op_{exec::subscribe(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
-                                __seq_rcvr_t{this})}
+        , __op_{__subscribe_child(static_cast<_Sender&&>(__sndr), this)}
       {}
 
       STDEXEC_IMMOVABLE(__state);
 
-      subscribe_result_t<__child_t, __seq_rcvr_t> __op_;
+      using __op_t = __facade::__state_op_t<_Receiver, subscribe_result_t, __child_t, __seq_rcvr_t>;
+
+      // Subscribes the child, unless the state is for a walk: then __op_ is a placeholder
+      static constexpr auto __subscribe_child(_Sender&& __sndr, __state* __self) -> __op_t
+      {
+        if constexpr (__same_as<__op_t, __facade::__walk_op>)
+          return __op_t();
+        else
+          return exec::subscribe(__facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                                 __seq_rcvr_t{__self});
+      }
+
+      __op_t __op_;
     };
 
     struct ignore_all_values_t
