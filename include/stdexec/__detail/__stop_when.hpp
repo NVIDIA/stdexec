@@ -31,7 +31,6 @@ import stdexec;
 #  include "__env.hpp"
 #  include "__sender_concepts.hpp"
 #  include "__sender_facade.hpp"
-#  include "__sender_introspection.hpp"
 #  include "__stop_token.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -189,6 +188,9 @@ namespace STDEXEC
     struct __algo : __facade::__defaults
     {
       template <class _Sender, class _Env>
+      using __token_t = __call_result_t<__fuse_token_fn, __data_of<_Sender>, stop_token_of_t<_Env>>;
+
+      template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __env_for(__facade::__child<0>,
                                       _Sender const & __sndr,
@@ -207,6 +209,7 @@ namespace STDEXEC
 
       template <class _Sender, class _Receiver>
       static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr) noexcept
+        -> __state<__token_t<_Sender, env_of_t<_Receiver>>, _Receiver>
       {
         auto __token = __fuse_token_fn()(__facade::__get_data(static_cast<_Sender&&>(__sndr)),
                                          get_stop_token(STDEXEC::get_env(__rcvr)));

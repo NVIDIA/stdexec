@@ -33,6 +33,7 @@ namespace experimental::execution
       template <class CacheSndr, class... Closures>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr auto operator()(CacheSndr sndr, Closures&&... closures) const
+        noexcept(noexcept(STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...)))
       {
         return STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...);
       }
@@ -95,24 +96,24 @@ namespace experimental::execution
     using _cache_sndr_completions_t =
       STDEXEC::completion_signatures<STDEXEC::__mapply<STDEXEC::__q<_cref_sig_t>, AsyncResults>...>;
 
+    template <class Rcvr, class Variant>
+    struct _cache_opstate
+    {
+      using operation_state_concept = STDEXEC::operation_state_tag;
+
+      STDEXEC_ATTRIBUTE(host, device) void start() noexcept
+      {
+        std::as_const(*_results_).__complete(_rcvr_);
+      }
+
+      Rcvr            _rcvr_;
+      Variant const * _results_;
+    };
+
     template <class Variant, class Domain>
-    struct _cache_sndr_t
+    struct _cache_sndr
     {
       using sender_concept = STDEXEC::sender_tag;
-
-      template <class Rcvr>
-      struct _opstate_t
-      {
-        using operation_state_concept = STDEXEC::operation_state_tag;
-
-        STDEXEC_ATTRIBUTE(host, device) void start() noexcept
-        {
-          std::as_const(*_results_).__complete(_rcvr_);
-        }
-
-        Rcvr            _rcvr_;
-        Variant const * _results_;
-      };
 
       template <class _Self, class... _Env>
       STDEXEC_ATTRIBUTE(host, device)
@@ -123,9 +124,9 @@ namespace experimental::execution
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto connect(Rcvr rcvr) const -> _opstate_t<Rcvr>
+      constexpr auto connect(Rcvr rcvr) const noexcept -> _cache_opstate<Rcvr, Variant>
       {
-        return _opstate_t<Rcvr>{static_cast<Rcvr&&>(rcvr), _results_};
+        return _cache_opstate<Rcvr, Variant>{static_cast<Rcvr&&>(rcvr), _results_};
       }
 
       STDEXEC_ATTRIBUTE(host, device)
@@ -141,7 +142,7 @@ namespace experimental::execution
     using _when_all_sndr_t =
       STDEXEC::__apply_result_t<_mk_when_all_fn,
                                 Closures,
-                                _cache_sndr_t<_variant_t<Completions>, Domain>>;
+                                _cache_sndr<_variant_t<Completions>, Domain>>;
 
     // The key of the operation of when_all(closures(cache)...)
     struct _fork_op
@@ -209,15 +210,18 @@ namespace experimental::execution
     };
 
     template <class Sndr, class Rcvr>
+    using __child_completions_of_t =
+      STDEXEC::__facade::__completions_of_t<_algo, STDEXEC::__facade::__child<0>, Sndr, Rcvr>;
+
+    template <class Sndr, class Rcvr>
     struct _state
     {
-      using _child_t    = STDEXEC::__facade::__nth_child_of_t<Sndr, 0>;
-      using _closures_t = STDEXEC::__facade::__data_of_t<Sndr>;
-      using _child_completions_t =
-        STDEXEC::__facade::__completions_of_t<_algo, STDEXEC::__facade::__child<0>, Sndr, Rcvr>;
-      using _domain_t     = _child_domain_t<Sndr, STDEXEC::env_of_t<Rcvr>>;
-      using _cache_t      = _variant_t<_child_completions_t>;
-      using _cache_sndr_t = _fork_join::_cache_sndr_t<_cache_t, _domain_t>;
+      using _child_t             = STDEXEC::__facade::__nth_child_of_t<Sndr, 0>;
+      using _closures_t          = STDEXEC::__facade::__data_of_t<Sndr>;
+      using _child_completions_t = __child_completions_of_t<Sndr, Rcvr>;
+      using _domain_t            = _child_domain_t<Sndr, STDEXEC::env_of_t<Rcvr>>;
+      using _cache_t             = _variant_t<_child_completions_t>;
+      using _cache_sndr_t        = _fork_join::_cache_sndr<_cache_t, _domain_t>;
       using _when_all_sndr_t =
         STDEXEC::__apply_result_t<_mk_when_all_fn, _closures_t, _cache_sndr_t>;
       using _child_rcvr_t =
@@ -285,42 +289,6 @@ namespace experimental::execution
           return {};
         }
       }
-    };
-
-    // The type that __get_state returns: the state, or the type error that it reports.
-    // (Classes keyed by bools only, as _op_of is.)
-    template <bool DecayCopyable>
-    struct _state_if_copyable
-    {
-      template <class Sndr, class Rcvr>
-      using __f = _state<Sndr, Rcvr>;
-    };
-
-    template <>
-    struct _state_if_copyable<false>
-    {
-      template <class Sndr, class Rcvr>
-      using __f = STDEXEC::__mexception<STDEXEC::_WHAT_(
-                                          STDEXEC::_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                                        STDEXEC::_IN_ALGORITHM_(fork_join_t)>;
-    };
-
-    template <bool HasDomain>
-    struct _state_if_valid
-    {
-      template <class Sndr, class Rcvr>
-      using __f = _state_if_copyable<STDEXEC::__decay_copyable_results_t<
-        typename _state<Sndr, Rcvr>::_child_completions_t>::value>::template __f<Sndr, Rcvr>;
-    };
-
-    template <>
-    struct _state_if_valid<false>
-    {
-      template <class Sndr, class Rcvr>
-      using __f =
-        STDEXEC::__mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
-                              STDEXEC::_WITH_SENDERS_<STDEXEC::__facade::__nth_child_of_t<Sndr, 0>>,
-                              STDEXEC::_WITH_ENVIRONMENT_(STDEXEC::env_of_t<Rcvr>)>;
     };
 
     // fork_join(sndr, closures...): when the child completes, its results are cached, its
@@ -407,7 +375,7 @@ namespace experimental::execution
           STDEXEC::__completion_signatures_of_t<STDEXEC::__facade::__nth_child_of_t<Sndr, 0>,
                                                 STDEXEC::__fwd_env_t<Env>...>;
         using cache_sndr_t =
-          _fork_join::_cache_sndr_t<_variant_t<completions_t>, _child_domain_t<Sndr, Env...>>;
+          _fork_join::_cache_sndr<_variant_t<completions_t>, _child_domain_t<Sndr, Env...>>;
         using when_all_t = _when_all_sndr_t<completions_t,
                                             STDEXEC::__facade::__data_of_t<Sndr>,
                                             _child_domain_t<Sndr, Env...>>;
@@ -429,45 +397,44 @@ namespace experimental::execution
         }
       }
 
-      template <class Sndr, class Rcvr>
-      static consteval auto _nothrow_state() noexcept -> bool
-      {
-        if constexpr (STDEXEC::__minvocable_q<_child_domain_t, Sndr, STDEXEC::env_of_t<Rcvr>>)
-          return _state<Sndr, Rcvr>::_nothrow_v;
-        else
-          return true;
-      }
-
-      // (See __facade::__state_type_t.)
-      template <class Sndr, class Rcvr>
-      using __state_type =
-        _state_if_valid<STDEXEC::__minvocable_q<_child_domain_t,
-                                                Sndr,
-                                                STDEXEC::env_of_t<Rcvr>>>::template __f<Sndr, Rcvr>;
-
-      template <class Sndr, class Rcvr>
+      // The _StateT template-template parameter exists so that the __state_type
+      // alias below can compute the return type of __get_state without needing
+      // to know if it throws.
+      template <template <class...> class _StateT = _state, class Sndr, class Rcvr>
+        requires STDEXEC::__minvocable_q<_child_domain_t, Sndr, STDEXEC::env_of_t<Rcvr>>
+              && STDEXEC::__decay_copyable_results_t<__child_completions_of_t<Sndr, Rcvr>>::value
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __get_state(Sndr&& sndr, Rcvr rcvr)
-        noexcept(_algo::_nothrow_state<Sndr, Rcvr>())
+        noexcept(STDEXEC::__nothrow_constructible_from<_StateT<Sndr, Rcvr>, Sndr, Rcvr>)
+          -> _state<Sndr, Rcvr>
+      {
+        return _state<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+      }
+
+      template <template <class...> class _StateT = _state, class Sndr, class Rcvr>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(Sndr&&, Rcvr) noexcept
       {
         using namespace STDEXEC;
-        if constexpr (!__minvocable_q<_child_domain_t, Sndr, env_of_t<Rcvr>>)
-        {
-          return __mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
-                              _WITH_SENDERS_<__facade::__nth_child_of_t<Sndr, 0>>,
-                              _WITH_ENVIRONMENT_(env_of_t<Rcvr>)>();
-        }
-        else if constexpr (!__decay_copyable_results_t<
-                             typename _state<Sndr, Rcvr>::_child_completions_t>::value)
+        if constexpr (__minvocable_q<_child_domain_t, Sndr, env_of_t<Rcvr>>)
         {
           return __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
                               _IN_ALGORITHM_(fork_join_t)>();
         }
         else
         {
-          return _state<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+          return __mexception<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                              _WITH_SENDERS_<__facade::__nth_child_of_t<Sndr, 0>>,
+                              _WITH_ENVIRONMENT_(env_of_t<Rcvr>)>();
         }
       }
+
+      // The type that __get_state returns, named without asking whether it can
+      // throw (see __facade::__state_type_t).
+      template <class Sndr, class Rcvr>
+      using __state_type = decltype(_algo::__get_state<STDEXEC::__mconst<STDEXEC::__ignore>::__f>(
+        STDEXEC::__declval<Sndr>(),
+        STDEXEC::__declval<Rcvr>()));
 
       template <class State, class Children>
       STDEXEC_ATTRIBUTE(host, device)

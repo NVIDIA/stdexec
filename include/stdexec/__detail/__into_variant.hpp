@@ -68,13 +68,17 @@ namespace STDEXEC
     struct __algo : __facade::__defaults
     {
       template <class _Sender, class _Receiver>
+      using __state_type_t =
+        __state<_Receiver,
+                __variant_of_t<
+                  __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>>>;
+
+      template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __get_state(_Sender &&, _Receiver __rcvr) noexcept
+        -> __state_type_t<_Sender, _Receiver>
       {
-        using __completions_t =
-          __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>;
-        return __state<_Receiver, __variant_of_t<__completions_t>>{
-          static_cast<_Receiver &&>(__rcvr)};
+        return __state_type_t<_Sender, _Receiver>{static_cast<_Receiver &&>(__rcvr)};
       }
 
       template <class _State, class _Tag, class... _Args>

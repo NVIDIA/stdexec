@@ -26,7 +26,6 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#  include "__completion_signatures.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__diagnostics.hpp"
@@ -34,10 +33,8 @@ import stdexec;
 #  include "__sender_adaptor_closure.hpp"
 #  include "__sender_facade.hpp"
 #  include "__senders.hpp"
-#  include "__transform_completion_signatures.hpp"
 
 #  if !STDEXEC_USE_MODULES()
-#    include <exception>
 #    include <optional>
 #  endif
 
@@ -68,25 +65,29 @@ namespace STDEXEC
     // stopped completion an empty one. Errors are forwarded.
     struct __algo : __facade::__defaults
     {
+      template <class _Sender, class _Receiver>
+      using __state_t =
+        __state<_Receiver,
+                __value_of_t<
+                  __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>>>;
+
       // The child must complete with a value in exactly one way.
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __get_state(_Sender &&, _Receiver __rcvr) noexcept
+        -> __state_t<_Sender, _Receiver>
       {
-        using __completions_t =
-          __facade::__completions_of_t<__algo, __facade::__child<0>, _Sender, _Receiver>;
-        if constexpr (requires { typename __value_of_t<__completions_t>; })
-        {
-          return __state<_Receiver, __value_of_t<__completions_t>>{
-            static_cast<_Receiver &&>(__rcvr)};
-        }
-        else
-        {
-          return __mexception<
-            _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
-            _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-            _WITH_SENDER_<__facade::__nth_child_of_t<_Sender, 0>>>();
-        }
+        return __state_t<_Sender, _Receiver>{static_cast<_Receiver &&>(__rcvr)};
+      }
+
+      template <class _Sender>
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender &&, __ignore) noexcept
+      {
+        return __mexception<
+          _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
+          _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
+          _WITH_SENDER_<__facade::__nth_child_of_t<_Sender, 0>>>();
       }
 
       template <class _State, class _Tag, class... _Args>

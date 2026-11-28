@@ -150,50 +150,6 @@ namespace experimental::execution::__repeat
     __optional<__body_op_t>   __body_op_{};
   };
 
-  template <class _Algo, class _Sender, class _Receiver>
-  consteval auto __nothrow_state() noexcept -> bool
-  {
-    if constexpr (__connectable<_Algo, _Sender, _Receiver>)
-      return __state<_Algo, _Sender, _Receiver>::__nothrow_v;
-    else
-      return true;
-  }
-
-  // The type that __get_state returns: the state, or the type error that it reports.
-  // (Classes keyed by bools only, so that the debug information, which names a class when
-  // it names the state's type, does not repeat the sender's and the receiver's types.)
-  template <bool _Copyable, bool _Connectable>
-  struct __state_or_error
-  {
-    template <class _Algo, class _Sender, class _Receiver>
-    using __f = __state<_Algo, _Sender, _Receiver>;
-  };
-
-  template <bool _Connectable>
-  struct __state_or_error<false, _Connectable>
-  {
-    template <class _Algo, class _Sender, class _Receiver>
-    using __f = __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                             _WHERE_(_IN_ALGORITHM_, typename __decay_t<_Sender>::__tag_t),
-                             _WHY_(_THE_INPUT_SENDER_MUST_BE_COPYABLE_),
-                             _WITH_SENDER_<__child_t<_Sender>>>;
-  };
-
-  template <>
-  struct __state_or_error<true, false>
-  {
-    template <class _Algo, class _Sender, class _Receiver>
-    using __f = __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                             _WHERE_(_IN_ALGORITHM_, typename __decay_t<_Sender>::__tag_t),
-                             _WHY_(_THE_SENDER_CANNOT_BE_CONNECTED_),
-                             _WITH_SENDER_<__child_t<_Sender>>>;
-  };
-
-  template <class _Algo, class _Sender, class _Receiver>
-  using __state_type_t = __state_or_error<
-    __std::copy_constructible<__child_t<_Sender>>,
-    __connectable<_Algo, _Sender, _Receiver>>::template __f<_Algo, _Sender, _Receiver>;
-
   // The base of the repeating algorithms. _Derived is the algorithm, which says what the
   // body's value completions mean (with a __complete(__body, ...) handler), and how the
   // operation starts (with __start, which calls __start_iteration). Its static member
@@ -249,26 +205,44 @@ namespace experimental::execution::__repeat
       return STDEXEC::schedule(trampoline_scheduler{});
     }
 
-    // (See __facade::__state_type_t.)
-    template <class _Sender, class _Receiver>
-    using __state_type = __repeat::__state_type_t<_Derived, _Sender, _Receiver>;
-
-    // The state, or the type error that it reports (see __state_or_error)
-    template <class _Sender, class _Receiver>
-    static constexpr auto __get_state(_Sender &&__sndr, _Receiver __rcvr)
-      noexcept(__repeat::__nothrow_state<_Derived, _Sender, _Receiver>())
-        -> __state_type<_Sender, _Receiver>
+    // The _StateT template-template parameter exists so that the __state_type
+    // alias below can compute the return type of __get_state without needing to
+    // know if it throws.
+    template <template <class...> class _StateT = __state, class _Sender, class _Receiver>
+      requires __std::copy_constructible<__child_t<_Sender>>
+            && __connectable<_Derived, _Sender, _Receiver>
+    static constexpr auto __get_state(_Sender &&__sndr, _Receiver __rcvr) noexcept(
+      __nothrow_constructible_from<_StateT<_Derived, _Sender, _Receiver>, _Sender, _Receiver>)
+      -> __state<_Derived, _Sender, _Receiver>
     {
-      if constexpr (__connectable<_Derived, _Sender, _Receiver>)
+      return __state<_Derived, _Sender, _Receiver>(static_cast<_Sender &&>(__sndr),
+                                                   static_cast<_Receiver &&>(__rcvr));
+    }
+
+    template <template <class...> class _StateT = __state, class _Sender>
+    static constexpr auto __get_state(_Sender &&, __ignore) noexcept
+    {
+      using __tag_t = __decay_t<_Sender>::__tag_t;
+      if constexpr (!__std::copy_constructible<__child_t<_Sender>>)
       {
-        return __state<_Derived, _Sender, _Receiver>(static_cast<_Sender &&>(__sndr),
-                                                     static_cast<_Receiver &&>(__rcvr));
+        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                            _WHERE_(_IN_ALGORITHM_, __tag_t),
+                            _WHY_(_THE_INPUT_SENDER_MUST_BE_COPYABLE_),
+                            _WITH_SENDER_<__child_t<_Sender>>>();
       }
       else
       {
-        return __state_type<_Sender, _Receiver>();
+        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                            _WHERE_(_IN_ALGORITHM_, __tag_t),
+                            _WHY_(_THE_SENDER_CANNOT_BE_CONNECTED_),
+                            _WITH_SENDER_<__child_t<_Sender>>>();
       }
     }
+
+    template <class _Sender, class _Receiver>
+    using __state_type =
+      decltype(__algo_base::__get_state<__mconst<__ignore>::__f>(__declval<_Sender>(),
+                                                                 __declval<_Receiver>()));
 
     // Starts an iteration: the trampoline, which starts the body
     template <class _State>
