@@ -25,7 +25,9 @@
 import std;
 #else
 #  include <concepts>
+#  include <exception>
 #  include <memory>
+#  include <stdexcept>
 #endif
 
 namespace ex = STDEXEC;
@@ -304,6 +306,38 @@ namespace
     STATIC_REQUIRE(!std::copy_constructible<decltype(snd)>);
     (void) snd;
   }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throws_on_connect
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Receiver>
+    auto connect(Receiver) const -> ex::connect_result_t<decltype(ex::just()), Receiver>
+    {
+      throw std::logic_error("connect");
+    }
+  };
+
+  TEST_CASE("associate - connecting can throw if connecting the wrapped sender can",
+            "[adaptors][associate]")
+  {
+    // (The function is noexcept, so the exception can come only from connecting.)
+    auto fn = []() noexcept
+    {
+      return ex::associate(throws_on_connect{}, null_token{});
+    };
+    using Sender = decltype(fn());
+    STATIC_REQUIRE(!ex::__nothrow_connectable<Sender, ex::__receiver_archetype<ex::env<>>>);
+
+    // So an algorithm that connects it when another sender completes reports the exception.
+    using Let = decltype(ex::let_value(ex::just(), fn));
+    STATIC_REQUIRE(ex::__mapply<ex::__mcontains<ex::set_error_t(std::exception_ptr)>,
+                                ex::completion_signatures_of_t<Let, ex::env<>>>::value);
+    CHECK_THROWS_AS(ex::sync_wait(ex::let_value(ex::just(), fn)), std::logic_error);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   // TODO: check the pass-through nature of __sync_attrs
   // TODO: check the pass-through stop request behaviour

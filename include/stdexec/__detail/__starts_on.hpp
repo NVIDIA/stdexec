@@ -47,6 +47,27 @@ namespace STDEXEC
 
     struct __algo;
 
+    // The type of the child's operation: the one that the state attaches, or, if the state is
+    // for a walk (its receiver is an archetype), a placeholder, since the walk needs only the
+    // state's type. Naming the operation there would instantiate the operations below it,
+    // connected to archetypes. (A class keyed by a bool only, so that the debug information,
+    // which names the class when it names the operation's type, does not repeat the sender's
+    // and the receiver's types.)
+    template <bool _Walking>
+    struct __child_op_of
+    {
+      template <class _Sender, class _State, class _Child, class _Rcvr, class... _Subscribing>
+      using __f =
+        __facade::__child_op_t<__algo, _Sender, 0, _State, _Child, _Rcvr, _Subscribing...>;
+    };
+
+    template <>
+    struct __child_op_of<true>
+    {
+      template <class _Sender, class _State, class _Child, class _Rcvr, class... _Subscribing>
+      using __f = __facade::__walk_op;
+    };
+
     // The state of a starts_on. If the starts_on is subscribed (_Subscribing is
     // __facade::__subscribing_t), so is its child, when that is a sequence sender (see
     // __facade::__attaches_child).
@@ -63,8 +84,9 @@ namespace STDEXEC
         __facade::__receiver_t<__algo, __sched_op, __state, _Sender, _Receiver>;
       using __child_rcvr_t =
         __facade::__receiver_t<__algo, __facade::__child<0>, __state, _Sender, _Receiver>;
-      using __child_op_t = __facade::
-        __child_op_t<__algo, _Sender, 0, __state, __child_t, __child_rcvr_t, _Subscribing...>;
+      using __child_op_of_t = __child_op_of<__facade::__walking_receiver<_Receiver>>;
+      using __child_op_t =
+        __child_op_of_t::template __f<_Sender, __state, __child_t, __child_rcvr_t, _Subscribing...>;
 
       static constexpr bool __nothrow_v = __nothrow_callable<schedule_t, __scheduler_t const &>
                                        && __nothrow_connectable<__sched_sndr_t, __sched_rcvr_t>
@@ -94,11 +116,16 @@ namespace STDEXEC
       __child_op_t                                     __child_op_;
 
      private:
-      // Connects the child, or attaches it (see __facade::__attaches_child)
+      // Connects the child, or attaches it (see __facade::__attaches_child), unless the state
+      // is for a walk: then __child_op_ is a placeholder.
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto __attach_child(__child_t&& __child) noexcept(__nothrow_v) -> __child_op_t
       {
-        if constexpr (__facade::__attaches_child<__algo, _Sender, 0>)
+        if constexpr (__facade::__walking_receiver<_Receiver>)
+        {
+          return {};
+        }
+        else if constexpr (__facade::__attaches_child<__algo, _Sender, 0>)
         {
           using __attach_t =
             __facade::__attach_child_t<__algo, _Sender, 0, __child_rcvr_t, _Subscribing...>;
@@ -180,6 +207,10 @@ namespace STDEXEC
         return __facade::__schedule_attrs<decltype(__facade::__get_data(__sndr))>{
           __facade::__get_data(__sndr)};
       }
+
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver, class... _Subscribing>
+      using __state_type = __state<_Sender, _Receiver, _Subscribing...>;
 
       // (The state of a subscribed starts_on takes __facade::__subscribing_t.)
       template <class _Sender, class _Receiver, class... _Subscribing>

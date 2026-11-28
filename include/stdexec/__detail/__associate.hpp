@@ -196,18 +196,24 @@ namespace STDEXEC
       using __wrap_sender_t    = __associate_data_t::__wrap_sender_t;
       using __wrapped_rcvr_t =
         __facade::__receiver_t<__algo, __wrapped_op, __state, _Sender, _Receiver>;
-      using __op_t = connect_result_t<__wrap_sender_t, __wrapped_rcvr_t>;
+      // (A walk's state holds a placeholder for the operation: see __facade::__state_op_t.)
+      using __op_t =
+        __facade::__state_op_t<_Receiver, connect_result_t, __wrap_sender_t, __wrapped_rcvr_t>;
 
-      // The wrapped sender's operation is connected only if the association succeeded.
+      // The wrapped sender's operation is connected only if the association succeeded, and
+      // the state is not for a walk.
       explicit __state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __assoc_(STDEXEC::__allocator_aware_forward(std::move(__parts.first), __rcvr_))
       {
-        if (__assoc_)
+        if constexpr (!__facade::__walking_receiver<_Receiver>)
         {
-          __op_.__emplace_from(STDEXEC::connect,
-                               std::move(*__parts.second),
-                               __wrapped_rcvr_t{this});
+          if (__assoc_)
+          {
+            __op_.__emplace_from(STDEXEC::connect,
+                                 std::move(*__parts.second),
+                                 __wrapped_rcvr_t{this});
+          }
         }
       }
 
@@ -243,6 +249,10 @@ namespace STDEXEC
       {
         return {};
       }
+
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver>
+      using __state_type = __state<_Sender, _Receiver>;
 
       template <class _Sender, class _Receiver>
       static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)

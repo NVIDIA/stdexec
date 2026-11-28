@@ -105,6 +105,41 @@ namespace
     CHECK_THROWS_AS(sync_wait(std::move(s)), int);
     CHECK(called);
   }
+
+  struct throws_on_connect
+  {
+    using sender_concept        = sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
+
+    template <class Receiver>
+    auto connect(Receiver) const -> connect_result_t<decltype(just()), Receiver>
+    {
+      throw 42;
+    }
+  };
+
+  TEST_CASE("finally - connecting can throw if connecting either sender can", "[adaptors][finally]")
+  {
+    // (The functions are noexcept, so the exception can come only from connecting.)
+    auto initial_throws = []() noexcept
+    {
+      return exec::finally(throws_on_connect{}, just());
+    };
+    auto final_throws = []() noexcept
+    {
+      return exec::finally(just(), throws_on_connect{});
+    };
+    using Rcvr = __receiver_archetype<ex::env<>>;
+    STATIC_REQUIRE(!__nothrow_connectable<decltype(initial_throws()), Rcvr>);
+    STATIC_REQUIRE(!__nothrow_connectable<decltype(final_throws()), Rcvr>);
+
+    // So an algorithm that connects it when another sender completes reports the exception.
+    using Let = decltype(let_value(just(), final_throws));
+    STATIC_REQUIRE(__mapply<__mcontains<set_error_t(std::exception_ptr)>,
+                            completion_signatures_of_t<Let, ex::env<>>>::value);
+    CHECK_THROWS_AS(sync_wait(let_value(just(), initial_throws)), int);
+    CHECK_THROWS_AS(sync_wait(let_value(just(), final_throws)), int);
+  }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("finally completes where the final action completes", "[adaptors][finally]")
