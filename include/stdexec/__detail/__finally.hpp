@@ -113,8 +113,11 @@ namespace STDEXEC
         __facade::__receiver_t<__algo, __facade::__child<0>, __state, _Sender, _Receiver>;
       using __final_rcvr_t =
         __facade::__receiver_t<__algo, __facade::__child<1>, __state, _Sender, _Receiver>;
-      using __initial_op_t = connect_result_t<__initial_t, __initial_rcvr_t>;
-      using __final_op_t   = connect_result_t<__final_t, __final_rcvr_t>;
+      // (A walk's state holds placeholders for the operations: see __facade::__state_op_t.)
+      using __initial_op_t =
+        __facade::__state_op_t<_Receiver, connect_result_t, __initial_t, __initial_rcvr_t>;
+      using __final_op_t =
+        __facade::__state_op_t<_Receiver, connect_result_t, __final_t, __final_rcvr_t>;
 
       static constexpr bool __saves_results =
         __facade::__completions_of_t<__algo, __facade::__child<1>, _Sender, _Receiver>::__count(
@@ -131,12 +134,14 @@ namespace STDEXEC
                  && __nothrow_connectable<__initial_t, __initial_rcvr_t>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __env2_(__trnsfr::__mk_env2(__facade::__get_child<0>(__sndr), STDEXEC::get_env(__rcvr_)))
-        , __final_op_(STDEXEC::connect(__facade::__get_child<1>(static_cast<_Sender&&>(__sndr)),
-                                       __final_rcvr_t{this}))
+        , __final_op_(__state::__connect_final(static_cast<_Sender&&>(__sndr), this))
       {
-        __initial_op_.__emplace_from(STDEXEC::connect,
-                                     __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
-                                     __initial_rcvr_t{this});
+        if constexpr (!__facade::__walking_receiver<_Receiver>)
+        {
+          __initial_op_.__emplace_from(STDEXEC::connect,
+                                       __facade::__get_child<0>(static_cast<_Sender&&>(__sndr)),
+                                       __initial_rcvr_t{this});
+        }
       }
 
       STDEXEC_IMMOVABLE(__state);
@@ -146,6 +151,23 @@ namespace STDEXEC
       __storage_t                __storage_{};
       __final_op_t               __final_op_;
       __optional<__initial_op_t> __initial_op_{};
+
+     private:
+      // Connects the final sender, unless the state is for a walk: then __final_op_ is a
+      // placeholder.
+      static constexpr auto __connect_final(_Sender&& __sndr, __state* __self)
+        noexcept(__nothrow_connectable<__final_t, __final_rcvr_t>) -> __final_op_t
+      {
+        if constexpr (__facade::__walking_receiver<_Receiver>)
+        {
+          return {};
+        }
+        else
+        {
+          return STDEXEC::connect(__facade::__get_child<1>(static_cast<_Sender&&>(__sndr)),
+                                  __final_rcvr_t{__self});
+        }
+      }
     };
 
     // __finally_(initial, final): when the initial sender completes, its results are saved,
@@ -186,6 +208,10 @@ namespace STDEXEC
           return __env::__join(__env2_t(__state.__env2_),
                                __hide_scheduler{STDEXEC::get_env(__state.__rcvr_)});
       }
+
+      // (See __facade::__state_type_t.)
+      template <class _Sender, class _Receiver>
+      using __state_type = __state<_Sender, _Receiver>;
 
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
