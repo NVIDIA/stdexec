@@ -29,6 +29,8 @@
 import std;
 #else
 #  include <chrono>  // IWYU pragma: keep for std::chrono_literals
+#  include <exception>
+#  include <stdexcept>
 #endif
 
 namespace ex = STDEXEC;
@@ -524,6 +526,37 @@ namespace
     auto domain = ex::get_env(error).query(ex::get_completion_domain<ex::set_error_t>);
     static_assert(std::same_as<decltype(domain), starts_on_attrs_domain>);
   }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throws_on_connect
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Receiver>
+    auto connect(Receiver) const -> ex::connect_result_t<decltype(ex::just()), Receiver>
+    {
+      throw std::logic_error("connect");
+    }
+  };
+
+  TEST_CASE("starts_on - connecting can throw if connecting the child can", "[adaptors][starts_on]")
+  {
+    // (The function is noexcept, so the exception can come only from connecting.)
+    auto fn = []() noexcept
+    {
+      return ex::starts_on(inline_scheduler{}, throws_on_connect{});
+    };
+    using Sender = decltype(fn());
+    STATIC_REQUIRE(!ex::__nothrow_connectable<Sender, ex::__receiver_archetype<ex::env<>>>);
+
+    // So an algorithm that connects it when another sender completes reports the exception.
+    using Let = decltype(ex::let_value(ex::just(), fn));
+    STATIC_REQUIRE(ex::__mapply<ex::__mcontains<ex::set_error_t(std::exception_ptr)>,
+                                ex::completion_signatures_of_t<Let, ex::env<>>>::value);
+    CHECK_THROWS_AS(ex::sync_wait(ex::let_value(ex::just(), fn)), std::logic_error);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace
 
 STDEXEC_PRAGMA_POP()
