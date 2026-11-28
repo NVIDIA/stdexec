@@ -108,7 +108,7 @@ namespace
     asio_impl::io_context   ctx;
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::years(1));
-    auto sender = t.async_wait(use_sender);
+    auto sender = t.async_wait(thread_unsafe_use_sender);
     STATIC_REQUIRE(::STDEXEC::sender_in<decltype(sender)>);
     STATIC_REQUIRE(::STDEXEC::sender_of<decltype(sender), ::STDEXEC::set_value_t()>);
     STATIC_REQUIRE(
