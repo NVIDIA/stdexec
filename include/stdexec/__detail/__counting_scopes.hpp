@@ -184,37 +184,32 @@ namespace STDEXEC
         return __facade::__schedule_attrs<__scheduler_of_t<_Env>>{get_start_scheduler(__env)};
       }
 
-      template <class _Sender, class _Receiver>
-      static consteval auto __nothrow_state() noexcept -> bool
+      // Joining needs a start scheduler in the receiver's environment.
+      template <template <class...> class _StateT = __join_state, class _Sender, class _Receiver>
+        requires __callable<get_start_scheduler_t, env_of_t<_Receiver> const &>
+      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_constructible_from<_StateT<_Sender, _Receiver>, __base_scope*, _Receiver>)
+        -> __join_state<_Sender, _Receiver>
       {
-        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Receiver> const &>)
-          return __nothrow_constructible_from<__join_state<_Sender, _Receiver>,
-                                              __base_scope*,
-                                              _Receiver>;
-        else
-          return true;
+        __base_scope* __scope = __facade::__get_data(__sndr);
+        return __join_state<_Sender, _Receiver>(__scope, std::move(__rcvr));
       }
 
-      // Joining needs a start scheduler in the receiver's environment.
-      template <class _Sender, class _Receiver>
-      static constexpr auto __get_state(_Sender&& __sndr, _Receiver __rcvr)
-        noexcept(__join_algo::__nothrow_state<_Sender, _Receiver>())
+      template <template <class...> class _StateT = __join_state, class _Sender, class _Receiver>
+      static constexpr auto __get_state(_Sender&&, _Receiver) noexcept
       {
-        if constexpr (!__callable<get_start_scheduler_t, env_of_t<_Receiver> const &>)
-        {
-          return __mexception<
-            _WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
-            _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
-            _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
-            _WITH_SENDER_<__decay_t<_Sender>>,
-            _WITH_ENVIRONMENT_(env_of_t<_Receiver>)>();
-        }
-        else
-        {
-          __base_scope* __scope = __facade::__get_data(__sndr);
-          return __join_state<_Sender, _Receiver>(__scope, std::move(__rcvr));
-        }
+        return __mexception<_WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
+                            _WHY_(
+                              _THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
+                            _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
+                            _WITH_SENDER_<__decay_t<_Sender>>,
+                            _WITH_ENVIRONMENT_(env_of_t<_Receiver>)>();
       }
+
+      template <class _Sender, class _Receiver>
+      using __state_type =
+        decltype(__join_algo::__get_state<__mconst<__ignore>::__f>(__declval<_Sender>(),
+                                                                   __declval<_Receiver>()));
 
       // (Once the operation is registered with the scope, the scope can complete it at any
       // time, so the path that registers it does not touch the state again.)

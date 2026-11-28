@@ -695,16 +695,22 @@ namespace STDEXEC
       // when_all_with_variant instead.
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(host, device)
-      static constexpr auto __get_state(_Sender&&, _Receiver __rcvr) noexcept
+      static constexpr auto __get_state(_Sender&&, _Receiver __rcvr) noexcept  //
+        -> __state_for_t<_Sender, _Receiver>
       {
-        if constexpr (__traits_t<_Sender, _Receiver>::__too_many_values)
-          return __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                              _WHERE_(_IN_ALGORITHM_, when_all_t),
-                              _WHY_(
-                                _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
-                              _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>();
-        else
-          return __state_for_t<_Sender, _Receiver>(static_cast<_Receiver&&>(__rcvr));
+        return __state_for_t<_Sender, _Receiver>(static_cast<_Receiver&&>(__rcvr));
+      }
+
+      template <class _Sender, class _Receiver>
+        requires __traits_t<_Sender, _Receiver>::__too_many_values
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __get_state(_Sender&&, _Receiver) noexcept
+      {
+        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                            _WHERE_(_IN_ALGORITHM_, when_all_t),
+                            _WHY_(
+                              _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                            _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>();
       }
 
       template <class _State, class _Children>

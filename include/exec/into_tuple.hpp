@@ -39,23 +39,26 @@ namespace experimental::execution
     struct _algo : __facade::__defaults
     {
       template <class Sender, class Receiver>
-      static constexpr auto __get_state(Sender &&, Receiver __rcvr) noexcept
+      using _completions_t =
+        __facade::__completions_of_t<_algo, __facade::__child<0>, Sender, Receiver>;
+
+      template <class Sender, class Receiver>
+        requires(_completions_t<Sender, Receiver>::__count(set_value) == 1)
+      static constexpr auto __get_state(Sender &&, Receiver __rcvr) noexcept -> _state<Receiver>
       {
-        using completions_t =
-          __facade::__completions_of_t<_algo, __facade::__child<0>, Sender, Receiver>;
-        if constexpr (completions_t::__count(set_value) != 1)
-        {
-          return __mexception<
-            _WHAT_(_INVALID_ARGUMENT_),
-            _WHY_(THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION),
-            _WHERE_(_IN_ALGORITHM_, into_tuple_t),
-            _WITH_SENDER_<__decay_t<Sender>>,
-            _WITH_ENVIRONMENT_(env_of_t<Receiver>)>();
-        }
-        else
-        {
-          return _state<Receiver>{static_cast<Receiver &&>(__rcvr)};
-        }
+        return _state<Receiver>{static_cast<Receiver &&>(__rcvr)};
+      }
+
+      template <class Sender, class Receiver>
+      static constexpr auto __get_state(Sender &&, Receiver) noexcept
+      {
+        using namespace STDEXEC;
+        return __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                            _WHY_(
+                              THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION),
+                            _WHERE_(_IN_ALGORITHM_, into_tuple_t),
+                            _WITH_SENDER_<__decay_t<Sender>>,
+                            _WITH_ENVIRONMENT_(env_of_t<Receiver>)>();
       }
 
       template <class State, class Tag, class... Args>

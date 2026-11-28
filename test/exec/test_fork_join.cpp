@@ -24,6 +24,8 @@
 #include <test_common/catch2.hpp>
 
 #include <atomic>
+#include <exception>
+#include <stdexcept>
 #include <thread>
 
 using namespace STDEXEC;
@@ -391,4 +393,78 @@ namespace
 
     CHECK(witness == 3);
   }
+
+  // Can the sender complete with set_error(exception_ptr)?
+  template <class Sndr>
+  constexpr bool has_exception_ptr_error_v =
+    STDEXEC::__mapply<STDEXEC::__mcontains<set_error_t(std::exception_ptr)>,
+                      completion_signatures_of_t<Sndr, env<>>>::value;
+
+  TEST_CASE("fork_join can be connected without throwing if its child and its closures' senders "
+            "can",
+            "[adaptors][fork_join]")
+  {
+    // (The function is noexcept, so an exception could come only from connecting.)
+    auto fn = []() noexcept
+    {
+      return exec::fork_join(just(), then([]() noexcept {}), then([]() noexcept {}));
+    };
+    STATIC_REQUIRE(
+      STDEXEC::__nothrow_connectable<decltype(fn()), STDEXEC::__receiver_archetype<env<>>>);
+
+    // So an algorithm that connects it when another sender completes has no exception to
+    // report.
+    STATIC_REQUIRE(!has_exception_ptr_error_v<decltype(let_value(just(), fn))>);
+    CHECK(sync_wait(let_value(just(), fn)).has_value());
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  // A sender whose connect can throw
+  struct throws_on_connect
+  {
+    using sender_concept        = sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
+
+    template <class Receiver>
+    auto connect(Receiver) const -> connect_result_t<decltype(just()), Receiver>
+    {
+      throw std::logic_error("connect");
+    }
+  };
+
+  // A closure that ignores the sender of the cached results, and gives a sender whose connect
+  // can throw
+  struct to_throws_on_connect
+  {
+    template <class Sndr>
+    auto operator()(Sndr) const noexcept -> throws_on_connect
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("fork_join can throw when connected if its child's or a closure's sender can",
+            "[adaptors][fork_join]")
+  {
+    // (The functions are noexcept, so the exceptions can come only from connecting.)
+    auto child_throws = []() noexcept
+    {
+      return exec::fork_join(throws_on_connect{}, then([]() noexcept {}), then([]() noexcept {}));
+    };
+    auto fork_throws = []() noexcept
+    {
+      return exec::fork_join(just(), to_throws_on_connect{}, then([]() noexcept {}));
+    };
+    STATIC_REQUIRE(!STDEXEC::__nothrow_connectable<decltype(child_throws()),
+                                                   STDEXEC::__receiver_archetype<env<>>>);
+    STATIC_REQUIRE(!STDEXEC::__nothrow_connectable<decltype(fork_throws()),
+                                                   STDEXEC::__receiver_archetype<env<>>>);
+
+    // So an algorithm that connects it when another sender completes reports the exception.
+    STATIC_REQUIRE(has_exception_ptr_error_v<decltype(let_value(just(), child_throws))>);
+    STATIC_REQUIRE(has_exception_ptr_error_v<decltype(let_value(just(), fork_throws))>);
+    CHECK_THROWS_AS(sync_wait(let_value(just(), child_throws)), std::logic_error);
+    CHECK_THROWS_AS(sync_wait(let_value(just(), fork_throws)), std::logic_error);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace
